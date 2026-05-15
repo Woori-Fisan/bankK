@@ -26,6 +26,14 @@ jib {
 	}
 }
 
+sonar {
+	properties {
+		property "sonar.projectKey", "Monitoring-Backend" // 소나큐브에서 생성한 키
+		property "sonar.projectName", "Monitoring-Backend"
+		property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
+	}
+}
+
 group = 'com.woorifisan'
 version = '0.0.1-SNAPSHOT'
 
