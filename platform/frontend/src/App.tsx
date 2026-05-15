@@ -3,6 +3,7 @@ import Layout from './components/common/Layout';
 import Dashboard from './pages/Dashboard';
 import MainPage from './pages/MainPage';
 import LoginPage from './pages/LoginPage';
+import PinpadTestPage from './pages/PinpadTestPage';
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="main" element={<MainPage />} />
+          <Route path="pinpad-test" element={<PinpadTestPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
