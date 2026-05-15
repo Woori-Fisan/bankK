@@ -19,6 +19,8 @@ public enum ErrorCode {
     INVALID_CREDENTIALS("AUTH_004", "아이디 또는 비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
     ACCOUNT_LOCKED("AUTH_005", "계정이 잠겼습니다. 관리자에게 문의하세요.", HttpStatus.FORBIDDEN),
     ACCOUNT_DELETED("AUTH_006", "삭제된 계정입니다.", HttpStatus.FORBIDDEN),
+    ALREADY_LOGGED_OUT("AUTH_008", "이미 로그아웃된 계정입니다.", HttpStatus.UNAUTHORIZED),
+    TOKEN_REUSE_DETECTED("AUTH_009", "토큰 재사용이 감지되었습니다.", HttpStatus.UNAUTHORIZED),
 
     // 권한
     FORBIDDEN("AUTH_007", "접근 권한이 없습니다.", HttpStatus.FORBIDDEN),
