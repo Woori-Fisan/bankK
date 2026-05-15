@@ -1,0 +1,35 @@
+name: 📋 작업
+description: 기능 개발, 리팩토링 등 일반 작업에 사용하세요.
+labels: ["task"]
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: 작업 유형
+      options: [feat, fix, refactor, chore, docs]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: 모듈
+      options: [platform, bank, common]
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 작업 내용
+      placeholder: "예: 대행사별 rate limit 적용"
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 세부 항목
+      placeholder: |
+        - [ ] 
+        - [ ]
