@@ -43,6 +43,14 @@ public class JwtProvider {
         return buildToken(staffId, role, refreshTokenExpiration);
     }
 
+    public long getAccessTokenExpiration() {
+        return accessTokenExpiration;
+    }
+
+    public long getRefreshTokenExpiration() {
+        return refreshTokenExpiration;
+    }
+
     // 토큰 생성 공통 메서드
     private String buildToken(Long staffId, String role, long expiration) {
         Date now = new Date();

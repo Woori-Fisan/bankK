@@ -52,7 +52,7 @@ mybatis:
 
 # JWT
 jwt:
-  secret: vYTagORCoTqLu+dGJYcp2veEbL6s3qD0lhxJrtcO5JXObr1j5X5ApaNTM0vPG83ZnBu+xtHcfZva8eer6aqJog==
+  secret: ${JWT_SECRET}
   access-expiration: 900000       # 15분 (ms)
   refresh-expiration: 28800000    # 8시간 (ms)
 

@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 public class AuthService {
 
     private static final int MAX_FAILED_LOGIN_COUNT = 5;
-    private static final long REFRESH_TOKEN_EXPIRATION_SECONDS = 28800L; // 8시간
 
     private final AuthMapper authMapper;
     private final JwtProvider jwtProvider;
@@ -32,7 +31,6 @@ public class AuthService {
     private final RedisTemplate<String, String> redisTemplate;
 
     // 로그인
-    @Transactional
     public LoginResponse login(LoginRequest request) {
 
         // 1. 사용자 조회
@@ -85,19 +83,12 @@ public class AuthService {
     public void logout(Long staffId) {
         String key = getRedisKey(staffId);
 
-        // Redis에 세션 없으면 이미 로그아웃된 상태
-        Boolean exists = redisTemplate.hasKey(key);
-        if (Boolean.FALSE.equals(exists)) {
-            throw new BusinessException(ErrorCode.ALREADY_LOGGED_OUT);
-        }
-
-        // Redis에서 즉시 삭제
+        // Redis에서 즉시 삭제 (이미 없어도 안전하게 처리하여 멱등성 보장)
         redisTemplate.delete(key);
         log.info("로그아웃 성공 - staffId: {}", staffId);
     }
 
     // Access Token 재발급 (RTR)
-    @Transactional
     public TokenRefreshResponse refresh(TokenRefreshRequest request) {
         String refreshToken = request.getRefreshToken();
 
@@ -139,8 +130,8 @@ public class AuthService {
         return TokenRefreshResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
-                .accessTokenExpiresIn(900)
-                .refreshTokenExpiresIn(28800)
+                .accessTokenExpiresIn((int) (jwtProvider.getAccessTokenExpiration() / 1000))
+                .refreshTokenExpiresIn((int) (jwtProvider.getRefreshTokenExpiration() / 1000))
                 .build();
     }
 
@@ -161,5 +152,11 @@ public class AuthService {
     // Redis Key 생성
     private String getRedisKey(Long staffId) {
         return "refresh:" + staffId;
+    }
+}�
+    private String getRedisKey(Long staffId) {
+        return "refresh:" + staffId;
+    }
+}ffId;
     }
 }
