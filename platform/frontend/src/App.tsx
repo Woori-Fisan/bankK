@@ -1,122 +1,99 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from 'react';
+import axios from 'axios';
+import bcrypt from 'bcryptjs';
 
+/**
+ * BankBridge 플랫폼 로그인 테스트 (App.tsx)
+ * - 기능 확인을 위해 스타일을 최소화하고 구조를 간소화함
+ */
 function App() {
-  const [count, setCount] = useState(0)
+  const [authStatus, setAuthStatus] = useState<{
+  isLoading: boolean;
+  error: string | null;  // TS: "아, error 자리에 문자열(string)도 올 수 있구나. 오케이!"
+  data: unknown | null;
+}>({
+  isLoading: false,
+  error: null,
+  data: null,
+});
+
+  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    
+    // 1. 폼 내부의 데이터 추출 (name 속성 기준)
+    const employeeId = formData.get('employeeId') as string;
+    const plainPassword = formData.get('password') as string;
+
+    setAuthStatus({ isLoading: true, error: null, data: null });
+
+    try {
+      // 2. 평문 비밀번호를 해시 암호화
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+      
+      // 3. 백엔드에 전송할 새로운 객체 조립 (평문 대신 해시값 장착!)
+      const requestData = {
+        employeeId: employeeId,
+        password: hashedPassword,
+      };
+
+      // 4. 기존 Object.fromEntries(...) 대신 조립한 requestData를 전송
+      const response = await axios.post('/auth/login', requestData);
+      
+      setAuthStatus({ isLoading: false, error: null, data: response.data });
+    } catch (err) {
+      // (이전 답변에서 적용했던 안전한 TypeScript 에러 처리 방식)
+      let errorMessage = '로그인 중 오류가 발생했습니다.';
+      if (axios.isAxiosError(err)) {
+        errorMessage = err.response?.data?.message || err.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      setAuthStatus({ 
+        isLoading: false, 
+        error: errorMessage, 
+        data: null 
+      });
+    }
+  };
+
+  const { isLoading, error, data } = authStatus;
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <div style={{ padding: '20px' }}>
+      <h1>BankBridge 로그인 테스트</h1>
+
+      <form onSubmit={handleLogin}>
         <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
+          <label>사번: </label>
+          <input name="employeeId" type="text" required />
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
+        <br />
+        <div>
+          <label>비밀번호: </label>
+          <input name="password" type="password" required />
+        </div>
+        <br />
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? '로그인 중...' : '로그인'}
         </button>
-      </section>
+      </form>
 
-      <div className="ticks"></div>
+      <hr />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      {error && <p style={{ color: 'red' }}>에러: {error}</p>}
+
+      {data !== null && (
+        <div>
+          <h3 style={{ color: 'green' }}>성공</h3>
+          <pre>{JSON.stringify(data, null, 2)}</pre>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      )}
+    </div>
+  );
 }
 
-export default App
+export default App;
+
+
