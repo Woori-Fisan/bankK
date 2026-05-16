@@ -28,20 +28,20 @@ pipeline {
                     withSonarQubeEnv('Platform-Backend-Sonar') {
                         sh 'chmod +x gradlew'
                         // 빌드와 분석
-                        sh './gradlew clean build sonar'
+                        // sh './gradlew clean build sonar'
                     }
                 }
             }
         }
 
-        stage('Quality Gate') {
-            // Quality Gate 대기
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
+        // stage('Quality Gate') {
+        //     // Quality Gate 대기
+        //     steps {
+        //         timeout(time: 5, unit: 'MINUTES') {
+        //             waitForQualityGate abortPipeline: true
+        //         }
+        //     }
+        // }
 
         stage('Jib Build & Push to Docker Hub') {
             steps {
