@@ -3,6 +3,7 @@ plugins {
 	id 'org.springframework.boot' version '3.5.14'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'com.google.cloud.tools.jib' version '3.4.1'
+	// id "org.sonarqube" version "5.1.0.4882"
 }
 
 def buildNumber = System.getenv('BUILD_NUMBER') ?: 'latest'
@@ -26,13 +27,13 @@ jib {
 	}
 }
 
-sonar {
-	properties {
-		property "sonar.projectKey", "Platform-Backend" // 소나큐브에서 생성한 키
-		property "sonar.projectName", "Platform-Backend"
-		property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
-	}
-}
+// sonar {
+// 	properties {
+// 		property "sonar.projectKey", "Platform-Backend" // 소나큐브에서 생성한 키
+// 		property "sonar.projectName", "Platform-Backend"
+// 		property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
+// 	}
+// }
 
 group = 'com.woorifisan'
 version = '0.0.1-SNAPSHOT'
