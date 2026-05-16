@@ -24,10 +24,8 @@
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <!-- 서비스 식별용 필드 -->
             <customFields>{"service":"agency-platform"}</customFields>
-            <!-- 분산 추적용 MDC 필드 (STACK_MONITOR_BE.md 준수) -->
-            <includeMdcKeyName>traceId</includeMdcKeyName>
-            <includeMdcKeyName>spanId</includeMdcKeyName>
-            <!-- 민감 정보 필드 제외 -->
+            <!-- MDC 전체 자동 포함 (traceId, spanId 포함) -->
+            <!-- excludeMdcKeyNames만 사용 (include와 동시 사용 불가) -->
             <excludeMdcKeyName>password</excludeMdcKeyName>
             <excludeMdcKeyName>token</excludeMdcKeyName>
         </encoder>
@@ -47,7 +45,7 @@
     <!-- ── 프로파일별 설정 ────────────────────────────── -->
     <!-- 로컬 개발: 콘솔만 -->
     <springProfile name="local">
-        <root level="DEBUG">
+        <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
         <logger name="com.woorifisan.platform" level="DEBUG"/>
