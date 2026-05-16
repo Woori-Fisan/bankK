@@ -25,7 +25,7 @@ pipeline {
         stage('Build & SonarQube Analysis') {
             steps {
                 dir('monitoring/backend') {
-                    withSonarQubeEnv('Monitor-Backend-Sonar') {
+                    withSonarQubeEnv('Monitoring-Backend-Sonar') {
                         sh 'chmod +x gradlew'
                         // 빌드와 분석
                         // sh './gradlew clean build sonar'
