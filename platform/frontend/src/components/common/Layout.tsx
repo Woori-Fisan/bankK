@@ -16,7 +16,7 @@ const Layout: React.FC = () => {
             <main className="flex-1 flex flex-col min-w-0">
                 <Header currentTime={currentTime} sessionTime={sessionTime} />
                 
-                <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 flex flex-col overflow-y-auto bg-gray-50">
                     <Outlet />
                 </div>
 
