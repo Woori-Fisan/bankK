@@ -3,13 +3,13 @@ import axios from 'axios';
 import bcrypt from 'bcryptjs';
 
 /**
- * BankBridge 플랫폼 로그인 테스트 (App.tsx)
+ * BankBridge 플랫폼 로그인 테스트 (Login.tsx)
  * - 기능 확인을 위해 스타일을 최소화하고 구조를 간소화함
  */
-function App() {
+function Login() {
   const [authStatus, setAuthStatus] = useState<{
   isLoading: boolean;
-  error: string | null;  // TS: "아, error 자리에 문자열(string)도 올 수 있구나. 오케이!"
+  error: string | null;
   data: unknown | null;
 }>({
   isLoading: false,
@@ -94,6 +94,4 @@ function App() {
   );
 }
 
-export default App;
-
-
+export default Login;
