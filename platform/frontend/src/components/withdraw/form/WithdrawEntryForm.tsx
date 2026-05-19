@@ -58,7 +58,7 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
     };
 
     return (
-        <div className="w-full max-w-2xl mx-auto bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+        <div className="w-full max-w-4xl mx-auto bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
             <div className="p-8 md:p-12 space-y-10">
                 <header className="border-b border-gray-50 pb-6">
                     <h2 className="text-3xl font-black text-gray-900 tracking-tight">출금 신청</h2>

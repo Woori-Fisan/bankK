@@ -14,8 +14,8 @@ const WithdrawConfirmForm: React.FC<WithdrawConfirmFormProps> = ({
     onBack,
 }) => {
     return (
-        <div className="w-full max-w-2xl mx-auto bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
-            <div className="p-8 md:p-12 space-y-10">
+        <div className="w-full max-w-5xl mx-auto bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden transition-all duration-300">
+            <div className="p-8 md:p-12 space-y-10 w-full">
                 <header className="border-b border-gray-50 pb-6 flex items-center gap-4">
                     <button 
                         onClick={onBack}

@@ -25,7 +25,7 @@ const WithdrawConfirmSection: React.FC<WithdrawConfirmSectionProps> = ({
     const totalAmount = parseInt(amount || '0', 10) + fee;
 
     return (
-        <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <section className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="bg-emerald-50/30 border border-emerald-100 rounded-2xl p-6 text-center">
                 <p className="text-sm font-medium text-emerald-600 mb-1">총 출금 금액</p>
                 <h3 className="text-4xl font-black text-emerald-900 tracking-tight">
