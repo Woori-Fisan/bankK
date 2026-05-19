@@ -10,7 +10,7 @@ const WithdrawPage: React.FC = () => {
     const [step, setStep] = useState<'entry' | 'confirm' | 'success' | 'failure'>('entry');
     const [withdrawData, setWithdrawData] = useState<WithdrawData | null>(null);
     const [withdrawResult, setWithdrawResult] = useState<WithdrawResult | null>(null);
-    const [errorType, setErrorType] = useState<'INVALID_PASSWORD' | 'SYSTEM_ERROR'>('INVALID_PASSWORD');
+    const [errorType] = useState<'INVALID_PASSWORD' | 'SYSTEM_ERROR'>('INVALID_PASSWORD');
     const [isPinpadOpen, setIsPinpadOpen] = useState(false);
 
     const handleNext = (data: WithdrawData) => {
