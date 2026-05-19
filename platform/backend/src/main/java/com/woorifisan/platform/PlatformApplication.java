@@ -9,7 +9,7 @@ public class PlatformApplication {
 
 	public static void main(String[] args) {
 		Dotenv dotenv = Dotenv.configure()
-				.directory("./platform/backend")
+				.directory("./")
 				.ignoreIfMissing()
 				.load();
 		dotenv.entries().forEach(entry ->
