@@ -23,6 +23,7 @@ const MainPage: React.FC = () => {
                     bgIcon={Landmark}
                     title="Loan Management"
                     description="Initiate institutional loan applications, review underwriting status, and manage existing credit facilities."
+                    to="/loan"
                 />
                 <ServiceCard
                     icon={ArrowRightLeft}
@@ -43,12 +44,14 @@ const MainPage: React.FC = () => {
                     bgIcon={Banknote}
                     title="Withdrawal processing"
                     description="Manage large-scale fiat withdrawals, coordinate liquidity pools, and process physical currency requests."
+                    to="/withdraw"
                 />
                 <ServiceCard
                     icon={Users}
                     bgIcon={UserCog}
                     title="User Directory"
                     description="Administrate platform access, configure RBAC (Role-Based Access Control) profiles, and audit user activity logs."
+                    to="/users"
                 />
             </div>
         </div>
