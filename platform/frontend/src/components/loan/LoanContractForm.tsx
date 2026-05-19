@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, Receipt, Info, ChevronLeft, ChevronRight, X, Globe } from 'lucide-react';
-import { LoanProduct, LoanData } from '../../pages/LoanApplication';
+import type { LoanProduct, LoanData } from '../../pages/LoanApplication';
 
 interface ContractTerm {
     id: string;

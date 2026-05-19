@@ -1,5 +1,4 @@
 import React from 'react';
-import { formatAmount } from '../../../utils/formatter';
 
 interface WithdrawAccountSectionProps {
     bankName: string;

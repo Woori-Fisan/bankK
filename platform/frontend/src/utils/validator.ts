@@ -3,7 +3,7 @@
  * @param {string} value - 계좌번호
  * @returns {boolean} 유효 여부
  */
-export const isValidAccountNumber = (value) => {
+export const isValidAccountNumber = (value: string) => {
     return /^\d{10,14}$/.test(value.replace(/-/g, ''));
 };
 
@@ -12,7 +12,7 @@ export const isValidAccountNumber = (value) => {
  * @param {string|number} value - 금액
  * @returns {boolean} 유효 여부
  */
-export const isValidAmount = (value) => {
-    const num = parseInt(value, 10);
+export const isValidAmount = (value: any) => {
+    const num = typeof value === 'string' ? parseInt(value, 10) : value;
     return !isNaN(num) && num > 0;
 };

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Building, ChevronRight, ChevronLeft, Building2 } from 'lucide-react';
-import { LoanProduct } from '../../pages/LoanApplication';
+import type { LoanProduct } from '../../pages/LoanApplication';
 
 interface LoanProductSelectionProps {
     products: LoanProduct[];

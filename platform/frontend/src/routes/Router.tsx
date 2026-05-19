@@ -5,6 +5,7 @@ import LoginPage from '../pages/LoginPage';
 import PinpadTestPage from '../pages/PinpadTestPage';
 import AccountInquiry from '../pages/AccountInquiry';
 import WithdrawPage from '../pages/WithdrawPage';
+import LoanApplication from '../pages/LoanApplication';
 
 const Router = () => {
   return (
@@ -15,6 +16,7 @@ const Router = () => {
         <Route path="inquiry" element={<AccountInquiry />} />
         <Route path="pinpad-test" element={<PinpadTestPage />} />
         <Route path="login" element={<LoginPage />} />
+        <Route path="loan" element={<LoanApplication />} />
         <Route path="withdraw" element={<WithdrawPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

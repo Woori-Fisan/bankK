@@ -51,10 +51,6 @@ const LoanApplication: React.FC = () => {
         setStep(nextStep);
     };
 
-    const handleBack = (prevStep: LoanStep) => {
-        setStep(prevStep);
-    };
-
     const renderStep = () => {
         switch (step) {
             case 'GUIDE':
