@@ -1,5 +1,6 @@
 package com.woorifisan.platform.bank.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,7 +18,9 @@ public class TransactionHistoryDto {
     private String txId;
     private String txDate;
     private String txType;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal amount;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal balance;
     private String counterpartName;
     private String description;

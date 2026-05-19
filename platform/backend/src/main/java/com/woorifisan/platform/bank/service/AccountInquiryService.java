@@ -8,6 +8,7 @@ import com.woorifisan.platform.bank.dto.TransactionHistoryDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -25,7 +26,7 @@ public class AccountInquiryService {
 
         // 명세서 기반 더미 데이터
         return BalanceInquiryResponse.builder()
-                .balance(5420000)
+                .balance(new BigDecimal("5420000"))
                 .status("NORMAL")
                 .build();
     }
@@ -42,8 +43,8 @@ public class AccountInquiryService {
                         .txId("TX20240519001")
                         .txDate("2024-05-18 14:20:05")
                         .txType("WITHDRAW")
-                        .amount(50000)
-                        .balance(5420000)
+                        .amount(new BigDecimal(50000))
+                        .balance(new BigDecimal(5420000))
                         .counterpartName("김우리")
                         .description("ATM 출금")
                         .build(),
@@ -51,8 +52,8 @@ public class AccountInquiryService {
                         .txId("TX20240517002")
                         .txDate("2024-05-17 09:10:00")
                         .txType("DEPOSIT")
-                        .amount(1200000)
-                        .balance(5470000)
+                        .amount(new BigDecimal(1200000))
+                        .balance(new BigDecimal(5470000))
                         .counterpartName("(주)우리피앤에스")
                         .description("급여")
                         .build()
