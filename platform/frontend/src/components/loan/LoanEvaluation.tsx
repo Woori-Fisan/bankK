@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle2, XCircle, Info, ChevronRight } from 'lucide-react';
-import { LoanData, EvaluationResult } from '../../pages/LoanApplication';
+import type { LoanData, EvaluationResult } from '../../pages/LoanApplication';
 
 interface LoanEvaluationProps {
     loanData: LoanData;
@@ -8,7 +8,7 @@ interface LoanEvaluationProps {
     onRejected: (reason: string) => void;
 }
 
-const LoanEvaluation: React.FC<LoanEvaluationProps> = ({ loanData, onApproved, onRejected }) => {
+const LoanEvaluation: React.FC<LoanEvaluationProps> = ({ onApproved, onRejected }) => {
     const [status, setStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
     const [countdown, setCountdown] = useState(5);
 

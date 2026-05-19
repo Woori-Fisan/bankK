@@ -1,6 +1,6 @@
 import React from 'react';
-import { CheckCircle2, Printer, ChevronRight } from 'lucide-react';
-import { LoanData, LoanProduct, EvaluationResult } from '../../pages/LoanApplication';
+import { CheckCircle2, Printer } from 'lucide-react';
+import type { LoanData, LoanProduct, EvaluationResult } from '../../pages/LoanApplication';
 
 interface LoanResultProps {
     loanData: LoanData;
@@ -9,7 +9,7 @@ interface LoanResultProps {
     onReset: () => void;
 }
 
-const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationResult, onReset }) => {
+const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, onReset }) => {
     const maturityDate = new Date();
     maturityDate.setMonth(maturityDate.getMonth() + (product?.period || 0));
     const maturityDateString = maturityDate.toISOString().split('T')[0];

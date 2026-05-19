@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { User, Building2, Upload, FileText, X, ChevronLeft, ChevronRight, FileType, CheckCircle2, Globe } from 'lucide-react';
-import { LoanData } from '../../pages/LoanApplication';
+import type { LoanData } from '../../pages/LoanApplication';
 
 interface Term {
     id: string;

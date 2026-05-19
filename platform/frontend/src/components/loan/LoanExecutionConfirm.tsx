@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { AlertTriangle, ChevronLeft, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ShieldCheck } from 'lucide-react';
 import PinpadModal from '../pinpad/PinpadModal';
-import { LoanData, LoanProduct } from '../../pages/LoanApplication';
+import type { LoanData, LoanProduct } from '../../pages/LoanApplication';
 
 interface LoanExecutionConfirmProps {
     loanData: LoanData;
