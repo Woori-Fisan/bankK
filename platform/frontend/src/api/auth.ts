@@ -1,4 +1,3 @@
-// platform/frontend/src/api/auth.ts
 import axios from 'axios';
 
 interface LoginResponse {
@@ -20,7 +19,7 @@ export const login = async (
 ): Promise<LoginResponse> => {
     try {
         const transactionId = generateTransactionId();
-        const response = await axios.post('/auth/login', {
+        const response = await axios.post('/api/v1/auth/login', {
             employeeId,
             password: encryptedPassword,
         }, {

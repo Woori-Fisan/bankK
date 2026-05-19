@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UserRound, Lock } from 'lucide-react';
 import LoginInput from './LoginInput';
 import { useAuthCrypto } from '../../hooks/useAuthCrypto';
@@ -6,6 +7,8 @@ import { login } from '../../api/auth';
 import { fetchPlatformPublicKey } from '../../utils/authCrypto';
 
 const LoginForm: React.FC = () => {
+    const navigate = useNavigate();
+
     const [employeeId, setEmployeeId] = useState('');
     const [password, setPassword] = useState('');
     const [loginMessage, setLoginMessage] = useState<string | null>(null);
@@ -57,7 +60,7 @@ const LoginForm: React.FC = () => {
             if (response.success) {
                 setLoginMessage(response.message || '로그인 성공!');
                 setLoginSuccess(true);
-                // navigate('/main');
+                navigate('/main');
             } else {
                 setLoginMessage(response.message || '로그인 실패. 다시 시도해주세요.');
                 setLoginSuccess(false);
