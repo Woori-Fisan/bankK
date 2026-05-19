@@ -51,7 +51,7 @@ const Sidebar: React.FC = () => {
                 <SidebarItem icon={LayoutDashboard} label="Dashboard" to="/" />
                 <SidebarItem icon={ClipboardList} label="Loan" to="/loan" />
                 <SidebarItem icon={ArrowLeftRight} label="Transfer" to="/transfer" />
-                <SidebarItem icon={Banknote} label="Withdrawal" to="/withdrawal" />
+                <SidebarItem icon={Banknote} label="Withdrawal" to="/withdraw" />
                 <SidebarItem icon={Search} label="Account Inquiry" to="/inquiry" />
                 <SidebarItem icon={UserCog} label="User Management" to="/users" />
             </nav>
