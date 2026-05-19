@@ -43,6 +43,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // CORS 설정 적용 (WebMvcConfig 설정을 따름)
+                .cors(org.springframework.security.config.Customizer.withDefaults())
                 // JWT 사용하므로 세션 미사용
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

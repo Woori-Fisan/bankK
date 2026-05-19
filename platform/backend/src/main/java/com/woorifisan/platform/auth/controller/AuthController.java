@@ -5,6 +5,8 @@ import com.woorifisan.platform.auth.dto.LoginResponse;
 import com.woorifisan.platform.auth.dto.TokenRefreshRequest;
 import com.woorifisan.platform.auth.dto.TokenRefreshResponse;
 import com.woorifisan.platform.auth.service.AuthService;
+import com.woorifisan.platform.global.config.CustomExceptionDescription;
+import com.woorifisan.platform.global.config.SwaggerResponseDescription;
 import com.woorifisan.platform.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class AuthController {
     // 로그인
     // POST /api/v1/auth/login
     @PostMapping("/login")
+    @CustomExceptionDescription(SwaggerResponseDescription.AUTH_LOGIN)
     public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest request
     ) {
@@ -45,6 +48,7 @@ public class AuthController {
     // Access Token 재발급 (RTR)
     // POST /api/v1/auth/refresh
     @PostMapping("/refresh")
+    @CustomExceptionDescription(SwaggerResponseDescription.AUTH_REFRESH)
     public ResponseEntity<ApiResponse<TokenRefreshResponse>> refresh(
             @Valid @RequestBody TokenRefreshRequest request
     ) {
