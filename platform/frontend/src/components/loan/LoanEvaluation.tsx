@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle2, XCircle, Info, ChevronRight } from 'lucide-react';
+import { LoanData, EvaluationResult } from '../../pages/LoanApplication';
 
 interface LoanEvaluationProps {
-    loanData: any;
-    onApproved: (result: any) => void;
+    loanData: LoanData;
+    onApproved: (result: EvaluationResult) => void;
     onRejected: (reason: string) => void;
 }
 
@@ -12,6 +13,8 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({ loanData, onApproved, o
     const [countdown, setCountdown] = useState(5);
 
     useEffect(() => {
+        if (status !== 'PENDING') return;
+
         const timer = setInterval(() => {
             setCountdown(prev => {
                 if (prev <= 1) return 5;
@@ -33,9 +36,9 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({ loanData, onApproved, o
             clearInterval(timer);
             clearTimeout(evaluationTimer);
         };
-    }, []);
+    }, [status]);
 
-    const mockResult = {
+    const mockResult: EvaluationResult = {
         limit: 65000000,
         rate: 3.51,
         period: 24,

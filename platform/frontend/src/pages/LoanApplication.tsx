@@ -9,15 +9,44 @@ import LoanResult from '../components/loan/LoanResult';
 
 export type LoanStep = 'GUIDE' | 'FORM' | 'EVALUATION' | 'SELECTION' | 'CONTRACT' | 'CONFIRM' | 'RESULT';
 
+export interface LoanProduct {
+    id: number;
+    name: string;
+    rate: number;
+    limit: number;
+    tags: string[];
+    period?: number;
+}
+
+export interface EvaluationResult {
+    status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    reason?: string;
+    limit?: number;
+    rate?: number;
+    period?: number;
+    bank?: string;
+    account?: string;
+    products?: LoanProduct[];
+}
+
+export interface LoanData {
+    userName?: string;
+    rrn?: string;
+    phone?: string;
+    bank?: string;
+    accountNo?: string;
+    accountHolder?: string;
+}
+
 const LoanApplication: React.FC = () => {
     const [step, setStep] = useState<LoanStep>('GUIDE');
-    const [loanData, setLoanData] = useState<any>({});
-    const [evaluationResult, setEvaluationResult] = useState<any>(null);
-    const [selectedProduct, setSelectedProduct] = useState<any>(null);
+    const [loanData, setLoanData] = useState<LoanData>({});
+    const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null);
+    const [selectedProduct, setSelectedProduct] = useState<LoanProduct | null>(null);
 
-    const handleNext = (nextStep: LoanStep, data?: any) => {
+    const handleNext = (nextStep: LoanStep, data?: Partial<LoanData>) => {
         if (data) {
-            setLoanData((prev: any) => ({ ...prev, ...data }));
+            setLoanData((prev) => ({ ...prev, ...data }));
         }
         setStep(nextStep);
     };
@@ -65,7 +94,8 @@ const LoanApplication: React.FC = () => {
             case 'CONTRACT':
                 return (
                     <LoanContractForm 
-                        product={selectedProduct}
+                        product={selectedProduct!}
+                        loanData={loanData}
                         onNext={() => setStep('CONFIRM')}
                         onBack={() => setStep('SELECTION')}
                     />
@@ -74,7 +104,7 @@ const LoanApplication: React.FC = () => {
                 return (
                     <LoanExecutionConfirm 
                         loanData={loanData}
-                        product={selectedProduct}
+                        product={selectedProduct!}
                         onNext={() => setStep('RESULT')}
                         onBack={() => setStep('CONTRACT')}
                     />
