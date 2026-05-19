@@ -27,7 +27,7 @@ public class TransferController {
         return ApiResponse.success(response);
     }
 
-    @PostMapping("/")
+    @PostMapping
     public ApiResponse<TransferResponse> executeTransfer(@RequestBody @Valid TransferRequest request) {
         TransferResponse response = transferService.executeTransfer(request);
         return ApiResponse.success(response);
