@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private static final long REFRESH_TOKEN_EXPIRATION_SECONDS = 28800;
     private static final int MAX_FAILED_LOGIN_COUNT = 5;
 
     private final AuthMapper authMapper;
@@ -152,11 +153,5 @@ public class AuthService {
     // Redis Key 생성
     private String getRedisKey(Long staffId) {
         return "refresh:" + staffId;
-    }
-}�
-    private String getRedisKey(Long staffId) {
-        return "refresh:" + staffId;
-    }
-}ffId;
     }
 }
