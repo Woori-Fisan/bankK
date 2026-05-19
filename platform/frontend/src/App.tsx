@@ -4,6 +4,7 @@ import MainPage from './pages/MainPage';
 import LoginPage from './pages/LoginPage';
 import PinpadTestPage from './pages/PinpadTestPage';
 import AccountInquiry from './pages/AccountInquiry';
+import TransferPage from './pages/TransferPage';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route index element={<MainPage />} />
           <Route path="main" element={<MainPage />} />
           <Route path="inquiry" element={<AccountInquiry />} />
+          <Route path="transfer" element={<TransferPage />} />
           <Route path="pinpad-test" element={<PinpadTestPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

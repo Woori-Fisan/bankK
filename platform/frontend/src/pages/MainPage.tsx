@@ -29,12 +29,14 @@ const MainPage: React.FC = () => {
                     bgIcon={ArrowRightLeft}
                     title="Transfers"
                     description="Execute high-volume wire transfers, ACH batches, and internal ledger movements with strict maker-checker controls."
+                    to="/transfer"
                 />
                 <ServiceCard
                     icon={Search}
                     bgIcon={Search}
                     title="Account Inquiry"
                     description="Deep dive into corporate account structures, view real-time balances, and access historical transaction ledgers."
+                    to="/inquiry"
                 />
                 <ServiceCard
                     icon={Banknote}
