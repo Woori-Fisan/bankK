@@ -3,9 +3,9 @@ import { CreditCard } from 'lucide-react';
 import { formatAmount } from '../../../utils/formatter';
 
 interface WithdrawDetailTableProps {
-    recipientName: string;
     bankName: string;
     accountNumber: string;
+    birthDate: string;
     balanceBefore: number;
     balanceAfter: number;
     transactionId: string;
@@ -13,9 +13,9 @@ interface WithdrawDetailTableProps {
 }
 
 const WithdrawDetailTable: React.FC<WithdrawDetailTableProps> = ({
-    recipientName,
     bankName,
     accountNumber,
+    birthDate,
     balanceBefore,
     balanceAfter,
     transactionId,
@@ -25,17 +25,18 @@ const WithdrawDetailTable: React.FC<WithdrawDetailTableProps> = ({
         <div className="space-y-6">
             <div className="flex items-center gap-2 text-emerald-700">
                 <CreditCard className="w-5 h-5" />
-                <h3 className="text-lg font-black tracking-tight">출금 계좌 정보</h3>
+                <h3 className="text-lg font-black tracking-tight">거래 상세 내역</h3>
             </div>
 
             <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
                 <div className="grid grid-cols-2 p-6 border-b border-gray-100">
                     <div className="space-y-1">
-                        <p className="text-sm font-bold text-gray-900">{recipientName}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase">출금 계좌 (Source Account)</p>
+                        <p className="text-sm font-bold text-gray-900">{bankName} {accountNumber}</p>
                     </div>
                     <div className="text-right space-y-1">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase">출금 계좌번호 (Account Number)</p>
-                        <p className="text-sm font-bold text-gray-700">{bankName} {accountNumber}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase">본인 확인 (Birth Date)</p>
+                        <p className="text-sm font-bold text-gray-700">{birthDate}</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-2 p-6 bg-white/50">

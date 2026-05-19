@@ -77,8 +77,7 @@ const WithdrawPage: React.FC = () => {
                 {step === 'entry' ? (
                     <WithdrawEntryForm 
                         initialData={withdrawData ? {
-                            depositBank: withdrawData.depositInfo.bankName,
-                            depositAccount: withdrawData.depositInfo.accountNumber,
+                            birthDate: withdrawData.birthDate,
                             amount: withdrawData.amount
                         } : undefined}
                         onNext={handleNext} 

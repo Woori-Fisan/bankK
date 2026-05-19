@@ -3,7 +3,7 @@ import React from 'react';
 interface DepositInfoSectionProps {
     depositBank: string;
     depositAccount: string;
-    recipientName: string;
+    recipientName?: string;
     onBankChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onAccountChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -40,10 +40,13 @@ const DepositInfoSection: React.FC<DepositInfoSectionProps> = ({
                     />
                 </div>
             </div>
-            <div className="flex justify-between items-center px-4 py-3 border border-emerald-100 bg-emerald-50/20 rounded-lg">
-                <span className="text-sm font-medium text-gray-500">수취인</span>
-                <span className="text-base font-bold text-emerald-700">{recipientName}</span>
-            </div>
+
+            {recipientName && (
+                <div className="flex justify-between items-center px-4 py-3 border border-emerald-100 bg-emerald-50/20 rounded-lg">
+                    <span className="text-sm font-medium text-gray-500">수취인</span>
+                    <span className="text-base font-bold text-emerald-700">{recipientName}</span>
+                </div>
+            )}
         </section>
     );
 };

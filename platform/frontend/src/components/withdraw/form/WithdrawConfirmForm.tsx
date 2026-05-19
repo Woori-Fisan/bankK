@@ -30,7 +30,7 @@ const WithdrawConfirmForm: React.FC<WithdrawConfirmFormProps> = ({
 
                 <WithdrawConfirmSection 
                     sourceAccount={data.sourceAccount}
-                    depositInfo={data.depositInfo}
+                    birthDate={data.birthDate}
                     amount={data.amount}
                     fee={data.fee}
                 />

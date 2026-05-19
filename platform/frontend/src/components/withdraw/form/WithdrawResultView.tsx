@@ -26,9 +26,9 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
 
                 <div className="border-t border-gray-50 pt-10">
                     <WithdrawDetailTable 
-                        recipientName={data.depositInfo.recipientName}
-                        bankName={data.depositInfo.bankName}
-                        accountNumber={data.depositInfo.accountNumber}
+                        bankName={data.sourceAccount.bankName}
+                        accountNumber={data.sourceAccount.accountNumber}
+                        birthDate={data.birthDate}
                         balanceBefore={result.balanceBefore}
                         balanceAfter={result.balanceAfter}
                         transactionId={result.transactionId}
