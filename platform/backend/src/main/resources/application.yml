@@ -78,6 +78,14 @@ management:
     tags:
       application: ${spring.application.name}
 
+# Swagger
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
 # 로깅
 logging:
   config: classpath:logback-spring.xml

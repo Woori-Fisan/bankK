@@ -15,7 +15,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.util.concurrent.TimeUnit;
 
@@ -25,9 +24,6 @@ import java.util.concurrent.TimeUnit;
 public class AuthService {
 
     private static final int MAX_FAILED_LOGIN_COUNT = 5;
-
-    @Value("${REFRESH_TOKEN_EXPIRATION_SECONDS}")
-    private long REFRESH_TOKEN_EXPIRATION_SECONDS;  // 이 선언이 없는 것
 
     private final AuthMapper authMapper;
     private final JwtProvider jwtProvider;
@@ -70,7 +66,7 @@ public class AuthService {
         redisTemplate.opsForValue().set(
                 getRedisKey(user.getId()),
                 refreshToken,
-                REFRESH_TOKEN_EXPIRATION_SECONDS,
+                jwtProvider.getRefreshTokenExpiration() / 1000,
                 TimeUnit.SECONDS
         );
 
@@ -127,7 +123,7 @@ public class AuthService {
         redisTemplate.opsForValue().set(
                 getRedisKey(staffId),
                 newRefreshToken,
-                REFRESH_TOKEN_EXPIRATION_SECONDS,
+                jwtProvider.getRefreshTokenExpiration() / 1000,
                 TimeUnit.SECONDS
         );
 
