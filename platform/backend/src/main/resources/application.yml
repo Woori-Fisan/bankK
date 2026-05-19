@@ -56,6 +56,11 @@ jwt:
   access-expiration: 900000       # 15분 (ms)
   refresh-expiration: 28800000    # 8시간 (ms)
 
+# Bank Server
+bank:
+  server:
+    url: ${BANK_SERVER_URL}
+
 # mTLS 인증서 경로
 #mtls:
 #  keystore-path: ${MTLS_KEYSTORE_PATH}
