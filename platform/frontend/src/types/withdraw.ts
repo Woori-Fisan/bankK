@@ -13,3 +13,10 @@ export interface WithdrawData {
     amount: string;
     fee: number;
 }
+
+export interface WithdrawResult {
+    balanceBefore: number;
+    balanceAfter: number;
+    transactionId: string;
+    dateTime: string;
+}

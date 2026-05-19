@@ -2,16 +2,11 @@ import React from 'react';
 import WithdrawResultHeader from '../sections/WithdrawResultHeader';
 import WithdrawAmountCard from '../sections/WithdrawAmountCard';
 import WithdrawDetailTable from '../sections/WithdrawDetailTable';
-import type { WithdrawData } from '../../../types/withdraw';
+import type { WithdrawData, WithdrawResult } from '../../../types/withdraw';
 
 interface WithdrawResultViewProps {
     data: WithdrawData;
-    result: {
-        balanceBefore: number;
-        balanceAfter: number;
-        transactionId: string;
-        dateTime: string;
-    };
+    result: WithdrawResult;
     onClose: () => void;
 }
 
