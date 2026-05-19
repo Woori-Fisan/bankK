@@ -1,14 +1,22 @@
 import React, { useState, useRef } from 'react';
 import { User, Building2, Upload, FileText, X, ChevronLeft, ChevronRight, FileType, CheckCircle2, Globe } from 'lucide-react';
+import { LoanData } from '../../pages/LoanApplication';
+
+interface Term {
+    id: string;
+    name: string;
+    required: boolean;
+    agreed: boolean;
+}
 
 interface LoanRequestFormProps {
-    onNext: (data: any) => void;
+    onNext: (data: LoanData) => void;
     onBack: () => void;
 }
 
 const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<LoanData>({
         userName: '',
         rrn: '',
         phone: '',
@@ -22,7 +30,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
         { id: 2, name: '소득증빙_2023.pdf', progress: 100, status: '완료' },
     ]);
 
-    const [terms, setTerms] = useState([
+    const [terms, setTerms] = useState<Term[]>([
         { id: 'T001', name: '신용정보조회 동의서', required: true, agreed: false },
         { id: 'T002', name: '개인(신용)정보 수집·이용·제공 동의서', required: true, agreed: false },
         { id: 'T003', name: '소득확인 동의서', required: true, agreed: false },
@@ -31,7 +39,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
     ]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [activeTerm, setActiveTerm] = useState<any>(null);
+    const [activeTerm, setActiveTerm] = useState<Term | null>(null);
 
     const handleTermToggle = (id: string) => {
         setTerms(prev => prev.map(t => t.id === id ? { ...t, agreed: !t.agreed } : t));
@@ -59,7 +67,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
         setFiles(prev => prev.filter(f => f.id !== id));
     };
 
-    const openModal = (term: any) => {
+    const openModal = (term: Term) => {
         setActiveTerm(term);
         setIsModalOpen(true);
     };

@@ -1,14 +1,23 @@
 import React, { useState } from 'react';
 import { FileText, Receipt, Info, ChevronLeft, ChevronRight, X, Globe } from 'lucide-react';
+import { LoanProduct, LoanData } from '../../pages/LoanApplication';
+
+interface ContractTerm {
+    id: string;
+    name: string;
+    required: boolean;
+    agreed: boolean;
+}
 
 interface LoanContractFormProps {
-    product: any;
+    product: LoanProduct;
+    loanData: LoanData;
     onNext: () => void;
     onBack: () => void;
 }
 
-const LoanContractForm: React.FC<LoanContractFormProps> = ({ product, onNext, onBack }) => {
-    const [terms, setTerms] = useState([
+const LoanContractForm: React.FC<LoanContractFormProps> = ({ product, loanData, onNext, onBack }) => {
+    const [terms, setTerms] = useState<ContractTerm[]>([
         { id: 'C001', name: '대출상품 핵심 설명서', required: true, agreed: false },
         { id: 'C002', name: '대출거래약정서', required: true, agreed: false },
         { id: 'C003', name: '은행여신거래기본약관', required: true, agreed: false },
@@ -17,13 +26,13 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({ product, onNext, on
     ]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [activeTerm, setActiveTerm] = useState<any>(null);
+    const [activeTerm, setActiveTerm] = useState<ContractTerm | null>(null);
 
     const handleTermToggle = (id: string) => {
         setTerms(prev => prev.map(t => t.id === id ? { ...t, agreed: !t.agreed } : t));
     };
 
-    const openModal = (term: any) => {
+    const openModal = (term: ContractTerm) => {
         setActiveTerm(term);
         setIsModalOpen(true);
     };
@@ -131,7 +140,7 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({ product, onNext, on
                             </div>
                             <div className="pt-4 border-t border-gray-100">
                                 <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">입금 계좌</p>
-                                <p className="text-xs font-bold text-gray-900">우리은행 100-293-884920</p>
+                                <p className="text-xs font-bold text-gray-900">{loanData.bank}은행 {loanData.accountNo}</p>
                             </div>
                         </div>
                     </div>

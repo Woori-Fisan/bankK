@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Building, ChevronRight, ChevronLeft, Building2 } from 'lucide-react';
+import { LoanProduct } from '../../pages/LoanApplication';
 
 interface LoanProductSelectionProps {
-    products: any[];
-    onNext: (product: any) => void;
+    products: LoanProduct[];
+    onNext: (product: LoanProduct) => void;
     onBack: () => void;
 }
 
@@ -77,7 +78,7 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-bold text-gray-900 truncate">{product.name}</p>
                                     <div className="flex gap-1.5 mt-1">
-                                        {product.tags.map((tag: string) => (
+                                        {product.tags.map((tag) => (
                                             <span key={tag} className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${tag === '최저금리' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
                                                 {tag}
                                             </span>
@@ -105,7 +106,7 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
                             <div>
                                 <h3 className="text-sm font-bold text-gray-900">{selectedProduct?.name}</h3>
                                 <div className="flex gap-1.5 mt-1">
-                                    {selectedProduct?.tags.map((tag: string) => (
+                                    {selectedProduct?.tags.map((tag) => (
                                         <span key={tag} className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${tag === '최저금리' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
                                             {tag}
                                         </span>
@@ -143,7 +144,7 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
                                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
                                     <span className="text-xs text-gray-500">첫 달 갚을 금액</span>
                                     <span className="text-lg font-bold text-emerald-600">
-                                        {calculateMonthly(selectedProduct?.limit, selectedProduct?.rate, period).toLocaleString()}원
+                                        {selectedProduct ? calculateMonthly(selectedProduct.limit, selectedProduct.rate, period).toLocaleString() : 0}원
                                     </span>
                                 </div>
                                 <div className="space-y-3">

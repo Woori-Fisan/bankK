@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { AlertTriangle, ChevronLeft, ShieldCheck } from 'lucide-react';
 import PinpadModal from '../pinpad/PinpadModal';
+import { LoanData, LoanProduct } from '../../pages/LoanApplication';
 
 interface LoanExecutionConfirmProps {
-    loanData: any;
-    product: any;
+    loanData: LoanData;
+    product: LoanProduct;
     onNext: () => void;
     onBack: () => void;
 }
@@ -23,6 +24,10 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({ loanData, p
         onNext();
     };
 
+    const maturityDate = new Date();
+    maturityDate.setMonth(maturityDate.getMonth() + (product.period || 0));
+    const maturityDateString = maturityDate.toISOString().split('T')[0];
+
     return (
         <div className="flex flex-col items-center justify-center min-h-[500px]">
             <div className="bg-white border border-gray-200 rounded-3xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -35,7 +40,7 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({ loanData, p
                     <div className="bg-gray-50 rounded-2xl p-6 space-y-4 border border-gray-100">
                         <div className="flex justify-between items-center">
                             <span className="text-[11px] text-gray-400 font-bold uppercase">신청인</span>
-                            <span className="text-xs font-bold text-gray-900">{loanData.userName || '(주)글로벌테크 (홍길동)'}</span>
+                            <span className="text-xs font-bold text-gray-900">{loanData.userName}</span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-[11px] text-gray-400 font-bold uppercase">상품명</span>
@@ -55,11 +60,11 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({ loanData, p
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                             <span className="text-[11px] text-gray-400 font-bold uppercase">입금 계좌</span>
-                            <span className="text-xs font-bold text-gray-900">우리은행 100-293-884920</span>
+                            <span className="text-xs font-bold text-gray-900">{loanData.bank}은행 {loanData.accountNo}</span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-[11px] text-gray-400 font-bold uppercase">만기일</span>
-                            <span className="text-xs font-bold text-gray-900">2028-05-19</span>
+                            <span className="text-xs font-bold text-gray-900">{maturityDateString}</span>
                         </div>
                     </div>
 
