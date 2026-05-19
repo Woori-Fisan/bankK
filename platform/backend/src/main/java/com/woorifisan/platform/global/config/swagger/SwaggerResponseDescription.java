@@ -1,4 +1,4 @@
-package com.woorifisan.platform.global.config;
+package com.woorifisan.platform.global.config.swagger;
 
 import com.woorifisan.platform.global.response.ErrorCode;
 import lombok.Getter;
