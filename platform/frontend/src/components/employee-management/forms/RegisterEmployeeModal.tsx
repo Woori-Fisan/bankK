@@ -12,7 +12,7 @@ const RegisterEmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) 
     if (!isOpen) return null;
 
     return ReactDOM.createPortal(
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50">
+        <div className="fixed inset-0 flex justify-center items-center z-50">
             <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-gray-900">새 직원 등록</h3>

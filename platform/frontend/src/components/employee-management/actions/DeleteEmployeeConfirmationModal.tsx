@@ -33,7 +33,7 @@ const DeleteEmployeeConfirmationModal: React.FC<Props> = ({ isOpen, onClose, emp
     };
 
     return ReactDOM.createPortal(
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50">
+        <div className="fixed inset-0 flex justify-center items-center z-50">
             <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">직원 삭제 확인</h3>
                 <p className="text-gray-700 mb-6">

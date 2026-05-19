@@ -10,8 +10,8 @@ const EmployeeManagementPage: React.FC = () => {
 
     const handleRegistrationSuccess = () => {
         setIsRegisterModalOpen(false);
-        setPage(0); // Refresh employee list by going to the first page
-        setSelectedEmployee(null); // Clear selected employee
+        setPage(0);
+        setSelectedEmployee(null);
     };
 
     return (

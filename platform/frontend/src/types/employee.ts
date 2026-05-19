@@ -1,4 +1,3 @@
-// platform/frontend/src/types/employee.ts
 export interface Employee {
     employeeId: string;
     agencyId: number;

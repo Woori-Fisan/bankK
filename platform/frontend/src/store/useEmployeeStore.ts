@@ -1,4 +1,3 @@
-// platform/frontend/src/store/useEmployeeStore.ts
 import { create } from 'zustand';
 import type { Employee, EmployeePagination } from '../types/employee';
 
