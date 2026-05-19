@@ -8,8 +8,6 @@ public final class MaskingUtil {
     // new MaskingUtil() 막아버리기
     private static final Pattern SSN_PATTERN =
             Pattern.compile("(\\d{6})-?(\\d{7})");
-    private static final Pattern ACCOUNT_NO_PATTERN =
-            Pattern.compile("\\b(\\d{3,6}[-]?)(\\d{2,6}[-]?)(\\d+)\\b");
     private static final Pattern PHONE_PATTERN =
             Pattern.compile("(\\d{2,3})[-.]?(\\d{3,4})[-.]?(\\d{4})");
 
@@ -33,9 +31,12 @@ public final class MaskingUtil {
         return PHONE_PATTERN.matcher(value).replaceAll(m -> m.group(1) + "-****-" + m.group(3));
     }
 
-    /** 텍스트에서 주민번호 패턴을 찾아 마스킹한다. */
-    public static String maskSensitiveText(String text) {
-        if (text == null) return null;
-        return SSN_PATTERN.matcher(text).replaceAll(m -> m.group(1) + "-*******");
+    /** 성명 마스킹: 2자→김*, 3자→김*리, 4자 이상→김**리 */
+    public static String maskName(String name) {
+        if (name == null) return null;
+        int len = name.length();
+        if (len == 1) return "*";
+        if (len == 2) return name.charAt(0) + "*";
+        return name.charAt(0) + "*".repeat(len - 2) + name.charAt(len - 1);
     }
 }

@@ -64,7 +64,7 @@ public class LoanService {
         LocalDateTime requestAt = LocalDateTime.now();
         log.info("[{}] 대출 심사 요청 - staffId: {}, bankCode: {}, holder: {}, requestAt: {}",
                 guid, staffId, request.getBankCode(),
-                MaskingUtil.maskSensitiveText(request.getDepositAccountHolder()), requestAt);
+                MaskingUtil.maskName(request.getDepositAccountHolder()), requestAt);
 
         // Mock: 은행 코어로 Pass-through 후 evaluationId 수신
         String evaluationId = generateEvaluationId();
@@ -248,11 +248,16 @@ public class LoanService {
         BigDecimal loanAmount = new BigDecimal("20000000");
         BigDecimal interestRate = new BigDecimal("4.50");
         BigDecimal monthlyRate = interestRate.divide(BigDecimal.valueOf(1200), 10, RoundingMode.HALF_UP);
-        BigDecimal pow = monthlyRate.add(BigDecimal.ONE).pow(request.getPeriod());
-        BigDecimal monthlyPayment = loanAmount
-                .multiply(monthlyRate)
-                .multiply(pow)
-                .divide(pow.subtract(BigDecimal.ONE), 0, RoundingMode.HALF_UP);
+        BigDecimal monthlyPayment;
+        if (monthlyRate.compareTo(BigDecimal.ZERO) == 0) {
+            monthlyPayment = loanAmount.divide(BigDecimal.valueOf(request.getPeriod()), 0, RoundingMode.HALF_UP);
+        } else {
+            BigDecimal pow = monthlyRate.add(BigDecimal.ONE).pow(request.getPeriod());
+            monthlyPayment = loanAmount
+                    .multiply(monthlyRate)
+                    .multiply(pow)
+                    .divide(pow.subtract(BigDecimal.ONE), 0, RoundingMode.HALF_UP);
+        }
 
         return LoanProductSelectResponse.builder()
                 .productCode(request.getProductCode())
