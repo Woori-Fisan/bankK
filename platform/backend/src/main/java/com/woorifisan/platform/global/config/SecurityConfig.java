@@ -31,11 +31,12 @@ public class SecurityConfig {
     private static final String[] PUBLIC_URLS = {
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
-            "/api/v1/bank/inquiry/**",
             "/actuator/health",
             "/actuator/prometheus",
             "/swagger-ui/**",
-            "/v3/api-docs/**"
+            "/v3/api-docs/**",
+            // 테스트 용 임시 통과 URL -> 플랫폼 개발 완료 시 삭제 필순
+            "/api/v1/bank/inquiry/**",
     };
 
     @Bean
