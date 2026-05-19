@@ -143,7 +143,7 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
                                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
                                     <span className="text-xs text-gray-500">첫 달 갚을 금액</span>
                                     <span className="text-lg font-bold text-emerald-600">
-                                        {calculateMonthly(selectedProduct?.limit, selectedProduct?.rate, period).toLocaleString()}원
+                                        {selectedProduct ? calculateMonthly(selectedProduct.limit, selectedProduct.rate, period).toLocaleString() : 0}원
                                     </span>
                                 </div>
                                 <div className="space-y-3">
