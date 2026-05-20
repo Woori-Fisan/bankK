@@ -14,5 +14,5 @@ import java.util.List;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class LoanRequiredDocumentsResponse {
 
-    private List<TermsDocumentDto> documentList;
+    private List<TermsDocumentDto> documents;
 }

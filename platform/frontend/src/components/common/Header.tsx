@@ -7,8 +7,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ currentTime, sessionTime }) => {
     return (
-        <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900">Institutional Portal</h2>
+        <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-end">
             <div className="flex items-center gap-6">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 bg-emerald-700 rounded-full flex items-center justify-center">

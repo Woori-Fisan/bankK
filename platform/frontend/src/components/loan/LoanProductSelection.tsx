@@ -12,6 +12,8 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
     const [selectedId, setSelectedId] = useState(products[0]?.id);
     const [tab, setTab] = useState<'RATE' | 'LIMIT'>('RATE');
     const [period, setPeriod] = useState(24);
+    const [executeAmount, setExecuteAmount] = useState(products[0]?.limit ?? 0);
+    const [amountError, setAmountError] = useState<string | null>(null);
 
     // 정렬 로직 적용
     const sortedProducts = useMemo(() => {
@@ -24,6 +26,27 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
     }, [products, tab]);
 
     const selectedProduct = sortedProducts.find(p => p.id === selectedId) || sortedProducts[0];
+
+    React.useEffect(() => {
+        if (selectedProduct) {
+            setExecuteAmount(selectedProduct.limit);
+            setAmountError(null);
+        }
+    }, [selectedProduct?.id]);
+
+    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value.replace(/,/g, '');
+        const val = Number(raw);
+        if (isNaN(val)) return;
+        setExecuteAmount(val);
+        if (val < 1_000_000) {
+            setAmountError('최소 100만원 이상 입력해주세요.');
+        } else if (selectedProduct && val > selectedProduct.limit) {
+            setAmountError(`승인 한도(${formatAmount(selectedProduct.limit)}) 이내로 입력해주세요.`);
+        } else {
+            setAmountError(null);
+        }
+    };
 
     const formatAmount = (amt: number) => {
         if (amt >= 100000000) return `${amt / 100000000}억원`;
@@ -117,10 +140,44 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
 
                         <div className="mb-8">
                             <p className="text-3xl font-bold text-gray-900">{selectedProduct?.rate}%</p>
-                            <p className="text-xs text-gray-500 mt-1">한도 {formatAmount(selectedProduct?.limit)}</p>
+                            <p className="text-xs text-gray-500 mt-1">승인 한도 {formatAmount(selectedProduct?.limit)}</p>
                         </div>
 
                         <div className="space-y-4">
+                            <div>
+                                <label className="block text-[11px] text-gray-500 font-bold mb-2">
+                                    대출 신청 금액
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={executeAmount.toLocaleString()}
+                                        onChange={handleAmountChange}
+                                        className={`w-full px-3 py-2.5 pr-8 bg-gray-50 border rounded-xl text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none ${amountError ? 'border-red-400' : 'border-gray-200'}`}
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 font-medium">원</span>
+                                </div>
+                                {amountError && (
+                                    <p className="mt-1 text-[11px] text-red-500">{amountError}</p>
+                                )}
+                                <div className="flex gap-1.5 mt-2">
+                                    {[0.3, 0.5, 0.7, 1.0].map((ratio) => (
+                                        <button
+                                            key={ratio}
+                                            type="button"
+                                            onClick={() => {
+                                                const amt = Math.floor((selectedProduct?.limit ?? 0) * ratio / 10000) * 10000;
+                                                setExecuteAmount(amt);
+                                                setAmountError(null);
+                                            }}
+                                            className="flex-1 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-bold rounded-lg transition-colors"
+                                        >
+                                            {ratio === 1.0 ? '전액' : `${ratio * 100}%`}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                             <div>
                                 <label className="block text-[11px] text-gray-500 font-bold mb-2">만기 선택</label>
                                 <div className="grid grid-cols-3 gap-2">
@@ -144,13 +201,15 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
                                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
                                     <span className="text-xs text-gray-500">첫 달 갚을 금액</span>
                                     <span className="text-lg font-bold text-emerald-600">
-                                        {selectedProduct ? calculateMonthly(selectedProduct.limit, selectedProduct.rate, period).toLocaleString() : 0}원
+                                        {selectedProduct && !amountError && executeAmount > 0
+                                            ? calculateMonthly(executeAmount, selectedProduct.rate, period).toLocaleString()
+                                            : 0}원
                                     </span>
                                 </div>
                                 <div className="space-y-3">
                                     <div className="flex justify-between text-[11px]">
                                         <span className="text-gray-400 font-medium">대출 금액</span>
-                                        <span className="text-gray-900 font-bold">{formatAmount(selectedProduct?.limit)}</span>
+                                        <span className="text-gray-900 font-bold">{executeAmount.toLocaleString()}원</span>
                                     </div>
                                     <div className="flex justify-between text-[11px]">
                                         <span className="text-gray-400 font-medium">연 금리</span>
@@ -168,9 +227,10 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
                             </div>
                         </div>
 
-                        <button 
-                            onClick={() => onNext({ ...selectedProduct, period })}
-                            className="w-full mt-6 py-4 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
+                        <button
+                            onClick={() => onNext({ ...selectedProduct, period, executeAmount })}
+                            disabled={!!amountError || executeAmount < 1_000_000}
+                            className="w-full mt-6 py-4 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
                         >
                             이 상품으로 계약 서류 확인 →
                         </button>

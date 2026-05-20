@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class LoanEvaluateResponse {
 
-    private String evaluationId;
-    private String status;
-    private String message;
+    private String applicationId;
+    private String receivedAt;
 }

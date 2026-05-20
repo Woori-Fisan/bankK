@@ -3,11 +3,20 @@ export interface TransferState {
     step: number;
     fromBank: string;
     fromAccountNumber: string;
-    fromName: string;
+    customerRrnPrefix: string;
+    balance: string;
     toBank: string;
+    toBankName: string;
     toAccountNumber: string;
+    toBankAccountNo: string;
     toName: string;
     amount: number;
+    password: string;
+
+    // Result
+    transactionId: string;
+    transactionDate: string;
+    balanceAfter: string;
 
     // Actions
     setStep: (step: number) => void;

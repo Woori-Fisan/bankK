@@ -1,16 +1,12 @@
 package com.woorifisan.platform.loan.controller;
 
 import com.woorifisan.platform.global.response.ApiResponse;
-import com.woorifisan.platform.loan.dto.LoanContractDocumentsRequest;
 import com.woorifisan.platform.loan.dto.LoanContractDocumentsResponse;
 import com.woorifisan.platform.loan.dto.LoanEvaluateRequest;
 import com.woorifisan.platform.loan.dto.LoanEvaluateResponse;
 import com.woorifisan.platform.loan.dto.LoanEvaluationResultResponse;
 import com.woorifisan.platform.loan.dto.LoanExecuteRequest;
 import com.woorifisan.platform.loan.dto.LoanExecuteResponse;
-import com.woorifisan.platform.loan.dto.LoanProductSelectRequest;
-import com.woorifisan.platform.loan.dto.LoanProductSelectResponse;
-import com.woorifisan.platform.loan.dto.LoanRequiredDocumentsRequest;
 import com.woorifisan.platform.loan.dto.LoanRequiredDocumentsResponse;
 import com.woorifisan.platform.loan.service.LoanService;
 import jakarta.validation.Valid;
@@ -23,7 +19,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -32,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Validated
 @RestController
-@RequestMapping("/api/v1/bank/loan")
+@RequestMapping("/api/v1/loan")
 @RequiredArgsConstructor
 public class LoanController {
 
@@ -40,21 +35,20 @@ public class LoanController {
 
     /**
      * Step 1 — 심사 서류 조회 (BK-B11)
-     * 대출 심사에 필요한 공통 약관 및 동의서 목록을 조회한다.
+     * GET /api/v1/loan/review/documents
      */
-    @PostMapping("/required-documents")
+    @GetMapping("/review/documents")
     public ApiResponse<LoanRequiredDocumentsResponse> getRequiredDocuments(
-            @Valid @RequestBody LoanRequiredDocumentsRequest request,
             @AuthenticationPrincipal Long staffId) {
 
-        return ApiResponse.success(loanService.getRequiredDocuments(request, staffId));
+        return ApiResponse.success(loanService.getRequiredDocuments(staffId));
     }
 
     /**
      * Step 2 — 서류 제출 및 심사 요청 (BK-B12~B19)
-     * 암호문 원본을 은행 코어로 Pass-through하여 심사를 접수한다.
+     * POST /api/v1/loan/evaluation
      */
-    @PostMapping("/evaluate")
+    @PostMapping("/evaluation")
     public ApiResponse<LoanEvaluateResponse> evaluateLoan(
             @Valid @RequestBody LoanEvaluateRequest request,
             @AuthenticationPrincipal Long staffId) {
@@ -64,46 +58,34 @@ public class LoanController {
 
     /**
      * Step 3 — 심사 결과 조회 (Polling) (BK-B19)
-     * 동일 evaluationId에 대해 GUID를 재사용하여 중복 생성을 방지한다.
+     * GET /api/v1/loan/evaluation/{applicationId}/status
      */
-    @GetMapping("/evaluation/{evaluationId}")
+    @GetMapping("/evaluation/{applicationId}/status")
     public ApiResponse<LoanEvaluationResultResponse> getEvaluationResult(
-            @PathVariable @NotBlank(message = "심사 ID는 필수입니다.") String evaluationId,
-            @RequestParam @NotBlank(message = "은행 코드는 필수입니다.") String bankCode,
+            @PathVariable @NotBlank(message = "신청 ID는 필수입니다.") String applicationId,
             @AuthenticationPrincipal Long staffId) {
 
-        return ApiResponse.success(loanService.getEvaluationResult(evaluationId, bankCode, staffId));
-    }
-
-    /**
-     * Step 4 — 상품 선택 (BK-B18/B27)
-     * 추천 상품 중 고객이 선택한 상품과 만기를 은행 코어로 전달한다.
-     */
-    @PostMapping("/products/select")
-    public ApiResponse<LoanProductSelectResponse> selectProduct(
-            @Valid @RequestBody LoanProductSelectRequest request,
-            @AuthenticationPrincipal Long staffId) {
-
-        return ApiResponse.success(loanService.selectProduct(request, staffId));
+        return ApiResponse.success(loanService.getEvaluationResult(applicationId, staffId));
     }
 
     /**
      * Step 5 — 계약 서류 조회 (BK-B20)
-     * 선택한 상품의 계약 체결에 필요한 약관 목록을 조회한다.
+     * GET /api/v1/loan/contract/documents/{loanProductCode}/{evaluationId}
      */
-    @PostMapping("/contract-documents")
+    @GetMapping("/contract/documents/{loanProductCode}/{evaluationId}")
     public ApiResponse<LoanContractDocumentsResponse> getContractDocuments(
-            @Valid @RequestBody LoanContractDocumentsRequest request,
+            @PathVariable @NotBlank(message = "상품 코드는 필수입니다.") String loanProductCode,
+            @PathVariable @NotBlank(message = "심사 ID는 필수입니다.") String evaluationId,
             @AuthenticationPrincipal Long staffId) {
 
-        return ApiResponse.success(loanService.getContractDocuments(request, staffId));
+        return ApiResponse.success(loanService.getContractDocuments(loanProductCode, evaluationId, staffId));
     }
 
     /**
      * Step 6 — 대출 실행 (BK-B21~B23)
-     * 암호화된 계좌 비밀번호를 포함한 실행 요청을 은행 코어로 Pass-through한다.
+     * POST /api/v1/loan/contract/execution
      */
-    @PostMapping("/execute")
+    @PostMapping("/contract/execution")
     public ApiResponse<LoanExecuteResponse> executeLoan(
             @Valid @RequestBody LoanExecuteRequest request,
             @AuthenticationPrincipal Long staffId) {

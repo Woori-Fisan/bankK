@@ -1,5 +1,6 @@
 package com.woorifisan.platform.global.config.swagger;
 
+import com.woorifisan.platform.global.config.swagger.ExampleHolder;
 import com.woorifisan.platform.global.response.ErrorCode;
 import com.woorifisan.platform.global.response.ErrorResponse;
 import io.swagger.v3.oas.models.Components;

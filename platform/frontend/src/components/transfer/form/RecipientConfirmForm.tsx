@@ -5,7 +5,7 @@ import StepActionSection from '../section/StepActionSection';
 import { useTransferStore } from '../../../store/useTransferStore';
 
 const RecipientConfirmForm: React.FC = () => {
-    const { toName, toBank, toAccountNumber, prevStep, nextStep } = useTransferStore();
+    const { toName, toBankName, toBankAccountNo, prevStep, nextStep } = useTransferStore();
 
     return (
         <div className="w-full">
@@ -17,8 +17,10 @@ const RecipientConfirmForm: React.FC = () => {
                 <InfoSummaryBoxSection 
                     label1="수취인 성명"
                     value1={toName}
-                    label2="입금 계좌"
-                    value2={`${toBank} ${toAccountNumber}`}
+                    label2="입금 은행"
+                    value2={toBankName}
+                    label3="입금 계좌번호"
+                    value3={toBankAccountNo}
                 />
                 <StepActionSection 
                     onPrev={prevStep}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import {
     ClipboardList,
     ArrowLeftRight,
@@ -36,24 +36,24 @@ const Sidebar: React.FC = () => {
     return (
         <aside className="w-64 bg-slate-900 flex flex-col flex-shrink-0">
             <div className="p-6 pb-8">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                <Link to="/" className="flex items-center gap-3 cursor-pointer group">
+                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center transition-transform group-hover:scale-105">
                         <Landmark className="w-6 h-6 text-slate-900" />
                     </div>
                     <div>
-                        <h1 className="text-white text-xl font-bold leading-tight">Bank Bridge</h1>
+                        <h1 className="text-white text-xl font-bold leading-tight group-hover:text-emerald-400 transition-colors">Bank Bridge</h1>
                         <p className="text-slate-400 text-xs">Institutional Banking</p>
                     </div>
-                </div>
+                </Link>
             </div>
 
             <nav className="flex-1">
-                <SidebarItem icon={LayoutDashboard} label="Dashboard" to="/" />
-                <SidebarItem icon={ClipboardList} label="Loan" to="/loan" />
-                <SidebarItem icon={ArrowLeftRight} label="Transfer" to="/transfer" />
-                <SidebarItem icon={Banknote} label="Withdrawal" to="/withdraw" />
-                <SidebarItem icon={Search} label="Account Inquiry" to="/inquiry" />
-                <SidebarItem icon={UserCog} label="User Management" to="/employee-management" />
+                <SidebarItem icon={LayoutDashboard} label="대시보드" to="/" />
+                <SidebarItem icon={ClipboardList} label="대출 관리" to="/loan" />
+                <SidebarItem icon={ArrowLeftRight} label="계좌 이체" to="/transfer" />
+                <SidebarItem icon={Banknote} label="출금 처리" to="/withdraw" />
+                <SidebarItem icon={Search} label="계좌 조회" to="/inquiry" />
+                <SidebarItem icon={UserCog} label="사용자 관리" to="/employee-management" />
             </nav>
         </aside>
     );
