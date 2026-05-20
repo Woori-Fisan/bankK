@@ -4,6 +4,7 @@ import AmountInputSection from '../sections/AmountInputSection';
 import WithdrawFeeSection from '../sections/WithdrawFeeSection';
 import { formatAmount } from '../../../utils/formatter';
 import type { WithdrawData } from '../../../types/withdraw';
+import { getBalance } from '../../../api/transfer';
 
 export interface WithdrawEntryFormProps {
     initialData?: {
@@ -20,7 +21,7 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
         accountNumber: string;
         balance?: number;
     }>({
-        bankName: '국민',
+        bankName: '우리은행',
         accountNumber: '',
         balance: undefined,
     });
@@ -31,8 +32,8 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
     const [isCheckingBalance, setIsCheckingBalance] = useState(false);
 
     // 2. 계좌 조회 Debounce 로직 (onBlur 활용)
-    // 포커스 탈출 시 Mock API 호출 시뮬레이션을 위해 별도 핸들러 구현
-    const handleCheckBalance = () => {
+    // 포커스 탈출 시 API 호출을 위해 별도 핸들러 구현
+    const handleCheckBalance = async () => {
         // 필수 정보 미입력 시 중단 (은행명, 계좌번호, 생년월일 7자리)
         if (!sourceAccount.bankName || !sourceAccount.accountNumber || birthDate.length !== 7) {
             return;
@@ -46,19 +47,45 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
         setSourceAccount(prev => ({ ...prev, balance: undefined }));
 
         console.log(`[onBlur] 출금 계좌 조회 시작: ${sourceAccount.bankName} ${sourceAccount.accountNumber} / ${birthDate}`);
-        
-        // Mock API 호출 시뮬레이션 (Debounce 효과를 위해 1초 대기)
-        setTimeout(() => {
-            const randomBalance = Math.floor(Math.random() * 5000000) + 1000000; // 100만 ~ 600만 랜덤 잔액
-            setSourceAccount(prev => ({
-                ...prev,
-                balance: randomBalance,
-            }));
+
+        try {
+            // 은행명 -> 은행코드 매핑
+            const bankCodeMap: Record<string, string> = {
+                '국민': '004',
+                'KB국민': '004',
+                '우리': '020',
+                '신한': '088',
+                '농협': '011',
+                'NH농협': '011'
+            };
+            const bankCode = bankCodeMap[sourceAccount.bankName] || '020';
+
+            // API 호출
+            const response = await getBalance({
+                bankCode: bankCode,
+                accountNo: sourceAccount.accountNumber,
+                customerRrnPrefix: birthDate,
+                encryptedKey: 'DUMMY_ENCRYPTED_KEY', // 플랫폼 보안 정책에 따른 E2EE 암호화 키 (추후 구현)
+                jwsSignature: 'DUMMY_JWS_SIGNATURE', // 데이터 무결성을 위한 JWS 서명 (추후 구현)
+            });
+
+            if (response.success && response.data) {
+                const fetchedBalance = parseInt(response.data.balance, 10);
+                setSourceAccount(prev => ({
+                    ...prev,
+                    balance: fetchedBalance,
+                }));
+                console.log(`[onBlur] 출금 계좌 조회 완료: 잔액 ${fetchedBalance}`);
+            } else {
+                console.error('잔액 조회 실패:', response.error?.message);
+            }
+        } catch (error) {
+            console.error('API 호출 중 오류 발생:', error);
+        } finally {
             setIsCheckingBalance(false);
-            console.log(`[onBlur] 출금 계좌 조회 완료: 잔액 ${randomBalance}`);
-        }, 1000);
+        }
     };
-    
+
     // 3. 핸들러
     const handleSourceBankChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSourceAccount(prev => ({ ...prev, bankName: e.target.value, balance: undefined }));

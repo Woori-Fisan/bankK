@@ -5,13 +5,15 @@ import WithdrawResultView from '../components/withdraw/form/WithdrawResultView';
 import WithdrawFailureView from '../components/withdraw/form/WithdrawFailureView';
 import PinpadModal from '../components/pinpad/PinpadModal';
 import type { WithdrawData, WithdrawResult } from '../types/withdraw';
+import { executeWithdraw } from '../api/withdraw';
 
 const WithdrawPage: React.FC = () => {
     const [step, setStep] = useState<'entry' | 'confirm' | 'success' | 'failure'>('entry');
     const [withdrawData, setWithdrawData] = useState<WithdrawData | null>(null);
     const [withdrawResult, setWithdrawResult] = useState<WithdrawResult | null>(null);
-    const [errorType] = useState<'INVALID_PASSWORD' | 'SYSTEM_ERROR'>('INVALID_PASSWORD');
+    const [errorType, setErrorType] = useState<'INVALID_PASSWORD' | 'SYSTEM_ERROR'>('SYSTEM_ERROR');
     const [isPinpadOpen, setIsPinpadOpen] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const handleNext = (data: WithdrawData) => {
         setWithdrawData(data);
@@ -26,24 +28,61 @@ const WithdrawPage: React.FC = () => {
         setIsPinpadOpen(true);
     };
 
-    const handlePinComplete = (pin: string) => {
+    const handlePinComplete = async (pin: string) => {
+        if (!withdrawData) return;
+
         console.log('암호 입력 완료 (E2EE 암호화 대상):', pin);
         setIsPinpadOpen(false);
+        setIsProcessing(true);
 
-        // 시뮬레이션: 무조건 성공 응답
-        setTimeout(() => {
-            const amount = parseInt(withdrawData?.amount || '0', 10);
-            const balanceBefore = 45300000;
-            const balanceAfter = balanceBefore - amount;
+        try {
+            // 은행명 -> 은행코드 매핑
+            const bankCodeMap: Record<string, string> = {
+                '국민': '004', 'KB국민': '004',
+                '우리': '020', '우리은행': '020',
+                '신한': '088', '신한은행': '088',
+                '농협': '011', 'NH농협': '011'
+            };
+            const bankCode = bankCodeMap[withdrawData.sourceAccount.bankName] || '020';
 
-            setWithdrawResult({
-                balanceBefore,
-                balanceAfter,
-                transactionId: `TX-${new Date().getTime()}-88902A`,
-                dateTime: new Date().toLocaleString('ko-KR') + ' KST'
+            // 출금 실행 API 호출
+            const response = await executeWithdraw({
+                encryptedKey: 'DUMMY_ENCRYPTED_KEY', // 추후 RSA 구현체와 연동
+                jwsSignature: 'DUMMY_JWS_SIGNATURE', // 추후 JWS 구현체와 연동
+                withdrawalBankCode: bankCode,
+                withdrawalAccountNo: withdrawData.sourceAccount.accountNumber,
+                withdrawalPassword: pin, // 실제 운영환경에서는 암호화된 값 전송
+                customerRrnPrefix: withdrawData.birthDate,
+                amount: parseInt(withdrawData.amount, 10)
             });
-            setStep('success');
-        }, 500);
+
+            if (response.success && response.data) {
+                const balanceBefore = withdrawData.sourceAccount.balance || 0;
+                const balanceAfter = parseInt(response.data.balanceAfter, 10);
+
+                setWithdrawResult({
+                    balanceBefore,
+                    balanceAfter,
+                    transactionId: response.data.transactionId,
+                    dateTime: response.data.transactionDate
+                });
+                setStep('success');
+            } else {
+                // 실패 처리
+                if (response.error?.code === 'AUTH_004') {
+                    setErrorType('INVALID_PASSWORD');
+                } else {
+                    setErrorType('SYSTEM_ERROR');
+                }
+                setStep('failure');
+            }
+        } catch (error) {
+            console.error('출금 처리 중 오류 발생:', error);
+            setErrorType('SYSTEM_ERROR');
+            setStep('failure');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     const handleRetry = () => {
@@ -61,7 +100,14 @@ const WithdrawPage: React.FC = () => {
     };
 
     return (
-        <div className="p-8 min-h-full flex flex-col bg-gray-50 w-full max-w-[1600px] mx-auto">
+        <div className="p-8 min-h-full flex flex-col bg-gray-50 w-full max-w-[1600px] mx-auto relative">
+            {isProcessing && (
+                <div className="absolute inset-0 z-[100] bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center">
+                    <div className="w-16 h-16 border-4 border-emerald-100 border-t-emerald-800 rounded-full animate-spin mb-4" />
+                    <p className="text-xl font-bold text-gray-900">출금 처리 중...</p>
+                    <p className="text-gray-500 mt-2">잠시만 기다려주세요.</p>
+                </div>
+            )}
             <header className={`mb-10 w-full mx-auto transition-all duration-300 ${step === 'entry' ? 'max-w-4xl' : 'max-w-5xl'} ${step === 'success' || step === 'failure' ? 'opacity-0 h-0 overflow-hidden mb-0' : ''}`}>
                 <h1 className="text-4xl font-black text-gray-900 tracking-tight">
                     {step === 'entry' ? '출금 정보 입력' : '출금 정보 확인'}
