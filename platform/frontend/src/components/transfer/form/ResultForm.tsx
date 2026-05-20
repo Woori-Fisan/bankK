@@ -4,7 +4,11 @@ import ResultDetailSection from '../section/ResultDetailSection';
 import { useTransferStore } from '../../../store/useTransferStore';
 
 const ResultForm: React.FC = () => {
-    const { amount, toName, toBank, toAccountNumber, fromName, fromBank, fromAccountNumber, reset } = useTransferStore();
+    const { 
+        amount, toName, toBankName, toBankAccountNo, 
+        fromBank, fromAccountNumber, 
+        transactionId, transactionDate, balanceAfter, reset 
+    } = useTransferStore();
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -12,11 +16,13 @@ const ResultForm: React.FC = () => {
             
             <ResultDetailSection 
                 toName={toName}
-                toBank={toBank}
-                toAccountNumber={toAccountNumber}
-                fromName={fromName}
+                toBank={toBankName}
+                toAccountNumber={toBankAccountNo}
                 fromBank={fromBank}
                 fromAccountNumber={fromAccountNumber}
+                transactionId={transactionId}
+                transactionDate={transactionDate}
+                balanceAfter={balanceAfter}
             />
 
             <div className="p-8 bg-gray-50 border-t border-gray-100 text-center">

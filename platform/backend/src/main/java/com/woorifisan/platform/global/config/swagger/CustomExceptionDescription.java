@@ -1,4 +1,6 @@
-package com.woorifisan.platform.global.config;
+package com.woorifisan.platform.global.config.swagger;
+
+import com.woorifisan.platform.global.config.swagger.SwaggerResponseDescription;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

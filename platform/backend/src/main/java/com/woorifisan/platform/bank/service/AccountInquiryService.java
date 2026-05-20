@@ -5,6 +5,8 @@ import com.woorifisan.platform.bank.dto.BalanceInquiryResponse;
 import com.woorifisan.platform.bank.dto.HistoryInquiryRequest;
 import com.woorifisan.platform.bank.dto.HistoryInquiryResponse;
 import com.woorifisan.platform.bank.dto.TransactionHistoryDto;
+import com.woorifisan.platform.global.exception.BusinessException;
+import com.woorifisan.platform.global.response.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +25,10 @@ public class AccountInquiryService {
      */
     public BalanceInquiryResponse getBalance(BalanceInquiryRequest request) {
         log.info("잔액 조회 요청 수신 - 계좌번호: {}", request.getAccountNo());
+
+        if ("0000".equals(request.getAccountNo())) {
+            throw new BusinessException(ErrorCode.TRANSFER_DEPOSIT_ACCOUNT_FAULT);
+        }
 
         // 명세서 기반 더미 데이터
         return BalanceInquiryResponse.builder()
