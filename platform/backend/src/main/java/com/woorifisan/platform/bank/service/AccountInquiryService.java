@@ -94,7 +94,22 @@ public class AccountInquiryService {
                 .build();
     }
 
-    // 더미 데이터 생성
+    private HistoryInquiryResponse buildEmptyResponse(HistoryInquiryRequest request) {
+        return HistoryInquiryResponse.builder()
+            .totalCount(0)
+            .totalPages(0)
+            .currentPage(request.getPage())
+            .size(request.getSize())
+            .hasNext(false)
+            .history(Collections.emptyList())
+            .build();
+    }
+
+    /*
+    * 더미 데이터 생성 코드
+    *
+    * 요청 일자의 1일 마다 1~3개의 건수를 생성
+    */
     private List<TransactionHistoryDto> generateDummyDataBetween(LocalDate startDate, LocalDate endDate) {
         List<TransactionHistoryDto> dummyList = new ArrayList<>();
         BigDecimal currentBalance = new BigDecimal("10000000"); // 초기 잔액 1000만 원 가정
@@ -137,29 +152,18 @@ public class AccountInquiryService {
                 String txId = String.format("TX%s%04d", txDateTime.format(DateTimeFormatter.ofPattern("yyyyMMdd")), txCounter++);
                 
                 dummyList.add(TransactionHistoryDto.builder()
-                        .txId(txId)
-                        .txDate(txDateTime.format(DATETIME_FORMATTER))
-                        .txType(txType)
-                        .amount(amount)
-                        .balance(currentBalance)
-                        .counterpartName(counterpart)
-                        .description(desc)
-                        .build());
+                    .txId(txId)
+                    .txDate(txDateTime.format(DATETIME_FORMATTER))
+                    .txType(txType)
+                    .amount(amount)
+                    .balance(currentBalance)
+                    .counterpartName(counterpart)
+                    .description(desc)
+                    .build());
             }
         }
         
         return dummyList;
-    }
-
-    private HistoryInquiryResponse buildEmptyResponse(HistoryInquiryRequest request) {
-        return HistoryInquiryResponse.builder()
-                .totalCount(0)
-                .totalPages(0)
-                .currentPage(request.getPage())
-                .size(request.getSize())
-                .hasNext(false)
-                .history(Collections.emptyList())
-                .build();
     }
 
     /**
