@@ -16,6 +16,7 @@ interface TransactionTableProps {
     transactions: Transaction[];
     currentPage: number;
     totalEntries: number;
+    totalPages: number; // 백엔드에서 받은 전체 페이지 수
     pageSize: number;
     onPageChange: (page: number) => void;
 }
@@ -24,12 +25,29 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
     transactions, 
     currentPage, 
     totalEntries, 
+    totalPages,
     pageSize,
     onPageChange 
 }) => {
-    const totalPages = Math.ceil(totalEntries / pageSize);
-    const startEntry = (currentPage - 1) * pageSize + 1;
+    const startEntry = totalEntries > 0 ? (currentPage - 1) * pageSize + 1 : 0;
     const endEntry = Math.min(currentPage * pageSize, totalEntries);
+
+    // 표시할 페이지 번호 범위 계산 (최대 5개)
+    const getPageNumbers = () => {
+        const maxPagesToShow = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+        if (endPage - startPage + 1 < maxPagesToShow) {
+            startPage = Math.max(1, endPage - maxPagesToShow + 1);
+        }
+
+        const pages = [];
+        for (let i = startPage; i <= endPage; i++) {
+            pages.push(i);
+        }
+        return pages;
+    };
 
     // RULE_FE_STYLE 10.2: formatAmount 유틸리티 사용
     const formatCurrency = (val: string | number | null) => {
@@ -87,18 +105,18 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
             {/* Pagination */}
             <div className="px-6 py-4 border-t border-gray-50 flex items-center justify-between bg-white">
                 <span className="text-sm text-gray-500">
-                    Showing <span className="font-semibold text-gray-900">{totalEntries > 0 ? startEntry : 0} to {endEntry}</span> of <span className="font-semibold text-gray-900">{totalEntries}</span> entries
+                    현재 <span className="font-semibold text-gray-900">{startEntry} ~ {endEntry}</span> 총 <span className="font-semibold text-gray-900">{totalEntries}</span>
                 </span>
                 <div className="flex items-center gap-1">
                     <button 
                         onClick={() => onPageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
+                        disabled={currentPage === 1 || totalPages === 0}
                         className="p-1 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                         <ChevronLeft className="w-4 h-4" />
                     </button>
                     
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    {getPageNumbers().map((page) => (
                         <button 
                             key={page}
                             onClick={() => onPageChange(page)}
