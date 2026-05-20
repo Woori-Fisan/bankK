@@ -26,6 +26,7 @@ spring:
   batch:
     jdbc:
       initialize-schema: always   # 운영 전환 시 never로 변경
+      baseline-on-migrate: true
 
   # Spring AI — Gemini (Vertex AI)
 #  ai:
