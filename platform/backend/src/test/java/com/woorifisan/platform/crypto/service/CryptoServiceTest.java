@@ -1,5 +1,6 @@
 package com.woorifisan.platform.crypto.service;
 
+import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.crypto.dto.PublicKeyResponse;
 import com.woorifisan.platform.crypto.dto.BankApiResponse;
 import com.woorifisan.platform.crypto.mapper.BankRsaKeyMapper;
@@ -49,5 +50,17 @@ public class CryptoServiceTest {
         assertNotNull(result);
         assertEquals(mockPublicKey, result.getPublicKey());
         verify(bankRsaKeyMapper).updateBankRsaKey(bankCode, keyId, mockPublicKey);
+    }
+
+    @Test
+    void 은행_API_응답이_NULL이면_BANK_API_ERROR_예외가_발생한다() {
+        // given
+        String bankCode = "020";
+        when(bankRsaKeyMapper.existsByBankCode(bankCode)).thenReturn(true);
+        when(bankCryptoClient.fetchPublicKeyFromBank(bankCode)).thenReturn(null);
+
+        // when & then
+        BusinessException exception = assertThrows(BusinessException.class, () -> cryptoService.getPublicKey(bankCode));
+        assertEquals(com.woorifisan.platform.global.response.ErrorCode.BANK_API_ERROR, exception.getErrorCode());
     }
 }

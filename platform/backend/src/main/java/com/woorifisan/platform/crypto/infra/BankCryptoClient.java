@@ -37,8 +37,6 @@ public class BankCryptoClient {
         dummyResponse.setKeyId("v1_key");
         dummyResponse.setPublicKey("MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA-DUMMY-KEY-FOR-TESTING");
 
-        System.out.println("⚠️ [DUMMY] 은행 공개키 요청 호출됨 (BankCode: " + bankCode + ")");
-
         return dummyResponse;
     }
 }
