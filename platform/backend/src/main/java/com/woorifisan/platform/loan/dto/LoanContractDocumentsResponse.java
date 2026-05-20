@@ -15,7 +15,9 @@ import java.util.List;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class LoanContractDocumentsResponse {
 
+    private String loanProductCode;
+    private String loanProductName;
     private BigDecimal approvedLimit;
-    private BigDecimal interestRate;
-    private List<TermsDocumentDto> documentList;
+    private String documentUrl;
+    private List<TermsDocumentDto> documents;
 }

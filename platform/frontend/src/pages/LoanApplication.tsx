@@ -11,21 +11,21 @@ export type LoanStep = 'GUIDE' | 'FORM' | 'EVALUATION' | 'SELECTION' | 'CONTRACT
 
 export interface LoanProduct {
     id: number;
+    loanProductCode: string;
     name: string;
     rate: number;
     limit: number;
     tags: string[];
     period?: number;
+    executeAmount?: number;
 }
 
 export interface EvaluationResult {
-    status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FAILED';
     reason?: string;
     limit?: number;
     rate?: number;
-    period?: number;
-    bank?: string;
-    account?: string;
+    evaluationId?: string;
     products?: LoanProduct[];
 }
 
@@ -34,6 +34,7 @@ export interface LoanData {
     rrn?: string;
     phone?: string;
     bank?: string;
+    bankCode?: string;
     accountNo?: string;
     accountHolder?: string;
 }
@@ -41,7 +42,9 @@ export interface LoanData {
 const LoanApplication: React.FC = () => {
     const [step, setStep] = useState<LoanStep>('GUIDE');
     const [loanData, setLoanData] = useState<LoanData>({});
+    const [applicationId, setApplicationId] = useState<string | null>(null);
     const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null);
+    const [evaluationId, setEvaluationId] = useState<string | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<LoanProduct | null>(null);
 
     const handleNext = (nextStep: LoanStep, data?: Partial<LoanData>) => {
@@ -57,17 +60,22 @@ const LoanApplication: React.FC = () => {
                 return <LoanGuide onNext={() => setStep('FORM')} />;
             case 'FORM':
                 return (
-                    <LoanRequestForm 
-                        onNext={(data) => handleNext('EVALUATION', data)} 
-                        onBack={() => setStep('GUIDE')} 
+                    <LoanRequestForm
+                        onNext={(data, appId) => {
+                            setApplicationId(appId);
+                            handleNext('EVALUATION', data);
+                        }}
+                        onBack={() => setStep('GUIDE')}
                     />
                 );
             case 'EVALUATION':
                 return (
-                    <LoanEvaluation 
+                    <LoanEvaluation
                         loanData={loanData}
+                        applicationId={applicationId!}
                         onApproved={(result) => {
                             setEvaluationResult(result);
+                            setEvaluationId(result.evaluationId ?? null);
                             setStep('SELECTION');
                         }}
                         onRejected={(reason) => {
@@ -78,7 +86,7 @@ const LoanApplication: React.FC = () => {
                 );
             case 'SELECTION':
                 return (
-                    <LoanProductSelection 
+                    <LoanProductSelection
                         products={evaluationResult?.products || []}
                         onNext={(product) => {
                             setSelectedProduct(product);
@@ -89,32 +97,36 @@ const LoanApplication: React.FC = () => {
                 );
             case 'CONTRACT':
                 return (
-                    <LoanContractForm 
+                    <LoanContractForm
                         product={selectedProduct!}
                         loanData={loanData}
+                        evaluationId={evaluationId!}
                         onNext={() => setStep('CONFIRM')}
                         onBack={() => setStep('SELECTION')}
                     />
                 );
             case 'CONFIRM':
                 return (
-                    <LoanExecutionConfirm 
+                    <LoanExecutionConfirm
                         loanData={loanData}
                         product={selectedProduct!}
+                        evaluationId={evaluationId!}
                         onNext={() => setStep('RESULT')}
                         onBack={() => setStep('CONTRACT')}
                     />
                 );
             case 'RESULT':
                 return (
-                    <LoanResult 
+                    <LoanResult
                         loanData={loanData}
                         product={selectedProduct}
                         evaluationResult={evaluationResult}
                         onReset={() => {
                             setStep('GUIDE');
                             setLoanData({});
+                            setApplicationId(null);
                             setEvaluationResult(null);
+                            setEvaluationId(null);
                             setSelectedProduct(null);
                         }}
                     />

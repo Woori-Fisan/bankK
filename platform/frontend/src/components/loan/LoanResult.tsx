@@ -21,7 +21,8 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, onReset }) =
         return Math.floor(numerator / denominator);
     };
 
-    const monthlyAmount = product ? calculateMonthly(product.limit, product.rate, product.period || 12) : 0;
+    const amount = product?.executeAmount ?? product?.limit ?? 0;
+    const monthlyAmount = product ? calculateMonthly(amount, product.rate, product.period || 12) : 0;
 
     return (
         <div className="flex flex-col items-center justify-center py-10 min-h-[600px]">
@@ -35,7 +36,7 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, onReset }) =
 
                 <div className="bg-gray-50 rounded-2xl p-8 mb-8 border border-gray-100">
                     <p className="text-xs text-gray-500 mb-2 font-medium">대출금 (Loan Amount)</p>
-                    <p className="text-4xl font-bold text-gray-900">₩ {product?.limit.toLocaleString() || '0'}</p>
+                    <p className="text-4xl font-bold text-gray-900">₩ {amount.toLocaleString() || '0'}</p>
                 </div>
 
                 <div className="space-y-4 px-2">
