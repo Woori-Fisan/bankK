@@ -14,7 +14,7 @@ CREATE TABLE agency
     contract_start   DATE                                 COMMENT '계약 시작일',
     contract_end     DATE                                 COMMENT '계약 종료일',
     created_at       TIMESTAMP    NOT NULL DEFAULT NOW()  COMMENT '생성일시',
-    updated_at       TIMESTAMP    NOT NULL DEFAULT NOW()  COMMENT '수정일시',
+    updated_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
 
     PRIMARY KEY (id),
     UNIQUE KEY uq_agency_code (agency_code)
