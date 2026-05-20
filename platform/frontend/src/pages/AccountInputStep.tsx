@@ -10,9 +10,11 @@ interface AccountInputStepProps {
         encryptedKey: string;
         jwsSignature: string;
     }) => void;
+    apiError?: string;
+    clearApiError?: () => void;
 }
 
-const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext }) => {
+const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, clearApiError }) => {
     const [formData, setFormData] = useState({
         bankCode: '',
         accountNo: '',
@@ -21,36 +23,70 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext }) => {
         encryptedKey: 'ENC_AES_KEY_STRING',
         jwsSignature: 'JWS_SIGNATURE_STRING',
     });
-    const [error, setError] = useState('');
+    
+    // 각 필드별 에러 상태
+    const [fieldErrors, setFieldErrors] = useState({
+        bankCode: '',
+        accountNo: '',
+        customerRrnPrefix: ''
+    });
 
     const banks = [
         { code: '020', name: '우리은행' },
         { code: '081', name: '하나은행' },
         { code: '088', name: '신한은행' },
         { code: '004', name: 'KB국민은행' },
-        { code: '011', name: 'NH농협은행' },
-        { code: '003', name: 'IBK기업은행' },
-        { code: '071', name: '우체국' },
     ];
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-        setError(''); // 입력 시 에러 초기화
+        
+        const numericValue = value.replace(/[^0-9]/g, '');
+        const numericWithHyphenValue = value.replace(/[^0-9-]/g, '');
+
+        const newValue = 
+            name === 'accountNo' ? numericValue : 
+            name === 'customerRrnPrefix' ? numericWithHyphenValue : 
+            value;
+
+        setFormData(prev => ({ ...prev, [name]: newValue }));
+        
+        // 입력 시 해당 필드의 에러 초기화
+        setFieldErrors(prev => ({ ...prev, [name]: '' }));
+        
+        // 입력 시 상단의 API 에러 텍스트도 초기화
+        if (clearApiError) {
+            clearApiError();
+        }
+    };
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        let errorMessage = '';
+
+        if (name === 'bankCode' && !value) {
+            errorMessage = '은행을 선택해 주세요.';
+        } else if (name === 'accountNo' && !isValidAccountNumber(value)) {
+            errorMessage = '유효한 계좌번호를 입력해 주세요. (10~14자리 숫자)';
+        } else if (name === 'customerRrnPrefix' && !/^\d{6}-[1-4]$/.test(value)) {
+            errorMessage = '주민번호 형식이 올바르지 않습니다. (예: 900101-1)';
+        }
+
+        setFieldErrors(prev => ({ ...prev, [name]: errorMessage }));
     };
 
     const handleSubmit = () => {
-        // 1. 유효성 검사 (RULE_FE_STYLE 9. 유효성 검사 준수)
-        if (!formData.bankCode) {
-            setError('은행을 선택해 주세요.');
-            return;
-        }
-        if (!isValidAccountNumber(formData.accountNo)) {
-            setError('유효한 계좌번호를 입력해 주세요. (10~14자리 숫자)');
-            return;
-        }
-        if (!/^\d{6}-[1-4]$/.test(formData.customerRrnPrefix)) {
-            setError('주민번호 형식이 올바르지 않습니다. (예: 900101-1)');
+        // 1. 유효성 검사 (전체 필드 검사)
+        const newErrors = {
+            bankCode: formData.bankCode ? '' : '은행을 선택해 주세요.',
+            accountNo: isValidAccountNumber(formData.accountNo) ? '' : '유효한 계좌번호를 입력해 주세요. (10~14자리 숫자)',
+            customerRrnPrefix: /^\d{6}-[1-4]$/.test(formData.customerRrnPrefix) ? '' : '주민번호 형식이 올바르지 않습니다. (예: 900101-1)'
+        };
+
+        const hasError = Object.values(newErrors).some(error => error !== '');
+
+        if (hasError) {
+            setFieldErrors(newErrors);
             return;
         }
 
@@ -70,6 +106,15 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext }) => {
                 </header>
 
                 <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-10 border border-slate-100 transition-all hover:shadow-2xl hover:shadow-slate-200/60">
+                    
+                    {/* 상단 API 에러 영역 (계좌를 찾을 수 없을 때 등) */}
+                    {apiError && (
+                        <div className="mb-6 flex items-center gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                            <span className="text-sm font-bold">{apiError}</span>
+                        </div>
+                    )}
+
                     <div className="space-y-6">
                         {/* 은행 선택 */}
                         <div className="relative">
@@ -82,7 +127,10 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext }) => {
                                     name="bankCode"
                                     value={formData.bankCode}
                                     onChange={handleChange}
-                                    className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-emerald-500 focus:bg-white outline-none transition-all appearance-none cursor-pointer pr-12 font-medium"
+                                    onBlur={handleBlur}
+                                    className={`w-full px-5 py-4 rounded-2xl border-2 bg-slate-50 text-slate-900 focus:bg-white outline-none transition-all appearance-none cursor-pointer pr-12 font-medium ${
+                                        fieldErrors.bankCode ? 'border-rose-400 focus:border-rose-500' : 'border-slate-100 focus:border-emerald-500'
+                                    }`}
                                 >
                                     <option value="" className="text-slate-400">은행을 선택하세요</option>
                                     {banks.map(bank => (
@@ -97,9 +145,12 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext }) => {
                                     </svg>
                                 </div>
                             </div>
+                            {fieldErrors.bankCode && (
+                                <p className="mt-2 text-sm text-rose-500 font-bold ml-1">{fieldErrors.bankCode}</p>
+                            )}
                         </div>
 
-                        {/* 계좌 번호 */}
+                        {/* 계좌 번호 */} 
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2.5 flex items-center gap-2">
                                 <CreditCard className="w-4 h-4 text-emerald-500" />
@@ -109,10 +160,16 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext }) => {
                                 type="text"
                                 name="accountNo"
                                 value={formData.accountNo}
+                                onBlur={handleBlur}
                                 onChange={handleChange}
                                 placeholder="'-' 없이 숫자만 입력"
-                                className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-emerald-500 focus:bg-white outline-none transition-all font-medium placeholder:text-slate-400"
+                                className={`w-full px-5 py-4 rounded-2xl border-2 bg-slate-50 text-slate-900 focus:bg-white outline-none transition-all font-medium placeholder:text-slate-400 ${
+                                    fieldErrors.accountNo ? 'border-rose-400 focus:border-rose-500' : 'border-slate-100 focus:border-emerald-500'
+                                }`}
                             />
+                            {fieldErrors.accountNo && (
+                                <p className="mt-2 text-sm text-rose-500 font-bold ml-1">{fieldErrors.accountNo}</p>
+                            )}
                         </div>
 
                         {/* 주민번호 앞자리 */}
@@ -125,15 +182,21 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext }) => {
                                 type="text"
                                 name="customerRrnPrefix"
                                 value={formData.customerRrnPrefix}
+                                onBlur={handleBlur}
                                 onChange={handleChange}
                                 placeholder="예: 900101-1"
                                 maxLength={8}
-                                className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:border-emerald-500 focus:bg-white outline-none transition-all font-medium placeholder:text-slate-400"
+                                className={`w-full px-5 py-4 rounded-2xl border-2 bg-slate-50 text-slate-900 focus:bg-white outline-none transition-all font-medium placeholder:text-slate-400 ${
+                                    fieldErrors.customerRrnPrefix ? 'border-rose-400 focus:border-rose-500' : 'border-slate-100 focus:border-emerald-500'
+                                }`}
                             />
+                            {fieldErrors.customerRrnPrefix && (
+                                <p className="mt-2 text-sm text-rose-500 font-bold ml-1">{fieldErrors.customerRrnPrefix}</p>
+                            )}
                         </div>
 
                         {/* 테스트용 보안 토큰 표시 (개발용) */}
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-3">
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-3 mt-4">
                             <ShieldCheck className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs text-slate-500 font-bold mb-1">Security Payload (Test Mode)</p>
@@ -141,14 +204,6 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext }) => {
                                 <p className="text-[10px] text-slate-400 font-mono truncate">SIG: {formData.jwsSignature}</p>
                             </div>
                         </div>
-
-                        {/* 에러 메시지 */}
-                        {error && (
-                            <div className="flex items-center gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100">
-                                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                                <span className="text-sm font-bold">{error}</span>
-                            </div>
-                        )}
 
                         {/* 안내 문구 */}
                         <div className="flex items-start gap-3.5 p-5 bg-slate-50 rounded-2xl border border-slate-100">
@@ -163,7 +218,7 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext }) => {
                         <button
                             type="button"
                             onClick={handleSubmit}
-                            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-5 rounded-2xl shadow-xl shadow-slate-200 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 group"
+                            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-5 rounded-2xl shadow-xl shadow-slate-200 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 group mt-2"
                         >
                             계좌 조회하기
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
