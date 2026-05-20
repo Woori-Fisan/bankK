@@ -3,17 +3,49 @@ import StepHeaderSection from '../section/StepHeaderSection';
 import RecipientInputFieldsSection from '../section/RecipientInputFieldsSection';
 import StepActionSection from '../section/StepActionSection';
 import { useTransferStore } from '../../../store/useTransferStore';
+import { getRecipient } from '../../../api/transfer';
 
 const RecipientInputForm: React.FC = () => {
-    const { toBank, toAccountNumber, prevStep, nextStep } = useTransferStore();
+    const { toBank, toAccountNumber, prevStep, nextStep, updateData } = useTransferStore();
     const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleInquiry = () => {
-        if (toAccountNumber === '0000') {
-            setError('수취인 계좌 정보가 올바르지 않습니다.');
-        } else {
-            setError(null);
-            nextStep();
+    const handleInquiry = async () => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const response = await getRecipient({
+                depositBankCode: toBank,
+                depositAccountNo: toAccountNumber,
+                encryptedKey: 'TEMP_ENCRYPTED_KEY',
+                jwsSignature: 'TEMP_JWS_SIGNATURE'
+            });
+
+            if (response.success) {
+                const { depositorName, depositBankName, depositBankAccountNo } = response.data;
+                updateData({ 
+                    toName: depositorName,
+                    toBankName: depositBankName,
+                    toBankAccountNo: depositBankAccountNo
+                });
+                nextStep();
+            } else {
+                const errorDetail = response.error 
+                    ? `[${response.error.code}] ${response.error.message}`
+                    : '수취인 조회에 실패했습니다.';
+                setError(errorDetail);
+            }
+        } catch (err: any) {
+            console.error('수취인 조회 에러:', err);
+            const apiError = err.response?.data?.error;
+            if (apiError) {
+                setError(`[${apiError.code}] ${apiError.message}`);
+            } else {
+                setError('서버 통신 중 오류가 발생했습니다.');
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -38,8 +70,8 @@ const RecipientInputForm: React.FC = () => {
                     <StepActionSection 
                         onPrev={prevStep}
                         onNext={handleInquiry}
-                        nextLabel="수취인 조회"
-                        nextDisabled={!toBank || !toAccountNumber}
+                        nextLabel={isLoading ? "조회 중..." : "수취인 조회"}
+                        nextDisabled={!toBank || !toAccountNumber || isLoading}
                     />
                 </div>
             </div>

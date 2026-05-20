@@ -4,6 +4,8 @@ import com.woorifisan.platform.bank.dto.TransferRecipientRequest;
 import com.woorifisan.platform.bank.dto.TransferRecipientResponse;
 import com.woorifisan.platform.bank.dto.TransferRequest;
 import com.woorifisan.platform.bank.dto.TransferResponse;
+import com.woorifisan.platform.global.exception.BusinessException;
+import com.woorifisan.platform.global.response.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,10 @@ public class TransferService {
         log.info("수취인 조회 요청 수신 - 은행코드: {}, 계좌번호: {}", 
                 request.getDepositBankCode(), request.getDepositAccountNo());
 
+        if ("0000".equals(request.getDepositAccountNo())) {
+            throw new BusinessException(ErrorCode.TRANSFER_DEPOSIT_ACCOUNT_FAULT);
+        }
+
         // 임시 더미 데이터 생성 및 반환
         return TransferRecipientResponse.builder()
                 .depositorName("홍길동")
@@ -54,7 +60,7 @@ public class TransferService {
         return TransferResponse.builder()
                 .transactionId("TR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .transactionDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
-                .balanceAfter(new BigDecimal("1000000").subtract(request.getAmount()))
+                .balanceAfter(new BigDecimal("5420000").subtract(request.getAmount()))
                 .build();
     }
 }

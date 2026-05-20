@@ -2,8 +2,8 @@ import React from 'react';
 import { useTransferStore } from '../../../store/useTransferStore';
 
 const BalanceCalculationSection: React.FC = () => {
-    const { amount } = useTransferStore();
-    const availableBalance = 1250000000;
+    const { amount, balance } = useTransferStore();
+    const availableBalance = Number(balance) || 0;
     const remainingBalance = availableBalance - amount;
 
     return (

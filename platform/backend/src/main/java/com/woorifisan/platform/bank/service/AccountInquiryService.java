@@ -35,6 +35,9 @@ public class AccountInquiryService {
     public BalanceInquiryResponse getBalance(BalanceInquiryRequest request) {
         log.info("잔액 조회 요청 수신 - 계좌번호: {}", request.getAccountNo());
 
+        if ("0000".equals(request.getAccountNo())) {
+            throw new BusinessException(ErrorCode.TRANSFER_DEPOSIT_ACCOUNT_FAULT);
+        }
         validateAccountAndBank(request.getAccountNo(), request.getBankCode());
 
         // 명세서 기반 더미 데이터

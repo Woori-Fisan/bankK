@@ -3,9 +3,10 @@ import StepHeaderSection from '../section/StepHeaderSection';
 import InfoSummaryBoxSection from '../section/InfoSummaryBoxSection';
 import StepActionSection from '../section/StepActionSection';
 import { useTransferStore } from '../../../store/useTransferStore';
+import { formatAmount } from '../../../utils/formatter';
 
 const WithdrawalConfirmForm: React.FC = () => {
-    const { fromName, fromBank, fromAccountNumber, prevStep, nextStep } = useTransferStore();
+    const { fromBank, fromAccountNumber, balance, prevStep, nextStep } = useTransferStore();
 
     return (
         <div className="w-full">
@@ -15,12 +16,12 @@ const WithdrawalConfirmForm: React.FC = () => {
             />
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 flex flex-col items-center">
                 <InfoSummaryBoxSection 
-                    label1="출금인 성명"
-                    value1={fromName}
-                    label2="출금 계좌"
-                    value2={`${fromBank} ${fromAccountNumber}`}
+                    label1="출금 계좌번호"
+                    value1={fromAccountNumber}
+                    label2="출금 은행"
+                    value2={fromBank}
                     label3="현재 잔액"
-                    value3="₩ 1,250,000,000"
+                    value3={`₩ ${formatAmount(balance)}`}
                 />
                 <StepActionSection 
                     onPrev={prevStep}

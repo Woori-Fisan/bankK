@@ -32,6 +32,7 @@ public enum ErrorCode {
     // 은행
     BANK_NOT_FOUND("BANK_001", "존재하지 않는 은행입니다.", HttpStatus.NOT_FOUND),
     BANK_API_ERROR("BANK_002", "은행 API 호출 중 오류가 발생했습니다.", HttpStatus.BAD_GATEWAY),
+    BANK_PW_ERROR("BANK_003", "계좌 비밀번호가 틀렸습니다.", HttpStatus.FORBIDDEN),
 
     //조회
     INQUIRY_ACCOUNT_NOTFOUND("INQUIRY_001", "사용자의 정보를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
@@ -41,6 +42,16 @@ public enum ErrorCode {
     // 멱등성
     DUPLICATE_REQUEST("IDEM_001", "중복 요청입니다.", HttpStatus.CONFLICT),
 
+    // 이체
+    TRANSFER_PARAMETER_FAULT("TRANSFER_001", "필수 항목이 누락되었습니다.", HttpStatus.BAD_REQUEST),
+    TRANSFER_DEPOSIT_ACCOUNT_FAULT("TRANSFER_002", "입금 계좌가 유효하지 않습니다.", HttpStatus.BAD_REQUEST),
+    TRANSFER_DEPOSIT_ACCOUNT_STATUS_FAULT("TRANSFER_003", "입금 계좌가 정지되었습니다.", HttpStatus.BAD_REQUEST),
+
+    TRANSFER_WITHDRAW_ACCOUNT_FAULT("TRANSFER_004", "출금 계좌가 유효하지 않습니다.", HttpStatus.BAD_REQUEST),
+    TRANSFER_WITHDRAW_ACCOUNT_STATUS_FAULT("TRANSFER_005", "출금 계좌가 정지되었습니다.", HttpStatus.BAD_REQUEST),
+    TRANSFER_AMOUNT_FAULT("TRANSFER_006", "이체 금액이 유효하지 않습니다.", HttpStatus.BAD_REQUEST),
+    TRANSFER_WITHDRAW_AMOUNT_FAULT("TRANSFER_007", "이체 잔액이 부족합니다.", HttpStatus.BAD_REQUEST),
+    TRANSFER_INSERT_FAULT("TRANSFER_008", "거래 기록 저장에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     // 대출 중개
     LOAN_BANK_ROUTING_ERROR("LOAN_001", "은행 대출 API 호출 중 오류가 발생했습니다.", HttpStatus.BAD_GATEWAY),
     LOAN_EVALUATION_NOT_FOUND("LOAN_002", "존재하지 않는 심사 건입니다.", HttpStatus.NOT_FOUND),

@@ -5,11 +5,18 @@ const initialState = {
     step: 1,
     fromBank: '',
     fromAccountNumber: '',
-    fromName: '',
+    customerRrnPrefix: '',
+    balance: '0',
     toBank: '',
+    toBankName: '',
     toAccountNumber: '',
+    toBankAccountNo: '',
     toName: '(주)글로벌네트워크', // 더미 결과값 유지
     amount: 0,
+    password: '',
+    transactionId: '',
+    transactionDate: '',
+    balanceAfter: '',
 };
 
 export const useTransferStore = create<TransferState>((set) => ({

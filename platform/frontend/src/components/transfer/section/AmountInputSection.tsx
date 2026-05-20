@@ -2,14 +2,16 @@ import React from 'react';
 import { useTransferStore } from '../../../store/useTransferStore';
 
 const AmountInputSection: React.FC = () => {
-    const { amount, updateData } = useTransferStore();
-    const availableBalance = 1250000000;
+    const { amount, balance, updateData } = useTransferStore();
+    const availableBalance = Number(balance) || 0;
 
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.replace(/[^0-9]/g, '');
         const numValue = Number(value);
         if (numValue <= availableBalance) {
             updateData({ amount: numValue });
+        } else {
+            updateData({ amount: availableBalance });
         }
     };
 
