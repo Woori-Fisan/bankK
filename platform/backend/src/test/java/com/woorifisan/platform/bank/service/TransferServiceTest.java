@@ -1,9 +1,10 @@
 package com.woorifisan.platform.bank.service;
 
-import com.woorifisan.platform.bank.dto.TransferRecipientRequest;
-import com.woorifisan.platform.bank.dto.TransferRecipientResponse;
-import com.woorifisan.platform.bank.dto.TransferRequest;
-import com.woorifisan.platform.bank.dto.TransferResponse;
+import com.woorifisan.platform.domain.bank.dto.request.TransferRecipientRequest;
+import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
+import com.woorifisan.platform.domain.bank.dto.request.TransferRequest;
+import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
+import com.woorifisan.platform.domain.bank.service.TransferService;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
