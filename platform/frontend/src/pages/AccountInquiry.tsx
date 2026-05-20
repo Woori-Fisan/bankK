@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AlertCircle } from 'lucide-react';
 import BalanceSummary from '../components/account/BalanceSummary';
 import TransactionFilter from '../components/account/TransactionFilter';
 import type { FilterState } from '../components/account/TransactionFilter';
@@ -97,12 +98,18 @@ const AccountInquiry: React.FC = () => {
     // 필터에서 '검색' 버튼 눌렀을 때
     const handleSearch = async (filters: FilterState) => {
         setIsLoading(true);
+        setApiError(''); // 검색 시작 시 기존 에러 초기화
         setCurrentFilters(filters); // 검색 조건 저장
         setCurrentPage(1); // 검색 시 무조건 1페이지로 리셋
         try {
             await loadTransactions(accountInfo, filters, 1);
-        } catch (err) {
-            console.error(err);
+        } catch (err: any) {
+            console.error('Search Error:', err);
+            const errorMessage = 
+                err.response?.data?.error?.message || 
+                err.response?.data?.message || 
+                '거래 내역 검색 중 오류가 발생했습니다.';
+            setApiError(errorMessage);
         }
         setIsLoading(false);
     };
@@ -110,12 +117,18 @@ const AccountInquiry: React.FC = () => {
     // 페이지 번호 눌렀을 때 (진짜 Server-side Pagination)
     const handlePageChange = async (page: number) => {
         setIsLoading(true);
+        setApiError(''); // 페이지 이동 시 기존 에러 초기화
         setCurrentPage(page);
         try {
             // 저장해둔 조건과 새로운 페이지 번호로 재요청
             await loadTransactions(accountInfo, currentFilters, page);
-        } catch (err) {
-            console.error(err);
+        } catch (err: any) {
+            console.error('Page Change Error:', err);
+            const errorMessage = 
+                err.response?.data?.error?.message || 
+                err.response?.data?.message || 
+                '페이지 이동 중 오류가 발생했습니다.';
+            setApiError(errorMessage);
         }
         setIsLoading(false);
     };
@@ -151,6 +164,14 @@ const AccountInquiry: React.FC = () => {
                     다른 계좌 조회하기
                 </button>
             </header>
+
+            {/* Step 2 에러 배너 추가 */}
+            {apiError && (
+                <div className="mb-6 flex items-center gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    <span className="text-sm font-bold">{apiError}</span>
+                </div>
+            )}
 
             <BalanceSummary customBalance={balanceData?.balance} />
             
