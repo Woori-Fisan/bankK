@@ -9,6 +9,8 @@ import com.woorifisan.platform.loan.dto.LoanExecuteRequest;
 import com.woorifisan.platform.loan.dto.LoanExecuteResponse;
 import com.woorifisan.platform.loan.dto.LoanRequiredDocumentsResponse;
 import com.woorifisan.platform.loan.dto.TermsDocumentDto;
+import com.woorifisan.platform.global.exception.BusinessException;
+import com.woorifisan.platform.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -50,6 +52,13 @@ public class LoanService {
      * applicationId를 생성하고 Redis에 evaluationId와 GUID를 저장한다.
      */
     public LoanEvaluateResponse evaluateLoan(LoanEvaluateRequest request, Long staffId) {
+        boolean allMandatoryAgreed = request.getDocuments().stream()
+                .allMatch(d -> d.getDocumentType() != null && !d.getDocumentType().isBlank()
+                        && d.getAgreedAt() != null && !d.getAgreedAt().isBlank());
+        if (!allMandatoryAgreed) {
+            throw new BusinessException(ErrorCode.LOAN_TERMS_NOT_AGREED);
+        }
+
         String guid = generateGuid();
         String applicationId = generateApplicationId();
         String evaluationId = generateEvaluationId();
@@ -136,34 +145,28 @@ public class LoanService {
     }
 
     private String resolveGuidForApp(String applicationId) {
-        String key = String.format(REDIS_APP_GUID_KEY, applicationId);
-        String guid = redisTemplate.opsForValue().get(key);
+        String guid = redisTemplate.opsForValue().get(String.format(REDIS_APP_GUID_KEY, applicationId));
         if (guid == null) {
-            guid = generateGuid();
-            redisTemplate.opsForValue().set(key, guid, GUID_TTL_HOURS, TimeUnit.HOURS);
-            log.warn("applicationId {}에 대한 GUID가 없어 신규 생성: {}", applicationId, guid);
+            log.warn("applicationId {}에 대한 GUID 없음 — 미등록 신청", applicationId);
+            throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
         }
         return guid;
     }
 
     private String resolveEvaluationIdForApp(String applicationId) {
-        String key = String.format(REDIS_APP_EVAL_KEY, applicationId);
-        String evaluationId = redisTemplate.opsForValue().get(key);
+        String evaluationId = redisTemplate.opsForValue().get(String.format(REDIS_APP_EVAL_KEY, applicationId));
         if (evaluationId == null) {
-            evaluationId = generateEvaluationId();
-            redisTemplate.opsForValue().set(key, evaluationId, GUID_TTL_HOURS, TimeUnit.HOURS);
-            log.warn("applicationId {}에 대한 evaluationId가 없어 신규 생성: {}", applicationId, evaluationId);
+            log.warn("applicationId {}에 대한 evaluationId 없음 — 미등록 신청", applicationId);
+            throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
         }
         return evaluationId;
     }
 
     private String resolveGuidForEval(String evaluationId) {
-        String key = String.format(REDIS_EVAL_GUID_KEY, evaluationId);
-        String guid = redisTemplate.opsForValue().get(key);
+        String guid = redisTemplate.opsForValue().get(String.format(REDIS_EVAL_GUID_KEY, evaluationId));
         if (guid == null) {
-            guid = generateGuid();
-            redisTemplate.opsForValue().set(key, guid, GUID_TTL_HOURS, TimeUnit.HOURS);
-            log.warn("evaluationId {}에 대한 GUID가 없어 신규 생성: {}", evaluationId, guid);
+            log.warn("evaluationId {}에 대한 GUID 없음 — 미등록 심사", evaluationId);
+            throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
         }
         return guid;
     }

@@ -11,7 +11,7 @@ services:
       - "${DB_PORT:-3306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./src/main/resources/db/ddl.sql:/docker-entrypoint-initdb.d/ddl.sql
+#      - ./src/main/resources/db/ddl.sql:/docker-entrypoint-initdb.d/ddl.sql
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
