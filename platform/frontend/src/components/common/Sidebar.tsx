@@ -53,7 +53,7 @@ const Sidebar: React.FC = () => {
                 <SidebarItem icon={ArrowLeftRight} label="Transfer" to="/transfer" />
                 <SidebarItem icon={Banknote} label="Withdrawal" to="/withdraw" />
                 <SidebarItem icon={Search} label="Account Inquiry" to="/inquiry" />
-                <SidebarItem icon={UserCog} label="User Management" to="/users" />
+                <SidebarItem icon={UserCog} label="User Management" to="/employee-management" />
             </nav>
         </aside>
     );
