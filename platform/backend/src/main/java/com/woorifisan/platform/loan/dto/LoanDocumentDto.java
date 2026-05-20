@@ -10,8 +10,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class LoanEvaluateResponse {
+public class LoanDocumentDto {
 
-    private String applicationId;
-    private String receivedAt;
+    private String documentType;
+    private String signedContent;
+    private String agreedAt;
 }

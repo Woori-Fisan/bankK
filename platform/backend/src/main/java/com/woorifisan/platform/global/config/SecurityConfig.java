@@ -39,6 +39,8 @@ public class SecurityConfig {
             // 테스트 용 임시 통과 URL -> 플랫폼 개발 완료 시 삭제 필순
             "/api/v1/bank/inquiry/**",
             "/api/v1/bank/transfer/**",
+            "/api/v1/loan/**",
+            "/api/v1/banks",
     };
 
     @Bean

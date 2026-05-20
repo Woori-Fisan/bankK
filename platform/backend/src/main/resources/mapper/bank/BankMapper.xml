@@ -13,7 +13,14 @@
     </select>
 
     <select id="findAll" resultType="com.woorifisan.platform.bank.model.Bank">
-        SELECT * FROM bank
+        SELECT id,
+               bank_code   AS bankCode,
+               bank_name   AS bankName,
+               base_url    AS baseUrl,
+               is_active   AS isActive,
+               created_at  AS createdAt,
+               updated_at  AS updatedAt
+        FROM bank
     </select>
 
 </mapper>

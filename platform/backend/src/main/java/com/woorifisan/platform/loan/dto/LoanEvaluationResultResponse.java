@@ -15,15 +15,19 @@ import java.util.List;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class LoanEvaluationResultResponse {
 
-    private String evaluationId;
-    /** PENDING / APPROVED / REJECTED */
-    private String status;
+    private String applicationId;
+    /** PENDING / APPROVED / REJECTED / FAILED */
+    private String evaluationStatus;
+    private String requestedAt;
+    private String completedAt;
 
     // APPROVED 시 채워짐
+    private String evaluationId;
     private BigDecimal approvedLimit;
     private BigDecimal interestRate;
-    private List<LoanProductDto> productList;
+    private List<AvailableProductDto> availableProducts;
 
-    // REJECTED 시 채워짐
-    private String rejectReason;
+    // REJECTED / FAILED 시 채워짐
+    private String rejectionCode;
+    private String rejectionMessage;
 }
