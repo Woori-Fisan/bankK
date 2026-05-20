@@ -29,7 +29,7 @@ CREATE TABLE bank
     base_url  VARCHAR(255) NOT NULL                COMMENT 'BaaS API Base URL',
     is_active BOOLEAN      NOT NULL DEFAULT TRUE   COMMENT '활성 상태',
     created_at TIMESTAMP   NOT NULL DEFAULT NOW()  COMMENT '생성일시',
-    updated_at TIMESTAMP   NOT NULL DEFAULT NOW()  COMMENT '수정일시',
+    updated_at TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
 
     PRIMARY KEY (id),
     UNIQUE KEY uq_bank_code (bank_code)
@@ -45,7 +45,7 @@ CREATE TABLE platform_admin
     role          VARCHAR(20)  NOT NULL                COMMENT '권한 (SUPER_ADMIN / MONITOR / OPERATOR)',
     is_active     BOOLEAN      NOT NULL DEFAULT TRUE   COMMENT '활성 상태',
     created_at    TIMESTAMP    NOT NULL DEFAULT NOW()  COMMENT '생성일시',
-    updated_at    TIMESTAMP    NOT NULL DEFAULT NOW()  COMMENT '수정일시',
+    updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
 
     PRIMARY KEY (id),
     UNIQUE KEY uq_platform_admin_login_id (login_id)
@@ -63,7 +63,7 @@ CREATE TABLE platform_user
     is_locked           BOOLEAN      NOT NULL DEFAULT FALSE  COMMENT '계정 잠금 여부',
     is_deleted          BOOLEAN      NOT NULL DEFAULT FALSE  COMMENT '삭제 여부',
     created_at          TIMESTAMP    NOT NULL DEFAULT NOW()  COMMENT '생성일시',
-    updated_at          TIMESTAMP    NOT NULL DEFAULT NOW()  COMMENT '수정일시',
+    updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
 
     PRIMARY KEY (id),
     UNIQUE KEY uq_platform_user_login_id (login_id),
