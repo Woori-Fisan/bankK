@@ -1,9 +1,10 @@
 package com.woorifisan.platform.bank.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.woorifisan.platform.bank.dto.TransferRecipientRequest;
-import com.woorifisan.platform.bank.dto.TransferRecipientResponse;
-import com.woorifisan.platform.bank.service.TransferService;
+import com.woorifisan.platform.domain.bank.controller.TransferController;
+import com.woorifisan.platform.domain.bank.dto.request.TransferRecipientRequest;
+import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
+import com.woorifisan.platform.domain.bank.service.TransferService;
 import com.woorifisan.platform.global.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
