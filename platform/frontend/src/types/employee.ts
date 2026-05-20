@@ -29,7 +29,7 @@ export interface DeleteEmployeeResponse {
 
 export interface ResetPasswordResponse {
     loginId: string;
-    temporaryPassword: string; // RSA encrypted
+    temporaryPassword: string;
     isLocked: boolean;
     updatedAt: string; // ISO-8601
 }

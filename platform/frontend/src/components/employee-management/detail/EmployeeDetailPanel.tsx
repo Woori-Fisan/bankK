@@ -88,8 +88,6 @@ const EmployeeDetailPanel: React.FC = () => {
                         employeeId={selectedEmployee.employeeId}
                         onSuccess={() => {
                             setIsDeleteModalOpen(false);
-                            setPage(0); 
-                            setSelectedEmployee(null); 
                         }}
                     />
                     <ResetPasswordConfirmationModal

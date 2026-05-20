@@ -19,15 +19,19 @@ const EmployeeList: React.FC = () => {
                 
                 setEmployees(response.data);
                 setError(null);
-            } catch (err: any) {
-                setError(err.message || '직원 목록을 불러오는데 실패했습니다.');
+            } catch (err) {
+                if (err instanceof Error) {
+                    setError(err.message || '직원 목록을 불러오는데 실패했습니다.');
+                } else {
+                    setError('알 수 없는 오류로 직원 목록을 불러오는데 실패했습니다.');
+                }
             } finally {
                 setLoading(false);
             }
         };
 
         loadEmployees();
-    }, [filters.page, filters.size, filters.agencyId, setEmployees, setLoading, setError]);
+    }, [filters.page, filters.size, filters.agencyId]);
 
     if (isLoading) {
         return <div className="p-4 text-center text-gray-500">로딩 중...</div>;

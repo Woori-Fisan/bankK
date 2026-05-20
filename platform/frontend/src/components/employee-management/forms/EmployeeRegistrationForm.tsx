@@ -30,8 +30,12 @@ const EmployeeRegistrationForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
         try {
             await registerEmployee(employeeData);
             onSuccess();
-        } catch (err: any) {
-            setError(err.message || '직원 등록에 실패했습니다.');
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message || '직원 목록을 불러오는데 실패했습니다.');
+            } else {
+                setError('알 수 없는 오류로 직원 목록을 불러오는데 실패했습니다.');
+            }
         } finally {
             setIsLoading(false);
         }

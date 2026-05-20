@@ -95,19 +95,26 @@ export const deleteEmployee = async (loginId: string): Promise<ApiResponse<Delet
     }
 };
 
+const generateSecureTemporaryPassword = (length: number = 8): string => {
+    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const randomValues = new Uint32Array(length);
+    window.crypto.getRandomValues(randomValues);
+    
+    let password = '';
+    for (let i = 0; i < length; i++) {
+        password += charset[randomValues[i] % charset.length];
+    }
+    return password;
+};
+
 export const resetEmployeePassword = async (loginId: string): Promise<ApiResponse<ResetPasswordResponse>> => {
     await new Promise(resolve => setTimeout(resolve, 500));
 
     const employee = DUMMY_EMPLOYEES.find(emp => emp.employeeId === loginId);
     if (employee) {
-        const temporaryPassword = Math.random().toString(36).slice(-8); // 임시 비밀번호 생성
-        const publicKey = await fetchPlatformPublicKey();
-        const encryptedTempPassword = await encryptPassword(temporaryPassword, publicKey);
 
-        if (!encryptedTempPassword) {
-            throw new Error('임시 비밀번호 암호화에 실패했습니다.');
-        }
-
+        const temporaryPassword = generateSecureTemporaryPassword(8);
+        
         employee.isLocked = false; // 비밀번호 초기화 시 잠금 해제
 
         return {
@@ -116,7 +123,7 @@ export const resetEmployeePassword = async (loginId: string): Promise<ApiRespons
             message: '비밀번호를 성공적으로 초기화했습니다.',
             data: { 
                 loginId, 
-                temporaryPassword: encryptedTempPassword, 
+                temporaryPassword: temporaryPassword, // 평문으로 전달
                 isLocked: false, 
                 updatedAt: new Date().toISOString() 
             },

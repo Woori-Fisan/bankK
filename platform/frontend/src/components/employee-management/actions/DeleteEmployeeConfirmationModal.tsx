@@ -25,8 +25,12 @@ const DeleteEmployeeConfirmationModal: React.FC<Props> = ({ isOpen, onClose, emp
             onSuccess();
             setPage(0);
             setSelectedEmployee(null);
-        } catch (err: any) {
-            setError(err.message || '직원 삭제에 실패했습니다.');
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message || '직원 삭제에 실패했습니다.');
+            } else {
+                setError('알 수 없는 오류로 직원 삭제에 실패했습니다.');
+            }
         } finally {
             setIsLoading(false);
         }

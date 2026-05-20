@@ -27,8 +27,12 @@ const ResetPasswordConfirmationModal: React.FC<Props> = ({ isOpen, onClose, empl
             }
             
             onSuccess(response.data.temporaryPassword);
-        } catch (err: any) {
-            setError(err.message || '비밀번호 초기화에 실패했습니다.');
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message || '비밀번호 초기화에 실패했습니다.');
+            } else {
+                setError('알 수 없는 오류로 비밀번호 초기화에 실패했습니다.');
+            }
         } finally {
             setIsLoading(false);
         }
