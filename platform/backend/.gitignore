@@ -37,3 +37,6 @@ out/
 .vscode/
 
 .env
+
+# 로그 파일 관리
+/logs/
