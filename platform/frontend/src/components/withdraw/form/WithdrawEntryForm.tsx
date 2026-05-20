@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import WithdrawAccountSection from '../sections/WithdrawAccountSection';
 import AmountInputSection from '../sections/AmountInputSection';
 import WithdrawFeeSection from '../sections/WithdrawFeeSection';
@@ -28,32 +28,36 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
     const [birthDate, setBirthDate] = useState(initialData?.birthDate || '');
     const [amount, setAmount] = useState(initialData?.amount || '0');
     const [fee] = useState(0);
+    const [isCheckingBalance, setIsCheckingBalance] = useState(false);
 
-    // 2. 계좌 조회 Debounce 로직 (은행, 계좌번호, 생년월일 모두 입력 시)
-    useEffect(() => {
-        // 모든 정보가 입력되지 않았거나, 생년월일이 6자리가 아니면 중단
-        if (!sourceAccount.bankName || !sourceAccount.accountNumber || birthDate.length !== 6) {
+    // 2. 계좌 조회 Debounce 로직 (onBlur 활용)
+    // 포커스 탈출 시 Mock API 호출 시뮬레이션을 위해 별도 핸들러 구현
+    const handleCheckBalance = () => {
+        // 필수 정보 미입력 시 중단 (은행명, 계좌번호, 생년월일 7자리)
+        if (!sourceAccount.bankName || !sourceAccount.accountNumber || birthDate.length !== 7) {
             return;
         }
 
-        const timer = setTimeout(() => {
-            console.log(`출금 계좌 조회 시작 (전체 입력 완료): ${sourceAccount.bankName} ${sourceAccount.accountNumber} / ${birthDate}`);
-            
-            // Mock API 호출 시뮬레이션
-            const mockFetchBalance = () => {
-                const randomBalance = Math.floor(Math.random() * 100000000);
-                setSourceAccount(prev => ({
-                    ...prev,
-                    balance: randomBalance,
-                }));
-                console.log(`출금 계좌 조회 완료: 잔액 ${randomBalance}`);
-            };
+        // 이미 조회 중이면 중단
+        if (isCheckingBalance) return;
 
-            mockFetchBalance();
-        }, 2000);
+        setIsCheckingBalance(true);
+        // 기존 잔액 초기화 (새로운 조회를 시각적으로 알림)
+        setSourceAccount(prev => ({ ...prev, balance: undefined }));
 
-        return () => clearTimeout(timer);
-    }, [sourceAccount.bankName, sourceAccount.accountNumber, birthDate]);
+        console.log(`[onBlur] 출금 계좌 조회 시작: ${sourceAccount.bankName} ${sourceAccount.accountNumber} / ${birthDate}`);
+        
+        // Mock API 호출 시뮬레이션 (Debounce 효과를 위해 1초 대기)
+        setTimeout(() => {
+            const randomBalance = Math.floor(Math.random() * 5000000) + 1000000; // 100만 ~ 600만 랜덤 잔액
+            setSourceAccount(prev => ({
+                ...prev,
+                balance: randomBalance,
+            }));
+            setIsCheckingBalance(false);
+            console.log(`[onBlur] 출금 계좌 조회 완료: 잔액 ${randomBalance}`);
+        }, 1000);
+    };
     
     // 3. 핸들러
     const handleSourceBankChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,7 +69,7 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
     };
 
     const handleBirthDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+        const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 7);
         setBirthDate(val);
         setSourceAccount(prev => ({ ...prev, balance: undefined }));
     };
@@ -87,8 +91,8 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
     };
 
     const handleSubmit = () => {
-        if (birthDate.length !== 6) {
-            alert('생년월일 6자리를 정확히 입력해주세요.');
+        if (birthDate.length !== 7) {
+            alert('생년월일 및 주민번호 뒷자리 첫글자(총 7자리)를 정확히 입력해주세요.');
             return;
         }
 
@@ -115,30 +119,49 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                         accountNumber={sourceAccount.accountNumber}
                         onBankChange={handleSourceBankChange}
                         onAccountChange={handleSourceAccountChange}
+                        onBankBlur={handleCheckBalance}
+                        onAccountBlur={handleCheckBalance}
                     />
 
                     <section className="space-y-4">
-                        <h3 className="text-sm font-medium text-gray-500">본인 확인</h3>
+                        <div className="flex justify-between items-end">
+                            <h3 className="text-sm font-medium text-gray-500">본인 확인</h3>
+                            {isCheckingBalance && (
+                                <span className="text-xs text-emerald-600 font-medium animate-pulse flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-bounce" />
+                                    계좌 정보 확인 중...
+                                </span>
+                            )}
+                        </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-semibold text-gray-400">생년월일 (6자리)</label>
+                            <label className="text-xs font-semibold text-gray-400">생년월일 + 뒷자리 첫글자 (7자리)</label>
                             <input
                                 type="text"
                                 value={birthDate}
                                 onChange={handleBirthDateChange}
-                                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 transition-shadow text-lg tracking-widest"
-                                placeholder="YYMMDD"
-                                maxLength={6}
+                                onBlur={handleCheckBalance}
+                                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 transition-all text-lg tracking-[0.5em] ${
+                                    isCheckingBalance ? 'border-emerald-200 bg-emerald-50/30' : 'border-gray-200'
+                                }`}
+                                placeholder="YYMMDDG"
+                                maxLength={7}
                             />
                         </div>
                     </section>
 
-                    {sourceAccount.balance !== undefined && (
-                        <div className="bg-gray-50 rounded-xl p-6 border border-gray-100 flex flex-col md:flex-row md:items-center justify-end gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {(sourceAccount.balance !== undefined || isCheckingBalance) && (
+                        <div className={`bg-gray-50 rounded-xl p-6 border border-gray-100 flex flex-col md:flex-row md:items-center justify-end gap-4 animate-in fade-in slide-in-from-top-2 duration-300 ${isCheckingBalance ? 'opacity-50' : ''}`}>
                             <div className="text-right">
                                 <span className="text-xs font-semibold text-gray-400 block">현재 잔액</span>
                                 <div className="text-xl font-bold text-gray-900">
-                                    <span className="text-sm mr-1">₩</span>
-                                    {formatAmount(sourceAccount.balance)}
+                                    {isCheckingBalance ? (
+                                        <span className="text-gray-300">조회 중...</span>
+                                    ) : (
+                                        <>
+                                            <span className="text-sm mr-1">₩</span>
+                                            {formatAmount(sourceAccount.balance || 0)}
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
