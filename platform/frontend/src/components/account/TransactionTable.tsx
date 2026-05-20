@@ -1,13 +1,14 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatAmount } from '../../utils/formatter';
 
 export interface Transaction {
     id: string;
     date: string;
     description: string;
-    withdrawal: number | null;
-    deposit: number | null;
-    balance: number;
+    withdrawal: string | number | null; // BigDecimal 대응을 위해 string 허용
+    deposit: string | number | null;    // BigDecimal 대응을 위해 string 허용
+    balance: string | number;           // BigDecimal 대응을 위해 string 허용
     status: '완료' | '대기';
 }
 
@@ -30,9 +31,10 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
     const startEntry = (currentPage - 1) * pageSize + 1;
     const endEntry = Math.min(currentPage * pageSize, totalEntries);
 
-    const formatCurrency = (val: number | null) => {
-        if (val === null) return '-';
-        return new Intl.NumberFormat('ko-KR').format(val);
+    // RULE_FE_STYLE 10.2: formatAmount 유틸리티 사용
+    const formatCurrency = (val: string | number | null) => {
+        if (val === null || val === undefined) return '-';
+        return formatAmount(val);
     };
 
     return (
