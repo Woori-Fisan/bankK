@@ -17,6 +17,11 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
+  # Flyway
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
   # Spring Batch
   batch:
     jdbc:
@@ -77,6 +82,14 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+
+# Swagger
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
 
 # 로깅
 logging:

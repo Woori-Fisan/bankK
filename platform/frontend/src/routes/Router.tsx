@@ -5,6 +5,7 @@ import LoginPage from '../pages/LoginPage';
 import PinpadTestPage from '../pages/PinpadTestPage';
 import AccountInquiry from '../pages/AccountInquiry';
 import WithdrawPage from '../pages/WithdrawPage';
+import EmployeeManagementPage from '../pages/EmployeeManagementPage';
 import LoanApplication from '../pages/LoanApplication';
 import TransferPage from '../pages/TransferPage';
 
@@ -20,6 +21,7 @@ const Router = () => {
         <Route path="loan" element={<LoanApplication />} />
         <Route path="withdraw" element={<WithdrawPage />} />
         <Route path="transfer" element={<TransferPage />} />
+        <Route path="employee-management" element={<EmployeeManagementPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

@@ -33,15 +33,19 @@ public class SecurityConfig {
             "/api/v1/auth/refresh",
             "/actuator/health",
             "/actuator/prometheus",
+            "/swagger-ui.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",
             // 테스트 용 임시 통과 URL -> 플랫폼 개발 완료 시 삭제 필순
             "/api/v1/bank/inquiry/**",
+            "/api/v1/bank/transfer/**",
     };
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // CORS 설정 적용 (WebMvcConfig 설정을 따름)
+                .cors(org.springframework.security.config.Customizer.withDefaults())
                 // JWT 사용하므로 세션 미사용
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

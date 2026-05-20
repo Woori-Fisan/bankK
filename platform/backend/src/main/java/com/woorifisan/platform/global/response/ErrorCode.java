@@ -39,7 +39,15 @@ public enum ErrorCode {
 
 
     // 멱등성
-    DUPLICATE_REQUEST("IDEM_001", "중복 요청입니다.", HttpStatus.CONFLICT);
+    DUPLICATE_REQUEST("IDEM_001", "중복 요청입니다.", HttpStatus.CONFLICT),
+
+    // 대출 중개
+    LOAN_BANK_ROUTING_ERROR("LOAN_001", "은행 대출 API 호출 중 오류가 발생했습니다.", HttpStatus.BAD_GATEWAY),
+    LOAN_EVALUATION_NOT_FOUND("LOAN_002", "존재하지 않는 심사 건입니다.", HttpStatus.NOT_FOUND),
+    LOAN_PRODUCT_NOT_FOUND("LOAN_003", "존재하지 않는 대출 상품입니다.", HttpStatus.NOT_FOUND),
+    LOAN_ALREADY_EXECUTED("LOAN_004", "이미 실행된 대출 건입니다.", HttpStatus.CONFLICT),
+    LOAN_EVALUATION_REJECTED("LOAN_005", "대출 심사가 거절되었습니다.", HttpStatus.UNPROCESSABLE_ENTITY),
+    LOAN_TERMS_NOT_AGREED("LOAN_006", "필수 약관에 동의하지 않았습니다.", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;
