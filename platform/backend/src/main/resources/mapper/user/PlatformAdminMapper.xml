@@ -4,7 +4,11 @@
 
 <mapper namespace="com.woorifisan.platform.user.mapper.PlatformAdminMapper">
 
-    <select id="findByLoginId" resultMap="com.woorifisan.platform.user.model.PlatformAdmin">
+    <select id="findById" resultType="com.woorifisan.platform.user.model.PlatformAdmin">
+        SELECT * FROM platform_admin WHERE id = #{id}
+    </select>
+
+    <select id="findByLoginId" resultType="com.woorifisan.platform.user.model.PlatformAdmin">
         SELECT * FROM platform_admin WHERE login_id = #{loginId}
     </select>
 

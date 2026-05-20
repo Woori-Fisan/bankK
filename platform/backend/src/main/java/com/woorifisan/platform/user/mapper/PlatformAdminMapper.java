@@ -13,6 +13,9 @@ import java.util.Optional;
 @Mapper
 public interface PlatformAdminMapper {
 
+    // ID로 운영자 조회
+    Optional<PlatformAdmin> findById(@Param("id") Long id);
+
     // 로그인 ID로 운영자 조회
     Optional<PlatformAdmin> findByLoginId(@Param("loginId") String loginId);
 }
