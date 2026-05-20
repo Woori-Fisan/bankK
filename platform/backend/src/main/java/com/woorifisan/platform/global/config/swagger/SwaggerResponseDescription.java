@@ -1,10 +1,9 @@
 package com.woorifisan.platform.global.config.swagger;
 
 import com.woorifisan.platform.global.response.ErrorCode;
+import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-
-import java.util.List;
 
 /**
  * Swagger에 표시할 에러 응답들을 그룹화한 Enum
@@ -30,6 +29,21 @@ public enum SwaggerResponseDescription {
             ErrorCode.BANK_NOT_FOUND,
             ErrorCode.BANK_API_ERROR,
             ErrorCode.DUPLICATE_REQUEST
+    )),
+
+    BANK_WITHDRAW(List.of(
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.INTERNAL_SERVER_ERROR,
+            ErrorCode.UNAUTHORIZED,
+            ErrorCode.INVALID_TOKEN,
+            ErrorCode.EXPIRED_TOKEN,
+            ErrorCode.BANK_API_ERROR,
+            ErrorCode.BANK_PW_ERROR,
+            ErrorCode.TRANSFER_WITHDRAW_ACCOUNT_FAULT,
+            ErrorCode.TRANSFER_WITHDRAW_ACCOUNT_STATUS_FAULT,
+            ErrorCode.TRANSFER_INSERT_FAULT,
+            ErrorCode.DUPLICATE_REQUEST,
+            ErrorCode.WITHDRAW_AMOUNT_FAULT
     )),
 
     USER_MANAGEMENT(List.of(

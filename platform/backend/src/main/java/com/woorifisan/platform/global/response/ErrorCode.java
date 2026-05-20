@@ -58,7 +58,10 @@ public enum ErrorCode {
     LOAN_PRODUCT_NOT_FOUND("LOAN_003", "존재하지 않는 대출 상품입니다.", HttpStatus.NOT_FOUND),
     LOAN_ALREADY_EXECUTED("LOAN_004", "이미 실행된 대출 건입니다.", HttpStatus.CONFLICT),
     LOAN_EVALUATION_REJECTED("LOAN_005", "대출 심사가 거절되었습니다.", HttpStatus.UNPROCESSABLE_ENTITY),
-    LOAN_TERMS_NOT_AGREED("LOAN_006", "필수 약관에 동의하지 않았습니다.", HttpStatus.BAD_REQUEST);
+    LOAN_TERMS_NOT_AGREED("LOAN_006", "필수 약관에 동의하지 않았습니다.", HttpStatus.BAD_REQUEST),
+
+    // 출금
+    WITHDRAW_AMOUNT_FAULT("WITHDRAW_001", "출금 금액이 유효하지 않습니다.", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;
