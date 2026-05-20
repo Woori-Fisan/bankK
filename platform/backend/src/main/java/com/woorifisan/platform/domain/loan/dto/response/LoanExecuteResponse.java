@@ -14,10 +14,12 @@ import java.math.BigDecimal;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class LoanExecuteResponse {
 
-    private String loanNo;
-    private BigDecimal loanAmount;
-    private String applicantName;
-    private String depositAccountNo;  // 마스킹 처리
+    private String loanId;
+    private String borrowerName;
+    private String depositTransactionId;
+    private BigDecimal loanBalance;
+    private BigDecimal executeAmount;
     private BigDecimal interestRate;
-    private String endDate;
+    private String repaymentStartDate;
+    private String maturityDate;
 }

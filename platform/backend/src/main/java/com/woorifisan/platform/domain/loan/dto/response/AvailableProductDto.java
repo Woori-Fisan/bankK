@@ -6,13 +6,18 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.math.BigDecimal;
 
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class LoanRequiredDocumentsResponse {
+public class AvailableProductDto {
 
-    private List<TermsDocumentDto> documents;
+    private String loanProductCode;
+    private String loanProductName;
+    private BigDecimal minAmount;
+    private BigDecimal maxAmount;
+    private BigDecimal interestRate;
+    private int loanPeriodMonths;
 }

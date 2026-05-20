@@ -2,14 +2,14 @@ package com.woorifisan.platform.domain.loan.dto.request;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.math.BigDecimal;
 
 @Getter
 @Builder
@@ -17,26 +17,21 @@ import java.util.List;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class LoanExecuteRequest {
 
-    @NotBlank(message = "은행 코드는 필수입니다.")
-    private String bankCode;
-
     @NotBlank(message = "심사 ID는 필수입니다.")
     private String evaluationId;
 
-    @NotBlank(message = "상품 코드는 필수입니다.")
-    private String productCode;
+    /** JWE 암호화된 입금 계좌번호 (Zero-Knowledge: 플랫폼 복호화 금지) */
+    @NotBlank(message = "입금 계좌번호 암호문은 필수입니다.")
+    private String depositAccountNo;
 
-    @Min(value = 1, message = "대출 기간은 1개월 이상이어야 합니다.")
-    private int period;
+    /** JWE 암호화된 계좌 비밀번호 (Zero-Knowledge: 플랫폼 복호화 금지) */
+    @NotBlank(message = "계좌 비밀번호 암호문은 필수입니다.")
+    private String accountPassword;
 
-    /** 프론트에서 생성한 1회용 AES 키를 은행 RSA 공개키로 암호화한 값 (Zero-Knowledge: 플랫폼 복호화 금지) */
-    @NotBlank(message = "암호화된 AES 키는 필수입니다.")
-    private String encryptedKey;
+    @NotNull(message = "실행 금액은 필수입니다.")
+    @Min(value = 1, message = "실행 금액은 0보다 커야 합니다.")
+    private BigDecimal executeAmount;
 
-    /** AES로 암호화된 계좌 비밀번호 (Zero-Knowledge: 플랫폼 복호화 금지) */
-    @NotBlank(message = "암호화된 계좌 비밀번호는 필수입니다.")
-    private String encryptedAccountPassword;
-
-    @NotEmpty(message = "약관 동의 목록은 필수입니다.")
-    private List<String> agreedTermsList;
+    @Min(value = 1, message = "상환 기간은 1개월 이상이어야 합니다.")
+    private int repaymentPeriod;
 }

@@ -1,29 +1,25 @@
 package com.woorifisan.platform.domain.loan.service;
 
-import com.woorifisan.platform.global.util.MaskingUtil;
-import com.woorifisan.platform.domain.loan.dto.request.LoanContractDocumentsRequest;
+import com.woorifisan.platform.domain.loan.dto.response.AvailableProductDto;
 import com.woorifisan.platform.domain.loan.dto.response.LoanContractDocumentsResponse;
 import com.woorifisan.platform.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluateResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluationResultResponse;
 import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
 import com.woorifisan.platform.domain.loan.dto.response.LoanExecuteResponse;
-import com.woorifisan.platform.domain.loan.dto.response.LoanProductDto;
-import com.woorifisan.platform.domain.loan.dto.request.LoanProductSelectRequest;
-import com.woorifisan.platform.domain.loan.dto.response.LoanProductSelectResponse;
-import com.woorifisan.platform.domain.loan.dto.request.LoanRequiredDocumentsRequest;
 import com.woorifisan.platform.domain.loan.dto.response.LoanRequiredDocumentsResponse;
 import com.woorifisan.platform.domain.loan.dto.response.TermsDocumentDto;
+import com.woorifisan.platform.global.exception.BusinessException;
+import com.woorifisan.platform.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -33,87 +29,74 @@ import java.util.concurrent.TimeUnit;
 public class LoanService {
 
     private static final String LOAN_GUID_PREFIX = "LN-";
-    private static final String REDIS_EVAL_GUID_KEY_FORMAT = "loan:eval:%s:guid";
-    private static final long EVAL_GUID_TTL_HOURS = 24L;
+    private static final String REDIS_EVAL_GUID_KEY = "loan:eval:%s:guid";
+    private static final String REDIS_APP_GUID_KEY = "loan:app:%s:guid";
+    private static final String REDIS_APP_EVAL_KEY = "loan:app:%s:evalId";
+    private static final long GUID_TTL_HOURS = 24L;
 
     private final StringRedisTemplate redisTemplate;
 
     /**
      * Step 1 — 심사 서류 조회 (BK-B11)
      */
-    public LoanRequiredDocumentsResponse getRequiredDocuments(
-            LoanRequiredDocumentsRequest request, Long staffId) {
-
+    public LoanRequiredDocumentsResponse getRequiredDocuments(Long staffId) {
         String guid = generateGuid();
-        LocalDateTime requestAt = LocalDateTime.now();
-        log.info("[{}] 심사 서류 조회 요청 - staffId: {}, bankCode: {}, requestAt: {}",
-                guid, staffId, request.getBankCode(), requestAt);
-
+        log.info("[{}] 심사 서류 조회 요청 - staffId: {}", guid, staffId);
         LoanRequiredDocumentsResponse response = buildMockRequiredDocuments();
-
-        log.info("[{}] 심사 서류 조회 완료 - responseAt: {}", guid, LocalDateTime.now());
+        log.info("[{}] 심사 서류 조회 완료", guid);
         return response;
     }
 
     /**
      * Step 2 — 서류 제출 및 심사 요청 (BK-B12~B19)
-     * 최초 GUID를 생성하여 Redis에 저장 → 이후 Polling 시 재사용
+     * applicationId를 생성하고 Redis에 evaluationId와 GUID를 저장한다.
      */
     public LoanEvaluateResponse evaluateLoan(LoanEvaluateRequest request, Long staffId) {
+        boolean allMandatoryAgreed = request.getDocuments().stream()
+                .allMatch(d -> d.getDocumentType() != null && !d.getDocumentType().isBlank()
+                        && d.getAgreedAt() != null && !d.getAgreedAt().isBlank());
+        if (!allMandatoryAgreed) {
+            throw new BusinessException(ErrorCode.LOAN_TERMS_NOT_AGREED);
+        }
+
         String guid = generateGuid();
-        LocalDateTime requestAt = LocalDateTime.now();
-        log.info("[{}] 대출 심사 요청 - staffId: {}, bankCode: {}, holder: {}, requestAt: {}",
-                guid, staffId, request.getBankCode(),
-                MaskingUtil.maskName(request.getDepositAccountHolder()), requestAt);
-
-        // Mock: 은행 코어로 Pass-through 후 evaluationId 수신
+        String applicationId = generateApplicationId();
         String evaluationId = generateEvaluationId();
+        LocalDateTime receivedAt = LocalDateTime.now();
 
-        // 동일 evaluationId Polling 시 GUID 재사용을 위해 Redis에 저장
-        storeGuidForEvaluation(evaluationId, guid);
+        log.info("[{}] 대출 심사 요청 - staffId: {}, customerName: {}, applicationId: {}",
+                guid, staffId, maskName(request.getCustomerName()), applicationId);
 
-        log.info("[{}] 대출 심사 요청 접수 완료 - evaluationId: {}, responseAt: {}",
-                guid, evaluationId, LocalDateTime.now());
+        // applicationId → guid 저장 (Step 3 로깅용)
+        redisTemplate.opsForValue().set(
+                String.format(REDIS_APP_GUID_KEY, applicationId), guid, GUID_TTL_HOURS, TimeUnit.HOURS);
+        // applicationId → evaluationId 저장 (Step 3에서 evaluationId 반환용)
+        redisTemplate.opsForValue().set(
+                String.format(REDIS_APP_EVAL_KEY, applicationId), evaluationId, GUID_TTL_HOURS, TimeUnit.HOURS);
+        // evaluationId → guid 저장 (Step 5, 6 로깅용)
+        redisTemplate.opsForValue().set(
+                String.format(REDIS_EVAL_GUID_KEY, evaluationId), guid, GUID_TTL_HOURS, TimeUnit.HOURS);
+
+        log.info("[{}] 대출 심사 접수 완료 - applicationId: {}, evaluationId: {}", guid, applicationId, evaluationId);
         return LoanEvaluateResponse.builder()
-                .evaluationId(evaluationId)
-                .status("SUBMITTED")
-                .message("심사 요청이 접수되었습니다.")
+                .applicationId(applicationId)
+                .receivedAt(receivedAt.toString())
                 .build();
     }
 
     /**
      * Step 3 — 심사 결과 조회 (Polling) (BK-B19)
-     * 동일 evaluationId에 대한 GUID 중복 생성 방지 — 최초 GUID 재사용
+     * 동일 applicationId에 대한 GUID 중복 생성 방지 — 최초 GUID 재사용
      */
-    public LoanEvaluationResultResponse getEvaluationResult(
-            String evaluationId, String bankCode, Long staffId) {
+    public LoanEvaluationResultResponse getEvaluationResult(String applicationId, Long staffId) {
+        String guid = resolveGuidForApp(applicationId);
+        String evaluationId = resolveEvaluationIdForApp(applicationId);
 
-        // 최초 심사 요청 시 생성된 GUID 재사용
-        String guid = resolveGuidForEvaluation(evaluationId);
-        LocalDateTime requestAt = LocalDateTime.now();
-        log.info("[{}] 심사 결과 조회 - staffId: {}, evaluationId: {}, bankCode: {}, requestAt: {}",
-                guid, staffId, evaluationId, bankCode, requestAt);
+        log.info("[{}] 심사 결과 조회 - staffId: {}, applicationId: {}", guid, staffId, applicationId);
 
-        LoanEvaluationResultResponse response = buildMockEvaluationResult(evaluationId);
+        LoanEvaluationResultResponse response = buildMockEvaluationResult(applicationId, evaluationId);
 
-        log.info("[{}] 심사 결과 조회 완료 - status: {}, responseAt: {}",
-                guid, response.getStatus(), LocalDateTime.now());
-        return response;
-    }
-
-    /**
-     * Step 4 — 상품 선택 (BK-B18/B27)
-     */
-    public LoanProductSelectResponse selectProduct(LoanProductSelectRequest request, Long staffId) {
-        String guid = resolveGuidForEvaluation(request.getEvaluationId());
-        LocalDateTime requestAt = LocalDateTime.now();
-        log.info("[{}] 상품 선택 - staffId: {}, evaluationId: {}, productCode: {}, period: {}, requestAt: {}",
-                guid, staffId, request.getEvaluationId(), request.getProductCode(),
-                request.getPeriod(), requestAt);
-
-        LoanProductSelectResponse response = buildMockProductSelectResponse(request);
-
-        log.info("[{}] 상품 선택 완료 - responseAt: {}", guid, LocalDateTime.now());
+        log.info("[{}] 심사 결과 조회 완료 - status: {}", guid, response.getEvaluationStatus());
         return response;
     }
 
@@ -121,16 +104,15 @@ public class LoanService {
      * Step 5 — 계약 서류 조회 (BK-B20)
      */
     public LoanContractDocumentsResponse getContractDocuments(
-            LoanContractDocumentsRequest request, Long staffId) {
+            String loanProductCode, String evaluationId, Long staffId) {
 
-        String guid = resolveGuidForEvaluation(request.getEvaluationId());
-        LocalDateTime requestAt = LocalDateTime.now();
-        log.info("[{}] 계약 서류 조회 - staffId: {}, evaluationId: {}, productCode: {}, requestAt: {}",
-                guid, staffId, request.getEvaluationId(), request.getProductCode(), requestAt);
+        String guid = resolveGuidForEval(evaluationId);
+        log.info("[{}] 계약 서류 조회 - staffId: {}, evaluationId: {}, productCode: {}",
+                guid, staffId, evaluationId, loanProductCode);
 
-        LoanContractDocumentsResponse response = buildMockContractDocuments();
+        LoanContractDocumentsResponse response = buildMockContractDocuments(loanProductCode);
 
-        log.info("[{}] 계약 서류 조회 완료 - responseAt: {}", guid, LocalDateTime.now());
+        log.info("[{}] 계약 서류 조회 완료", guid);
         return response;
     }
 
@@ -138,16 +120,13 @@ public class LoanService {
      * Step 6 — 대출 실행 (BK-B21~B23)
      */
     public LoanExecuteResponse executeLoan(LoanExecuteRequest request, Long staffId) {
-        String guid = resolveGuidForEvaluation(request.getEvaluationId());
-        LocalDateTime requestAt = LocalDateTime.now();
-        log.info("[{}] 대출 실행 요청 - staffId: {}, evaluationId: {}, productCode: {}, period: {}, requestAt: {}",
-                guid, staffId, request.getEvaluationId(), request.getProductCode(),
-                request.getPeriod(), requestAt);
+        String guid = resolveGuidForEval(request.getEvaluationId());
+        log.info("[{}] 대출 실행 요청 - staffId: {}, evaluationId: {}, executeAmount: {}",
+                guid, staffId, request.getEvaluationId(), request.getExecuteAmount());
 
-        LoanExecuteResponse response = buildMockLoanExecuteResponse();
+        LoanExecuteResponse response = buildMockLoanExecuteResponse(request.getExecuteAmount());
 
-        log.info("[{}] 대출 실행 완료 - loanNo: {}, responseAt: {}",
-                guid, response.getLoanNo(), LocalDateTime.now());
+        log.info("[{}] 대출 실행 완료 - loanId: {}", guid, response.getLoanId());
         return response;
     }
 
@@ -157,157 +136,171 @@ public class LoanService {
         return LOAN_GUID_PREFIX + UUID.randomUUID().toString().toUpperCase();
     }
 
+    private String generateApplicationId() {
+        return "APP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+    }
+
     private String generateEvaluationId() {
         return "EVAL-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
     }
 
-    private void storeGuidForEvaluation(String evaluationId, String guid) {
-        String redisKey = String.format(REDIS_EVAL_GUID_KEY_FORMAT, evaluationId);
-        redisTemplate.opsForValue().set(redisKey, guid, EVAL_GUID_TTL_HOURS, TimeUnit.HOURS);
-    }
-
-    /**
-     * evaluationId에 매핑된 GUID 조회.
-     * Redis TTL 만료 등 비정상 상황에서는 신규 GUID를 생성하고 다시 저장한다.
-     */
-    private String resolveGuidForEvaluation(String evaluationId) {
-        String redisKey = String.format(REDIS_EVAL_GUID_KEY_FORMAT, evaluationId);
-        String guid = redisTemplate.opsForValue().get(redisKey);
+    private String resolveGuidForApp(String applicationId) {
+        String guid = redisTemplate.opsForValue().get(String.format(REDIS_APP_GUID_KEY, applicationId));
         if (guid == null) {
-            guid = generateGuid();
-            redisTemplate.opsForValue().set(redisKey, guid, EVAL_GUID_TTL_HOURS, TimeUnit.HOURS);
-            log.warn("evaluationId {}에 대한 GUID가 없어 신규 생성: {}", evaluationId, guid);
+            log.warn("applicationId {}에 대한 GUID 없음 — 미등록 신청", applicationId);
+            throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
         }
         return guid;
+    }
+
+    private String resolveEvaluationIdForApp(String applicationId) {
+        String evaluationId = redisTemplate.opsForValue().get(String.format(REDIS_APP_EVAL_KEY, applicationId));
+        if (evaluationId == null) {
+            log.warn("applicationId {}에 대한 evaluationId 없음 — 미등록 신청", applicationId);
+            throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
+        }
+        return evaluationId;
+    }
+
+    private String resolveGuidForEval(String evaluationId) {
+        String guid = redisTemplate.opsForValue().get(String.format(REDIS_EVAL_GUID_KEY, evaluationId));
+        if (guid == null) {
+            log.warn("evaluationId {}에 대한 GUID 없음 — 미등록 심사", evaluationId);
+            throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
+        }
+        return guid;
+    }
+
+    private String maskName(String name) {
+        if (name == null || name.length() < 2) return "**";
+        return name.charAt(0) + "*".repeat(name.length() - 1);
     }
 
     // ─── Mock 응답 빌더 (실제 mTLS 연동 시 BankLoanClient로 교체) ───────────────
 
     private LoanRequiredDocumentsResponse buildMockRequiredDocuments() {
         return LoanRequiredDocumentsResponse.builder()
-                .documentList(List.of(
+                .documents(List.of(
                         TermsDocumentDto.builder()
-                                .termsCode("T001")
-                                .title("신용정보 조회 동의서")
-                                .termsUrl("https://cdn.bank.example/terms/T001.html")
-                                .contentType("HTML")
+                                .documentType("T001")
+                                .documentName("신용정보 조회 동의서")
+                                .documentUrl("https://cdn.bank.example/terms/T001.html")
                                 .isMandatory(true)
                                 .build(),
                         TermsDocumentDto.builder()
-                                .termsCode("T002")
-                                .title("개인정보 수집·이용 동의서")
-                                .termsUrl("https://cdn.bank.example/terms/T002.html")
-                                .contentType("HTML")
+                                .documentType("T002")
+                                .documentName("개인정보 수집·이용 동의서")
+                                .documentUrl("https://cdn.bank.example/terms/T002.html")
                                 .isMandatory(true)
                                 .build(),
                         TermsDocumentDto.builder()
-                                .termsCode("T003")
-                                .title("소득확인 동의서")
-                                .termsUrl("https://cdn.bank.example/terms/T003.pdf")
-                                .contentType("PDF")
+                                .documentType("T003")
+                                .documentName("소득확인 동의서")
+                                .documentUrl("https://cdn.bank.example/terms/T003.pdf")
                                 .isMandatory(false)
                                 .build()
                 ))
                 .build();
     }
 
-    private LoanEvaluationResultResponse buildMockEvaluationResult(String evaluationId) {
+    private LoanEvaluationResultResponse buildMockEvaluationResult(String applicationId, String evaluationId) {
+        String now = LocalDateTime.now().toString();
         return LoanEvaluationResultResponse.builder()
+                .applicationId(applicationId)
+                .evaluationStatus("APPROVED")
+                .requestedAt(now)
+                .completedAt(now)
                 .evaluationId(evaluationId)
-                .status("APPROVED")
                 .approvedLimit(new BigDecimal("30000000"))
                 .interestRate(new BigDecimal("4.50"))
-                .productList(List.of(
-                        LoanProductDto.builder()
-                                .productCode("LP001")
-                                .productName("우리 직장인 신용대출")
-                                .interestRate(new BigDecimal("4.50"))
-                                .limit(new BigDecimal("30000000"))
-                                .repaymentAmountByPeriod(Map.of(
-                                        12, new BigDecimal("2562500"),
-                                        24, new BigDecimal("1299167"),
-                                        36, new BigDecimal("884028")
-                                ))
+                .availableProducts(List.of(
+                        AvailableProductDto.builder()
+                                .loanProductCode("LP004")
+                                .loanProductName("우리 프리미엄 직장인 대출")
+                                .minAmount(new BigDecimal("5000000"))
+                                .maxAmount(new BigDecimal("50000000"))
+                                .interestRate(new BigDecimal("6.50"))
+                                .loanPeriodMonths(60)
                                 .build(),
-                        LoanProductDto.builder()
-                                .productCode("LP002")
-                                .productName("우리 든든 직장인 대출")
+                        AvailableProductDto.builder()
+                                .loanProductCode("LP001")
+                                .loanProductName("우리 직장인 신용대출")
+                                .minAmount(new BigDecimal("1000000"))
+                                .maxAmount(new BigDecimal("30000000"))
+                                .interestRate(new BigDecimal("4.50"))
+                                .loanPeriodMonths(36)
+                                .build(),
+                        AvailableProductDto.builder()
+                                .loanProductCode("LP003")
+                                .loanProductName("우리 스마트론")
+                                .minAmount(new BigDecimal("1000000"))
+                                .maxAmount(new BigDecimal("15000000"))
+                                .interestRate(new BigDecimal("3.80"))
+                                .loanPeriodMonths(24)
+                                .build(),
+                        AvailableProductDto.builder()
+                                .loanProductCode("LP005")
+                                .loanProductName("우리 직장인 플러스론")
+                                .minAmount(new BigDecimal("1000000"))
+                                .maxAmount(new BigDecimal("20000000"))
+                                .interestRate(new BigDecimal("4.20"))
+                                .loanPeriodMonths(36)
+                                .build(),
+                        AvailableProductDto.builder()
+                                .loanProductCode("LP002")
+                                .loanProductName("우리 든든 직장인 대출")
+                                .minAmount(new BigDecimal("1000000"))
+                                .maxAmount(new BigDecimal("25000000"))
                                 .interestRate(new BigDecimal("5.20"))
-                                .limit(new BigDecimal("25000000"))
-                                .repaymentAmountByPeriod(Map.of(
-                                        12, new BigDecimal("2141667"),
-                                        24, new BigDecimal("1086458"),
-                                        36, new BigDecimal("739236")
-                                ))
+                                .loanPeriodMonths(48)
                                 .build()
                 ))
                 .build();
     }
 
-    private LoanProductSelectResponse buildMockProductSelectResponse(LoanProductSelectRequest request) {
-        BigDecimal loanAmount = new BigDecimal("20000000");
-        BigDecimal interestRate = new BigDecimal("4.50");
-        BigDecimal monthlyRate = interestRate.divide(BigDecimal.valueOf(1200), 10, RoundingMode.HALF_UP);
-        BigDecimal monthlyPayment;
-        if (monthlyRate.compareTo(BigDecimal.ZERO) == 0) {
-            monthlyPayment = loanAmount.divide(BigDecimal.valueOf(request.getPeriod()), 0, RoundingMode.HALF_UP);
-        } else {
-            BigDecimal pow = monthlyRate.add(BigDecimal.ONE).pow(request.getPeriod());
-            monthlyPayment = loanAmount
-                    .multiply(monthlyRate)
-                    .multiply(pow)
-                    .divide(pow.subtract(BigDecimal.ONE), 0, RoundingMode.HALF_UP);
-        }
-
-        return LoanProductSelectResponse.builder()
-                .productCode(request.getProductCode())
-                .productName("우리 직장인 신용대출")
-                .loanAmount(loanAmount)
-                .interestRate(interestRate)
-                .period(request.getPeriod())
-                .repaymentType("원리금균등")
-                .monthlyPayment(monthlyPayment)
-                .build();
-    }
-
-    private LoanContractDocumentsResponse buildMockContractDocuments() {
+    private LoanContractDocumentsResponse buildMockContractDocuments(String loanProductCode) {
+        String productName = "LP001".equals(loanProductCode) ? "우리 직장인 신용대출" : "우리 든든 직장인 대출";
         return LoanContractDocumentsResponse.builder()
-                .approvedLimit(new BigDecimal("20000000"))
-                .interestRate(new BigDecimal("4.50"))
-                .documentList(List.of(
+                .loanProductCode(loanProductCode)
+                .loanProductName(productName)
+                .approvedLimit(new BigDecimal("30000000"))
+                .documentUrl("https://cdn.bank.example/contract/")
+                .documents(List.of(
                         TermsDocumentDto.builder()
-                                .termsCode("C001")
-                                .title("대출거래약정서")
-                                .termsUrl("https://cdn.bank.example/contract/C001.pdf")
-                                .contentType("PDF")
+                                .documentType("C001")
+                                .documentName("대출거래약정서")
+                                .documentUrl("https://cdn.bank.example/contract/C001.pdf")
                                 .isMandatory(true)
                                 .build(),
                         TermsDocumentDto.builder()
-                                .termsCode("C002")
-                                .title("상품설명서")
-                                .termsUrl("https://cdn.bank.example/contract/C002.pdf")
-                                .contentType("PDF")
+                                .documentType("C002")
+                                .documentName("상품설명서")
+                                .documentUrl("https://cdn.bank.example/contract/C002.pdf")
                                 .isMandatory(true)
                                 .build(),
                         TermsDocumentDto.builder()
-                                .termsCode("C003")
-                                .title("금리인하요구권 안내서")
-                                .termsUrl("https://cdn.bank.example/contract/C003.html")
-                                .contentType("HTML")
+                                .documentType("C003")
+                                .documentName("금리인하요구권 안내서")
+                                .documentUrl("https://cdn.bank.example/contract/C003.html")
                                 .isMandatory(false)
                                 .build()
                 ))
                 .build();
     }
 
-    private LoanExecuteResponse buildMockLoanExecuteResponse() {
+    private LoanExecuteResponse buildMockLoanExecuteResponse(BigDecimal executeAmount) {
+        BigDecimal interestRate = new BigDecimal("4.50");
+        String repaymentStartDate = LocalDate.now().plusMonths(1).toString();
+        String maturityDate = LocalDate.now().plusYears(3).toString();
         return LoanExecuteResponse.builder()
-                .loanNo("LN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase())
-                .loanAmount(new BigDecimal("20000000"))
-                .applicantName("김우리")
-                .depositAccountNo(MaskingUtil.maskAccountNo("1002345678901"))
-                .interestRate(new BigDecimal("4.50"))
-                .endDate("2029-05-19")
+                .loanId("LOAN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase())
+                .borrowerName("고객")
+                .depositTransactionId("TXN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase())
+                .loanBalance(executeAmount)
+                .executeAmount(executeAmount)
+                .interestRate(interestRate)
+                .repaymentStartDate(repaymentStartDate)
+                .maturityDate(maturityDate)
                 .build();
     }
 }
