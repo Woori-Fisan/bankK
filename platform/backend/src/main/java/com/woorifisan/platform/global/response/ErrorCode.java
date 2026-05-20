@@ -34,6 +34,11 @@ public enum ErrorCode {
     BANK_API_ERROR("BANK_002", "은행 API 호출 중 오류가 발생했습니다.", HttpStatus.BAD_GATEWAY),
     BANK_PW_ERROR("BANK_003", "계좌 비밀번호가 틀렸습니다.", HttpStatus.FORBIDDEN),
 
+    //조회
+    INQUIRY_ACCOUNT_NOTFOUND("INQUIRY_001", "사용자의 정보를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
+    INQUIRY_INVALID_DATE_RANGE("INQUIRY_002", "조회 기간을 확인해주세요.", HttpStatus.BAD_REQUEST),
+
+
     // 멱등성
     DUPLICATE_REQUEST("IDEM_001", "중복 요청입니다.", HttpStatus.CONFLICT),
 
@@ -46,7 +51,14 @@ public enum ErrorCode {
     TRANSFER_WITHDRAW_ACCOUNT_STATUS_FAULT("TRANSFER_005", "출금 계좌가 정지되었습니다.", HttpStatus.BAD_REQUEST),
     TRANSFER_AMOUNT_FAULT("TRANSFER_006", "이체 금액이 유효하지 않습니다.", HttpStatus.BAD_REQUEST),
     TRANSFER_WITHDRAW_AMOUNT_FAULT("TRANSFER_007", "이체 잔액이 부족합니다.", HttpStatus.BAD_REQUEST),
-    TRANSFER_INSERT_FAULT("TRANSFER_008", "거래 기록 저장에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
+    TRANSFER_INSERT_FAULT("TRANSFER_008", "거래 기록 저장에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+    // 대출 중개
+    LOAN_BANK_ROUTING_ERROR("LOAN_001", "은행 대출 API 호출 중 오류가 발생했습니다.", HttpStatus.BAD_GATEWAY),
+    LOAN_EVALUATION_NOT_FOUND("LOAN_002", "존재하지 않는 심사 건입니다.", HttpStatus.NOT_FOUND),
+    LOAN_PRODUCT_NOT_FOUND("LOAN_003", "존재하지 않는 대출 상품입니다.", HttpStatus.NOT_FOUND),
+    LOAN_ALREADY_EXECUTED("LOAN_004", "이미 실행된 대출 건입니다.", HttpStatus.CONFLICT),
+    LOAN_EVALUATION_REJECTED("LOAN_005", "대출 심사가 거절되었습니다.", HttpStatus.UNPROCESSABLE_ENTITY),
+    LOAN_TERMS_NOT_AGREED("LOAN_006", "필수 약관에 동의하지 않았습니다.", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;
