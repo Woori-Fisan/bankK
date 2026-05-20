@@ -6,6 +6,7 @@ import {
   fetchEvaluationStatus,
   fetchContractDocuments,
   executeLoan,
+  fetchBankList,
   type EvaluationRequest,
   type ExecutionRequest,
 } from '../api/loanApi';
@@ -54,4 +55,11 @@ export const useContractDocuments = (
 export const useExecuteLoan = () =>
   useMutation({
     mutationFn: (payload: ExecutionRequest) => executeLoan(payload),
+  });
+
+export const useBankList = () =>
+  useQuery({
+    queryKey: ['banks'],
+    queryFn: fetchBankList,
+    staleTime: Infinity,
   });

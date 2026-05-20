@@ -131,3 +131,13 @@ export const executeLoan = async (payload: ExecutionRequest): Promise<ExecutionR
   );
   return data.data!;
 };
+
+export interface BankOption {
+  bankCode: string;
+  bankName: string;
+}
+
+export const fetchBankList = async (): Promise<BankOption[]> => {
+  const { data } = await axiosInstance.get<ApiResponse<BankOption[]>>('/banks');
+  return data.data!;
+};

@@ -40,6 +40,7 @@ public class SecurityConfig {
             "/api/v1/bank/inquiry/**",
             "/api/v1/bank/transfer/**",
             "/api/v1/loan/**",
+            "/api/v1/banks",
     };
 
     @Bean

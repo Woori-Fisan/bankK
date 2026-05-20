@@ -4,15 +4,9 @@ import {
     FileType, CheckCircle2, Globe, Loader2,
 } from 'lucide-react';
 import type { LoanData } from '../../pages/LoanApplication';
-import { useReviewDocuments, useSubmitLoanEvaluation, extractApiError } from '../../hooks/useLoan';
+import { useReviewDocuments, useSubmitLoanEvaluation, useBankList, extractApiError } from '../../hooks/useLoan';
 import type { ReviewDocument } from '../../api/loanApi';
 import { isValidAccountNumber } from '../../utils/validator';
-
-const BANK_CODE_MAP: Record<string, string> = {
-    우리: '020',
-    신한: '088',
-    국민: '004',
-};
 
 interface AgreedDoc extends ReviewDocument {
     agreed: boolean;
@@ -42,6 +36,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
     const [activeDoc, setActiveDoc] = useState<AgreedDoc | null>(null);
 
     const { data: docsData, isLoading: isDocsLoading } = useReviewDocuments();
+    const { data: bankList, isLoading: isBankListLoading } = useBankList();
     const submitMutation = useSubmitLoanEvaluation();
 
     React.useEffect(() => {
@@ -95,7 +90,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
         } else if (!/^\d{6}-?\d{7}$/.test(formData.rrn.trim())) {
             errors.rrn = '올바른 주민등록번호 형식을 입력해주세요. (예: 900101-1234567)';
         }
-        if (!formData.bank) errors.bank = '은행을 선택해주세요.';
+        if (!formData.bankCode) errors.bank = '은행을 선택해주세요.';
         if (!formData.accountNo?.trim()) {
             errors.accountNo = '계좌번호를 입력해주세요.';
         } else if (!isValidAccountNumber(formData.accountNo)) {
@@ -113,7 +108,6 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
         if (!validate()) return;
 
         setFieldErrors({});
-        const bankCode = BANK_CODE_MAP[formData.bank!] ?? formData.bank!;
         const rrnRaw = formData.rrn!.replace(/-/g, '');
         const rrnPrefix = rrnRaw.slice(0, 7);
 
@@ -133,12 +127,12 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                 customerName: formData.userName!,
                 customerRrnPrefix: rrnPrefix,
                 customerPhone: formData.phone ?? '',
-                depositBankCode: bankCode,
+                depositBankCode: formData.bankCode!,
                 depositAccountNo: formData.accountNo!,
                 documents,
             });
 
-            onNext({ ...formData, bankCode }, result.applicationId);
+            onNext(formData, result.applicationId);
         } catch (err) {
             setFieldErrors({ submit: extractApiError(err) });
         }
@@ -237,19 +231,25 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                 <select
                                     id="bank"
                                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none"
-                                    value={formData.bank}
-                                    onChange={(e) =>
+                                    value={formData.bankCode}
+                                    disabled={isBankListLoading}
+                                    onChange={(e) => {
+                                        const selected = bankList?.find(b => b.bankCode === e.target.value);
                                         setFormData({
                                             ...formData,
-                                            bank: e.target.value,
-                                            bankCode: BANK_CODE_MAP[e.target.value] ?? e.target.value,
-                                        })
-                                    }
+                                            bank: selected?.bankName ?? '',
+                                            bankCode: e.target.value,
+                                        });
+                                    }}
                                 >
-                                    <option value="">은행을 선택하세요</option>
-                                    <option value="우리">우리은행</option>
-                                    <option value="신한">신한은행</option>
-                                    <option value="국민">KB국민은행</option>
+                                    <option value="">
+                                        {isBankListLoading ? '불러오는 중...' : '은행을 선택하세요'}
+                                    </option>
+                                    {bankList?.map((b) => (
+                                        <option key={b.bankCode} value={b.bankCode}>
+                                            {b.bankName}
+                                        </option>
+                                    ))}
                                 </select>
                                 {fieldErrors.bank && (
                                     <p className="mt-1 text-xs text-red-500">{fieldErrors.bank}</p>

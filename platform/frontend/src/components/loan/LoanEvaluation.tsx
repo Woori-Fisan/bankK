@@ -34,13 +34,14 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
     useEffect(() => {
         if (!data) return;
         if (data.evaluationStatus === 'APPROVED') {
+            const minRate = Math.min(...(data.availableProducts ?? []).map(x => x.interestRate));
             const products: LoanProduct[] = (data.availableProducts ?? []).map((p, i) => ({
                 id: i + 1,
                 loanProductCode: p.loanProductCode,
                 name: p.loanProductName,
                 rate: p.interestRate,
                 limit: p.maxAmount,
-                tags: i === 0 ? ['최저금리'] : [],
+                tags: p.interestRate === minRate ? ['최저금리'] : [],
                 period: p.loanPeriodMonths,
             }));
             onApproved({
@@ -196,13 +197,14 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
                 <button
                     type="button"
                     onClick={() => {
+                        const minRate = Math.min(...(data.availableProducts ?? []).map(x => x.interestRate));
                         const products: LoanProduct[] = (data.availableProducts ?? []).map((p, i) => ({
                             id: i + 1,
                             loanProductCode: p.loanProductCode,
                             name: p.loanProductName,
                             rate: p.interestRate,
                             limit: p.maxAmount,
-                            tags: i === 0 ? ['최저금리'] : [],
+                            tags: p.interestRate === minRate ? ['최저금리'] : [],
                             period: p.loanPeriodMonths,
                         }));
                         onApproved({
