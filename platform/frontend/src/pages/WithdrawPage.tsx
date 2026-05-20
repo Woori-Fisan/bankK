@@ -53,12 +53,12 @@ const WithdrawPage: React.FC = () => {
                 withdrawalAccountNo: withdrawData.sourceAccount.accountNumber,
                 withdrawalPassword: pin, // 실제 운영환경에서는 암호화된 값 전송
                 customerRrnPrefix: withdrawData.birthDate,
-                amount: parseInt(withdrawData.amount, 10)
+                amount: Number(withdrawData.amount)
             });
 
             if (response.success && response.data) {
                 const balanceBefore = withdrawData.sourceAccount.balance || 0;
-                const balanceAfter = parseInt(response.data.balanceAfter, 10);
+                const balanceAfter = Number(response.data.balanceAfter);
 
                 setWithdrawResult({
                     balanceBefore,
