@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Loader2, CheckCircle2, XCircle, Info, ChevronRight } from 'lucide-react';
 import type { LoanData, EvaluationResult, LoanProduct } from '../../pages/LoanApplication';
-import { useEvaluationStatus, extractApiError } from '../../hooks/useLoan';
+import { useEvaluationSSE, extractApiError } from '../../hooks/useLoan';
 import { formatAmount } from '../../utils/formatter';
 
 interface LoanEvaluationProps {
@@ -11,25 +11,12 @@ interface LoanEvaluationProps {
     onRejected: (reason: string) => void;
 }
 
-const POLLING_INTERVAL_SEC = 5;
-
 const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
     applicationId,
     onApproved,
     onRejected,
 }) => {
-    const { data, error, dataUpdatedAt } = useEvaluationStatus(applicationId);
-
-    const [countdown, setCountdown] = React.useState(POLLING_INTERVAL_SEC);
-
-    useEffect(() => {
-        if (!data || data.evaluationStatus !== 'PENDING') return;
-        setCountdown(POLLING_INTERVAL_SEC);
-        const timer = setInterval(() => {
-            setCountdown((prev) => (prev <= 1 ? POLLING_INTERVAL_SEC : prev - 1));
-        }, 1000);
-        return () => clearInterval(timer);
-    }, [data, dataUpdatedAt]);
+    const { data, error } = useEvaluationSSE(applicationId);
 
     useEffect(() => {
         if (!data) return;
@@ -47,7 +34,6 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
             onApproved({
                 status: 'APPROVED',
                 limit: data.approvedLimit ?? undefined,
-                rate: data.interestRate ?? undefined,
                 evaluationId: data.evaluationId ?? undefined,
                 products,
             });
@@ -63,7 +49,7 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
                     <XCircle className="w-8 h-8 text-red-500" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 mb-2">심사 상태 조회 중 오류가 발생했습니다</h2>
-                <p className="text-sm text-red-500 mb-8">{extractApiError(error)}</p>
+                <p className="text-sm text-red-500 mb-8">{error instanceof Error ? error.message : extractApiError(error)}</p>
                 <button
                     type="button"
                     onClick={() => onRejected('심사 상태 조회 실패')}
@@ -95,7 +81,7 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse delay-75" />
                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse delay-150" />
                 </div>
-                <p className="text-[11px] text-gray-400 font-medium">{countdown}초마다 자동 갱신 중...</p>
+                <p className="text-[11px] text-gray-400 font-medium">심사 결과를 기다리는 중...</p>
             </div>
         );
     }
@@ -150,9 +136,13 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">적용 금리</p>
-                        <p className="text-lg font-bold text-gray-900">{data.interestRate ?? '-'}%</p>
-                        <p className="text-[10px] text-gray-500">고정 / 연</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">최저 금리</p>
+                        <p className="text-lg font-bold text-gray-900">
+                            {data.availableProducts && data.availableProducts.length > 0
+                                ? `${Math.min(...data.availableProducts.map(p => p.interestRate))}%`
+                                : '-'}
+                        </p>
+                        <p className="text-[10px] text-gray-500">상품별 상이 / 연</p>
                     </div>
                     <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
                         <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">심사 완료</p>
@@ -210,7 +200,6 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
                         onApproved({
                             status: 'APPROVED',
                             limit: data.approvedLimit ?? undefined,
-                            rate: data.interestRate ?? undefined,
                             evaluationId: data.evaluationId ?? undefined,
                             products,
                         });

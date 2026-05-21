@@ -39,6 +39,7 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({
         try {
             await executeMutation.mutateAsync({
                 evaluationId,
+                loanProductCode: product.loanProductCode,
                 depositAccountNo: loanData.accountNo!,
                 accountPassword: pin,
                 executeAmount: product.executeAmount ?? product.limit,
@@ -92,7 +93,7 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({
                         <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                             <span className="text-[11px] text-gray-400 font-bold uppercase">입금 계좌</span>
                             <span className="text-xs font-bold text-gray-900">
-                                {loanData.bank}은행 {loanData.accountNo}
+                                {loanData.bank} {loanData.accountNo}
                             </span>
                         </div>
                         <div className="flex justify-between items-center">

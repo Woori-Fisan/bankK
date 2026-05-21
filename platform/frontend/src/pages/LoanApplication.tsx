@@ -24,7 +24,6 @@ export interface EvaluationResult {
     status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FAILED';
     reason?: string;
     limit?: number;
-    rate?: number;
     evaluationId?: string;
     products?: LoanProduct[];
 }
