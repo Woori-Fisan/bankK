@@ -3,6 +3,7 @@ package com.woorifisan.platform.domain.auth.service;
 import com.woorifisan.platform.domain.auth.dto.request.LoginRequest;
 import com.woorifisan.platform.domain.auth.dto.response.LoginResponse;
 import com.woorifisan.platform.domain.auth.dto.request.TokenRefreshRequest;
+import com.woorifisan.platform.domain.auth.dto.response.PublicAuthKeyResponse;
 import com.woorifisan.platform.domain.auth.dto.response.TokenRefreshResponse;
 import com.woorifisan.platform.domain.auth.mapper.AuthMapper;
 import com.woorifisan.platform.domain.auth.model.PlatformUser;
@@ -11,9 +12,12 @@ import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import com.woorifisan.platform.global.util.CryptoUtil;
 
 import java.util.concurrent.TimeUnit;
 
@@ -24,44 +28,79 @@ public class AuthService {
 
     private static final int MAX_FAILED_LOGIN_COUNT = 5;
 
+    @Value("${PLATFORM_SECURITY_PUBLIC_KEY}")
+    private String platformPublicKey;
+
+    @Value("${PLATFORM_SECURITY_PRIVATE_KEY}")
+    private String platformPrivateKey;
+
+    @Value("${TERMINAL_SECURITY_PUBLIC_KEY}")
+    private String terminalPublicKey;
+
     private final AuthMapper authMapper;
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
     private final RedisTemplate<String, String> redisTemplate;
 
-    // 로그인
-    public LoginResponse login(LoginRequest request) {
+    // 공개키 반환
+    public PublicAuthKeyResponse getPublicKey() {
+        // PEM 형식의 이스케이프된 줄바꿈 문자를 실제 줄바꿈으로 복원하여 반환
+        String formattedKey = platformPublicKey.replace("\\n", "\n");
+        return PublicAuthKeyResponse.builder()
+                .publicKey(formattedKey)
+                .build();
+    }
 
-        // 1. 사용자 조회
+    // 로그인
+    public LoginResponse login(LoginRequest request, String jwsSignature) {
+
+        // 1. 단말기 JWS 서명 검증
+        String formattedTerminalPublicKey = terminalPublicKey.replace("\\n", "\n");
+        if (!CryptoUtil.verifyJws(jwsSignature, formattedTerminalPublicKey)) {
+            log.warn("JWS 서명 검증 실패 - 로그인 요청 차단 (Employee: {})", request.getEmployeeId());
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        // 2. JWE 비밀번호 복호화
+        String decryptedPassword;
+        try {
+            String formattedPlatformPrivateKey = platformPrivateKey.replace("\\n", "\n");
+            decryptedPassword = CryptoUtil.decryptJwe(request.getPassword(), formattedPlatformPrivateKey);
+        } catch (Exception e) {
+            log.error("JWE 비밀번호 복호화 실패 - 로그인 요청 차단 (Employee: {})", request.getEmployeeId(), e);
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        // 3. 사용자 조회
         PlatformUser user = authMapper.findByLoginId(request.getEmployeeId());
         if (user == null) {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        // 2. 계정 삭제 여부 확인
+        // 4. 계정 삭제 여부 확인
         if (user.isDeleted()) {
             throw new BusinessException(ErrorCode.ACCOUNT_DELETED);
         }
 
-        // 3. 계정 잠금 여부 확인
+        // 5. 계정 잠금 여부 확인
         if (user.isLocked()) {
             throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
         }
 
-        // 4. 비밀번호 검증
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        // 6. 비밀번호 검증 (복호화된 평문 비밀번호 사용)
+        if (!passwordEncoder.matches(decryptedPassword, user.getPasswordHash())) {
             handleLoginFailure(user);
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        // 5. 로그인 성공 — 실패 횟수 초기화
+        // 7. 로그인 성공 — 실패 횟수 초기화
         authMapper.resetFailedLoginCount(user.getId());
 
-        // 6. 토큰 발급
+        // 8. 토큰 발급
         String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtProvider.generateRefreshToken(user.getId(), user.getRole());
 
-        // 7. Redis에 staffId → refreshToken 저장 (8시간 TTL)
+        // 9. Redis에 staffId → refreshToken 저장 (8시간 TTL)
         redisTemplate.opsForValue().set(
                 getRedisKey(user.getId()),
                 refreshToken,
