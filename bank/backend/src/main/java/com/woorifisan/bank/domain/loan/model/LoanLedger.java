@@ -22,7 +22,7 @@ public class LoanLedger {
     private String loanNo;                  // 대출 계약 번호
     private Long customerId;                // 고객 ID (FK)
     private Long productId;                 // 대출 상품 ID (FK)
-    private Long linked_accountId;          // 대출금 입금 계좌 ID (FK)
+    private Long linkedAccountId;          // 대출금 입금 계좌 ID (FK)
 
     // 심사 요청 정보
     private BigDecimal requestedAmount;     // 신청 금액
