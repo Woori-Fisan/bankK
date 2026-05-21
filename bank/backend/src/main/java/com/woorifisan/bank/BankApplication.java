@@ -9,7 +9,7 @@ public class BankApplication {
 
 	public static void main(String[] args) {
 		Dotenv dotenv = Dotenv.configure()
-				.directory("./bank/backend")
+				.directory("./")
 				.ignoreIfMissing()
 				.load();
 
