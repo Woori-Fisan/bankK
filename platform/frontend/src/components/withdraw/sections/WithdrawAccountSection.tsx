@@ -5,6 +5,8 @@ interface WithdrawAccountSectionProps {
     accountNumber: string;
     onBankChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onAccountChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onBankBlur?: () => void;
+    onAccountBlur?: () => void;
 }
 
 const WithdrawAccountSection: React.FC<WithdrawAccountSectionProps> = ({
@@ -12,6 +14,8 @@ const WithdrawAccountSection: React.FC<WithdrawAccountSectionProps> = ({
     accountNumber,
     onBankChange,
     onAccountChange,
+    onBankBlur,
+    onAccountBlur,
 }) => {
     return (
         <section className="space-y-4">
@@ -23,6 +27,7 @@ const WithdrawAccountSection: React.FC<WithdrawAccountSectionProps> = ({
                         type="text"
                         value={bankName}
                         onChange={onBankChange}
+                        onBlur={onBankBlur}
                         className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 transition-shadow"
                         placeholder="출금 은행명을 입력하세요"
                     />
@@ -33,6 +38,7 @@ const WithdrawAccountSection: React.FC<WithdrawAccountSectionProps> = ({
                         type="text"
                         value={accountNumber}
                         onChange={onAccountChange}
+                        onBlur={onAccountBlur}
                         className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 transition-shadow"
                         placeholder="출금 계좌번호를 입력하세요"
                     />

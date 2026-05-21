@@ -1,9 +1,10 @@
 package com.woorifisan.platform.bank.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.woorifisan.platform.bank.dto.BalanceInquiryRequest;
-import com.woorifisan.platform.bank.dto.BalanceInquiryResponse;
-import com.woorifisan.platform.bank.service.AccountInquiryService;
+import com.woorifisan.platform.domain.bank.controller.AccountInquiryController;
+import com.woorifisan.platform.domain.bank.dto.request.BalanceInquiryRequest;
+import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
+import com.woorifisan.platform.domain.bank.service.AccountInquiryService;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import com.woorifisan.platform.global.exception.GlobalExceptionHandler;

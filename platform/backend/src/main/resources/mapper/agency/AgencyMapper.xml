@@ -2,17 +2,17 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.woorifisan.platform.agency.mapper.AgencyMapper">
+<mapper namespace="com.woorifisan.platform.domain.agency.mapper.AgencyMapper">
 
-    <select id="findById" resultType="com.woorifisan.platform.agency.model.Agency">
+    <select id="findById" resultType="com.woorifisan.platform.domain.agency.model.Agency">
         SELECT * FROM agency WHERE id = #{id}
     </select>
 
-    <select id="findByAgencyCode" resultType="com.woorifisan.platform.agency.model.Agency">
+    <select id="findByAgencyCode" resultType="com.woorifisan.platform.domain.agency.model.Agency">
         SELECT * FROM agency WHERE agency_code = #{agencyCode}
     </select>
 
-    <select id="findAll" resultType="com.woorifisan.platform.agency.model.Agency">
+    <select id="findAll" resultType="com.woorifisan.platform.domain.agency.model.Agency">
         SELECT * FROM agency
     </select>
 

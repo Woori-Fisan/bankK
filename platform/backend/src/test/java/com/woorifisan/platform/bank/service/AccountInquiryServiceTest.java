@@ -1,7 +1,8 @@
 package com.woorifisan.platform.bank.service;
 
-import com.woorifisan.platform.bank.dto.HistoryInquiryRequest;
-import com.woorifisan.platform.bank.dto.HistoryInquiryResponse;
+import com.woorifisan.platform.domain.bank.dto.request.HistoryInquiryRequest;
+import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
+import com.woorifisan.platform.domain.bank.service.AccountInquiryService;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import org.junit.jupiter.api.DisplayName;

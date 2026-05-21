@@ -40,9 +40,13 @@ const WithdrawConfirmSection: React.FC<WithdrawConfirmSectionProps> = ({
                 </div>
 
                 <div className="group">
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">본인 확인 (생년월일)</h4>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">본인 확인 (생년월일-성별)</h4>
                     <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm group-hover:border-emerald-200 transition-colors">
-                        <p className="text-xl font-bold text-gray-900 tracking-[0.5em]">{birthDate}</p>
+                        <p className="text-xl font-bold text-gray-900 tracking-[0.5em]">
+                            {birthDate.length === 7 
+                                ? `${birthDate.slice(0, 6)}-${birthDate.slice(6)}` 
+                                : birthDate}
+                        </p>
                     </div>
                 </div>
             </div>
