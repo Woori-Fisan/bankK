@@ -29,6 +29,7 @@ public class SecurityConfig {
     // 인증 없이 접근 가능한 경로
     private static final String[] PUBLIC_URLS = {
             "/api/v1/auth/login",
+            "/api/v1/auth/public-key",
             "/api/v1/auth/refresh",
             "/actuator/health",
             "/actuator/prometheus",

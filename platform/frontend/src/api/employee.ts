@@ -1,6 +1,6 @@
 import type { RegisterEmployeeRequest, EmployeePagination, DeleteEmployeeResponse, ResetPasswordResponse, Employee } from '../types/employee';
 import type { ApiResponse } from '../types/common';
-import { encryptPassword, fetchPlatformPublicKey } from '../utils/authCrypto';
+import { encryptPassword } from '../utils/authCrypto';
 
 const BASE_URL = 'https://your-platform-api-domain/api/v1'; // 실제 API 연동 시 사용할 Base URL
 
@@ -46,8 +46,8 @@ export const fetchEmployees = async (page: number, size: number, agencyId?: numb
 export const registerEmployee = async (employeeData: RegisterEmployeeRequest): Promise<ApiResponse<null>> => {
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    const publicKey = await fetchPlatformPublicKey();
-    const encryptedPassword = await encryptPassword(employeeData.password, publicKey);
+    // 수정됨: encryptPassword 내부에서 자동으로 서버 공개키를 조회하여 암호화합니다.
+    const encryptedPassword = await encryptPassword(employeeData.password);
 
     if (!encryptedPassword) {
         throw new Error('비밀번호 암호화에 실패했습니다.');
