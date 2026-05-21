@@ -117,13 +117,11 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                 .filter((d) => d.agreed)
                 .map((d) => ({
                     documentType: d.documentType,
-                    signedContent: btoa(
-                        JSON.stringify({ documentType: d.documentType, documentUrl: d.documentUrl, agreedAt }),
-                    ),
                     agreedAt,
                 }));
 
             const result = await submitMutation.mutateAsync({
+                bankCode: formData.bankCode!,
                 customerName: formData.userName!,
                 customerRrnPrefix: rrnPrefix,
                 customerPhone: formData.phone ?? '',

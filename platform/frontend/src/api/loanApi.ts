@@ -14,11 +14,11 @@ export interface ReviewDocumentsResponse {
 
 export interface LoanDocument {
   documentType: string;
-  signedContent: string;
   agreedAt: string;
 }
 
 export interface EvaluationRequest {
+  bankCode: string;
   customerName: string;
   customerRrnPrefix: string;
   customerPhone: string;
@@ -48,7 +48,6 @@ export interface EvaluationStatusResponse {
   completedAt: string | null;
   evaluationId: string | null;
   approvedLimit: number | null;
-  interestRate: number | null;
   rejectionCode: string | null;
   rejectionMessage: string | null;
   availableProducts: AvailableProduct[] | null;
@@ -65,12 +64,12 @@ export interface ContractDocumentsResponse {
   loanProductCode: string;
   loanProductName: string;
   approvedLimit: number;
-  documentUrl: string;
   documents: ContractDocument[];
 }
 
 export interface ExecutionRequest {
   evaluationId: string;
+  loanProductCode: string;
   depositAccountNo: string;
   accountPassword: string;
   executeAmount: number;
@@ -84,6 +83,8 @@ export interface ExecutionResponse {
   loanBalance: number;
   executeAmount: number;
   interestRate: number;
+  repaymentPeriod: number;
+  monthlyPayment: number;
   repaymentStartDate: string;
   maturityDate: string;
 }
@@ -101,15 +102,6 @@ export const submitLoanEvaluation = async (
   const { data } = await axiosInstance.post<ApiResponse<EvaluationResponse>>(
     '/loan/evaluation',
     payload,
-  );
-  return data.data!;
-};
-
-export const fetchEvaluationStatus = async (
-  applicationId: string,
-): Promise<EvaluationStatusResponse> => {
-  const { data } = await axiosInstance.get<ApiResponse<EvaluationStatusResponse>>(
-    `/loan/evaluation/${applicationId}/status`,
   );
   return data.data!;
 };

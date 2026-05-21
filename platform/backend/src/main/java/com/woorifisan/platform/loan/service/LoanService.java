@@ -1,5 +1,6 @@
 package com.woorifisan.platform.loan.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woorifisan.platform.loan.dto.AvailableProductDto;
 import com.woorifisan.platform.loan.dto.LoanContractDocumentsResponse;
 import com.woorifisan.platform.loan.dto.LoanEvaluateRequest;
@@ -15,12 +16,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -33,8 +36,10 @@ public class LoanService {
     private static final String REDIS_APP_GUID_KEY = "loan:app:%s:guid";
     private static final String REDIS_APP_EVAL_KEY = "loan:app:%s:evalId";
     private static final long GUID_TTL_HOURS = 24L;
+    private static final long SSE_MOCK_DELAY_MS = 3_000L;
 
     private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
     /**
      * Step 1 — 심사 서류 조회 (BK-B11)
@@ -52,20 +57,13 @@ public class LoanService {
      * applicationId를 생성하고 Redis에 evaluationId와 GUID를 저장한다.
      */
     public LoanEvaluateResponse evaluateLoan(LoanEvaluateRequest request, Long staffId) {
-        boolean allMandatoryAgreed = request.getDocuments().stream()
-                .allMatch(d -> d.getDocumentType() != null && !d.getDocumentType().isBlank()
-                        && d.getAgreedAt() != null && !d.getAgreedAt().isBlank());
-        if (!allMandatoryAgreed) {
-            throw new BusinessException(ErrorCode.LOAN_TERMS_NOT_AGREED);
-        }
-
         String guid = generateGuid();
         String applicationId = generateApplicationId();
         String evaluationId = generateEvaluationId();
         LocalDateTime receivedAt = LocalDateTime.now();
 
-        log.info("[{}] 대출 심사 요청 - staffId: {}, customerName: {}, applicationId: {}",
-                guid, staffId, maskName(request.getCustomerName()), applicationId);
+        log.info("[{}] 대출 심사 요청 - staffId: {}, bankCode: {}, customerName: {}, applicationId: {}",
+                guid, staffId, request.getBankCode(), maskName(request.getCustomerName()), applicationId);
 
         // applicationId → guid 저장 (Step 3 로깅용)
         redisTemplate.opsForValue().set(
@@ -85,19 +83,47 @@ public class LoanService {
     }
 
     /**
-     * Step 3 — 심사 결과 조회 (Polling) (BK-B19)
-     * 동일 applicationId에 대한 GUID 중복 생성 방지 — 최초 GUID 재사용
+     * Step 3 — 심사 결과 스트리밍 (SSE) (BK-B19)
+     * 연결 즉시 PENDING 이벤트를 전송하고, SSE_MOCK_DELAY_MS 후 최종 결과를 push한다.
      */
-    public LoanEvaluationResultResponse getEvaluationResult(String applicationId, Long staffId) {
+    public SseEmitter streamEvaluationResult(String applicationId, Long staffId) {
         String guid = resolveGuidForApp(applicationId);
         String evaluationId = resolveEvaluationIdForApp(applicationId);
 
-        log.info("[{}] 심사 결과 조회 - staffId: {}, applicationId: {}", guid, staffId, applicationId);
+        log.info("[{}] SSE 심사 결과 스트림 시작 - staffId: {}, applicationId: {}", guid, staffId, applicationId);
 
-        LoanEvaluationResultResponse response = buildMockEvaluationResult(applicationId, evaluationId);
+        SseEmitter emitter = new SseEmitter(30_000L);
 
-        log.info("[{}] 심사 결과 조회 완료 - status: {}", guid, response.getEvaluationStatus());
-        return response;
+        CompletableFuture.runAsync(() -> {
+            try {
+                LoanEvaluationResultResponse pending = LoanEvaluationResultResponse.builder()
+                        .applicationId(applicationId)
+                        .evaluationStatus("PENDING")
+                        .requestedAt(LocalDateTime.now().toString())
+                        .build();
+                emitter.send(SseEmitter.event()
+                        .name("status")
+                        .data(objectMapper.writeValueAsString(pending)));
+
+                Thread.sleep(SSE_MOCK_DELAY_MS);
+
+                LoanEvaluationResultResponse result = buildMockEvaluationResult(applicationId, evaluationId);
+                emitter.send(SseEmitter.event()
+                        .name("status")
+                        .data(objectMapper.writeValueAsString(result)));
+
+                log.info("[{}] SSE 심사 결과 전송 완료 - status: {}", guid, result.getEvaluationStatus());
+                emitter.complete();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                emitter.completeWithError(e);
+            } catch (Exception e) {
+                log.error("[{}] SSE 전송 오류", guid, e);
+                emitter.completeWithError(e);
+            }
+        });
+
+        return emitter;
     }
 
     /**
@@ -124,7 +150,7 @@ public class LoanService {
         log.info("[{}] 대출 실행 요청 - staffId: {}, evaluationId: {}, executeAmount: {}",
                 guid, staffId, request.getEvaluationId(), request.getExecuteAmount());
 
-        LoanExecuteResponse response = buildMockLoanExecuteResponse(request.getExecuteAmount());
+        LoanExecuteResponse response = buildMockLoanExecuteResponse(request.getExecuteAmount(), request.getRepaymentPeriod());
 
         log.info("[{}] 대출 실행 완료 - loanId: {}", guid, response.getLoanId());
         return response;
@@ -212,7 +238,6 @@ public class LoanService {
                 .completedAt(now)
                 .evaluationId(evaluationId)
                 .approvedLimit(new BigDecimal("30000000"))
-                .interestRate(new BigDecimal("4.50"))
                 .availableProducts(List.of(
                         AvailableProductDto.builder()
                                 .loanProductCode("LP004")
@@ -264,7 +289,6 @@ public class LoanService {
                 .loanProductCode(loanProductCode)
                 .loanProductName(productName)
                 .approvedLimit(new BigDecimal("30000000"))
-                .documentUrl("https://cdn.bank.example/contract/")
                 .documents(List.of(
                         TermsDocumentDto.builder()
                                 .documentType("C001")
@@ -288,10 +312,11 @@ public class LoanService {
                 .build();
     }
 
-    private LoanExecuteResponse buildMockLoanExecuteResponse(BigDecimal executeAmount) {
+    private LoanExecuteResponse buildMockLoanExecuteResponse(BigDecimal executeAmount, int repaymentPeriod) {
         BigDecimal interestRate = new BigDecimal("4.50");
+        BigDecimal monthlyPayment = calculateMonthlyPayment(executeAmount, interestRate, repaymentPeriod);
         String repaymentStartDate = LocalDate.now().plusMonths(1).toString();
-        String maturityDate = LocalDate.now().plusYears(3).toString();
+        String maturityDate = LocalDate.now().plusMonths(repaymentPeriod).toString();
         return LoanExecuteResponse.builder()
                 .loanId("LOAN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase())
                 .borrowerName("고객")
@@ -299,8 +324,20 @@ public class LoanService {
                 .loanBalance(executeAmount)
                 .executeAmount(executeAmount)
                 .interestRate(interestRate)
+                .repaymentPeriod(repaymentPeriod)
+                .monthlyPayment(monthlyPayment)
                 .repaymentStartDate(repaymentStartDate)
                 .maturityDate(maturityDate)
                 .build();
+    }
+
+    /** 원리금균등 월 상환금 계산: M = P * r(1+r)^n / ((1+r)^n - 1) */
+    private BigDecimal calculateMonthlyPayment(BigDecimal principal, BigDecimal annualRate, int months) {
+        if (months <= 0) return principal;
+        double p = principal.doubleValue();
+        double r = annualRate.doubleValue() / 100.0 / 12.0;
+        double pow = Math.pow(1 + r, months);
+        double monthly = p * r * pow / (pow - 1);
+        return BigDecimal.valueOf(Math.round(monthly));
     }
 }
