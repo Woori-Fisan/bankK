@@ -3,6 +3,7 @@ package com.woorifisan.platform.domain.auth.controller;
 import com.woorifisan.platform.domain.auth.dto.request.LoginRequest;
 import com.woorifisan.platform.domain.auth.dto.response.LoginResponse;
 import com.woorifisan.platform.domain.auth.dto.request.TokenRefreshRequest;
+import com.woorifisan.platform.domain.auth.dto.response.PublicAuthKeyResponse;
 import com.woorifisan.platform.domain.auth.dto.response.TokenRefreshResponse;
 import com.woorifisan.platform.domain.auth.service.AuthService;
 import com.woorifisan.platform.global.config.resolver.CurrentUser;
@@ -13,8 +14,10 @@ import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,14 +28,23 @@ public class AuthController {
 
     private final AuthService authService;
 
+    // 플랫폼 암호화용 공개키 제공
+    // GET /api/v1/auth/public-key
+    @GetMapping("/public-key")
+    public ResponseEntity<ApiResponse<PublicAuthKeyResponse>> getPublicKey() {
+        PublicAuthKeyResponse response = authService.getPublicKey();
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     // 로그인
     // POST /api/v1/auth/login
     @PostMapping("/login")
     @CustomExceptionDescription(SwaggerResponseDescription.AUTH_LOGIN)
     public ResponseEntity<ApiResponse<LoginResponse>> login(
-            @Valid @RequestBody LoginRequest request
+            @Valid @RequestBody LoginRequest request,
+            @RequestHeader(value = "x-jws-signature", required = true) String jwsSignature
     ) {
-        LoginResponse response = authService.login(request);
+        LoginResponse response = authService.login(request, jwsSignature);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
