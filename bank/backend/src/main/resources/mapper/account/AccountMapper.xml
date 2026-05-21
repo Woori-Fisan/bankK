@@ -4,4 +4,13 @@
     <select id="findById" resultType="Account">
         SELECT * FROM account WHERE id = #{id}
     </select>
+
+    <select id="findByAccountNoHashAndRrnPrefix" resultType="Account">
+        SELECT
+            a.*
+        FROM account a
+        INNER JOIN customer c ON a.customer_id = c.id
+        WHERE a.account_no_hash = #{accountNoHash}
+          AND c.rrn_prefix_enc = #{rrnPrefixEnc}
+    </select>
 </mapper>

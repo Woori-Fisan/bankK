@@ -27,6 +27,7 @@ public class SecurityConfig {
             "/swagger-ui.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",
+            "/api/v1/baas/account/**",
             // 테스트 용 임시 통과 URL -> 플랫폼 개발 완료 시 삭제
     };
 

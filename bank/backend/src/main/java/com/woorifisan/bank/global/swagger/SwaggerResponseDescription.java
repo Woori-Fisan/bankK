@@ -15,6 +15,12 @@ public enum SwaggerResponseDescription {
     USER_MANAGEMENT(List.of(
             ErrorCode.USER_NOT_FOUND,
             ErrorCode.INVALID_INPUT
+    )),
+
+    ACCOUNT_INQUIRY(List.of(
+            ErrorCode.ACCOUNT_NOT_FOUND,
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.INTERNAL_SERVER_ERROR
     ));
 
     private final List<ErrorCode> errorCodes;

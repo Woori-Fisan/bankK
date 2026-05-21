@@ -20,6 +20,9 @@ public enum ErrorCode {
     // 사용자
     USER_NOT_FOUND("USER_001", "존재하지 않는 사용자입니다.", HttpStatus.NOT_FOUND),
 
+    // 계좌
+    ACCOUNT_NOT_FOUND("ACC_001", "계좌를 찾을 수 없거나 고객 정보가 일치하지 않습니다.", HttpStatus.NOT_FOUND),
+
     // 은행
     BANK_NOT_FOUND("BANK_001", "존재하지 않는 은행입니다.", HttpStatus.NOT_FOUND),
     BANK_PW_ERROR("BANK_002", "계좌 비밀번호가 틀렸습니다.", HttpStatus.FORBIDDEN),
