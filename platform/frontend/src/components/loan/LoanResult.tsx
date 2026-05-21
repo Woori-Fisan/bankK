@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle2, Printer } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { LoanData, LoanProduct, EvaluationResult } from '../../pages/LoanApplication';
 
 interface LoanResultProps {
@@ -10,6 +11,7 @@ interface LoanResultProps {
 }
 
 const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, onReset }) => {
+    const navigate = useNavigate();
     const maturityDate = new Date();
     maturityDate.setMonth(maturityDate.getMonth() + (product?.period || 0));
     const maturityDateString = maturityDate.toISOString().split('T')[0];
@@ -46,7 +48,7 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, onReset }) =
                     </div>
                     <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-3">
                         <span className="text-gray-400 font-medium">입금 계좌</span>
-                        <span className="text-gray-900 font-bold">{loanData.bank}은행 {loanData.accountNo?.slice(0, 3)}-***-***{loanData.accountNo?.slice(-3)}</span>
+                        <span className="text-gray-900 font-bold">{loanData.bank} {loanData.accountNo?.slice(0, 3)}-***-***{loanData.accountNo?.slice(-3)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-3">
                         <span className="text-gray-400 font-medium">금리</span>
@@ -67,11 +69,11 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, onReset }) =
                         <Printer className="w-4 h-4" />
                         영수증 출력
                     </button>
-                    <button 
-                        onClick={onReset}
+                    <button
+                        onClick={() => { onReset(); navigate('/main'); }}
                         className="flex-1 py-3.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
                     >
-                        목록으로 돌아가기
+                        메인 페이지로 돌아가기
                     </button>
                 </div>
             </div>
