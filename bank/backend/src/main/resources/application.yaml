@@ -19,6 +19,12 @@ spring:
     job:
       enabled: false
 
+  # Flyway
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
 # MyBatis 설정
 mybatis:
   # 1. 실제 SQL이 적힌 XML 파일들이 위치할 경로
@@ -38,5 +44,13 @@ logging:
   level:
     # 우리 패키지 하위에서 실행되는 MyBatis 쿼리와 파라미터를 Debug 모드로 출력
     com.woorifisan.bank: debug
+
+# Swagger
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
 
 
