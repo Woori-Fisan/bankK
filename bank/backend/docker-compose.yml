@@ -21,5 +21,20 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Redis ────────────────────────────────────────
+  redis:
+    image: redis:7.2
+    container_name: bank-redis
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - bank-redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   bank-mysql-data:
+  bank-redis-data:
