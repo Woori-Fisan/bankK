@@ -360,13 +360,25 @@ public class LoanService {
                 .build();
     }
 
-    /** 원리금균등 월 상환금 계산: M = P * r(1+r)^n / ((1+r)^n - 1) */
+    /**
+     * 원리금균등 월 상환금 계산: M = P * r(1+r)^n / ((1+r)^n - 1)
+     * double 대신 BigDecimal 사용 — 금융 계산에서 부동소수점 오차를 방지한다.
+     * 무이자(annualRate=0)이면 원금을 개월 수로 나눈 값을 반환한다.
+     */
     private BigDecimal calculateMonthlyPayment(BigDecimal principal, BigDecimal annualRate, int months) {
         if (months <= 0) return principal;
-        double p = principal.doubleValue();
-        double r = annualRate.doubleValue() / 100.0 / 12.0;
-        double pow = Math.pow(1 + r, months);
-        double monthly = p * r * pow / (pow - 1);
-        return BigDecimal.valueOf(Math.round(monthly));
+
+        if (annualRate.compareTo(BigDecimal.ZERO) == 0) {
+            return principal.divide(BigDecimal.valueOf(months), 0, java.math.RoundingMode.HALF_UP);
+        }
+
+        BigDecimal monthlyRate = annualRate.divide(BigDecimal.valueOf(1200), 10, java.math.RoundingMode.HALF_UP);
+        BigDecimal onePlusR = BigDecimal.ONE.add(monthlyRate);
+        BigDecimal pow = onePlusR.pow(months);
+
+        BigDecimal numerator = principal.multiply(monthlyRate).multiply(pow);
+        BigDecimal denominator = pow.subtract(BigDecimal.ONE);
+
+        return numerator.divide(denominator, 0, java.math.RoundingMode.HALF_UP);
     }
 }
