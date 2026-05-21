@@ -1,4 +1,5 @@
 import axios from 'axios';
+import axiosInstance from './axiosInstance';
 
 interface LoginResponse {
     success: boolean;
@@ -30,12 +31,15 @@ export const login = async (
             },
         });
 
-        if (response.data.accessToken && response.data.refreshToken) {
-            localStorage.setItem('accessToken', response.data.accessToken);
-            localStorage.setItem('refreshToken', response.data.refreshToken);
-            return { success: true, message: '로그인 성공', ...response.data };
+        // 백엔드 ApiResponse 구조를 고려하여 data 추출 (response.data.data 안에 실제 DTO 존재)
+        const responseData = response.data?.data || response.data;
+
+        if (responseData && responseData.accessToken && responseData.refreshToken) {
+            localStorage.setItem('accessToken', responseData.accessToken);
+            localStorage.setItem('refreshToken', responseData.refreshToken);
+            return { success: true, message: '로그인 성공', ...responseData };
         } else {
-            return { success: false, message: '로그인 실패: 토큰이 없습니다.' };
+            return { success: false, message: '로그인 실패: 응답에 토큰이 없습니다.' };
         }
     } catch (error: any) {
         console.error('Login API Error:', error);
@@ -50,6 +54,16 @@ export const login = async (
             }
         }
         return { success: false, message: errorMessage };
+    }
+};
+
+export const logoutApi = async (): Promise<boolean> => {
+    try {
+        await axiosInstance.post('/auth/logout');
+        return true;
+    } catch (error) {
+        console.error('Logout API Error:', error);
+        return false;
     }
 };
 

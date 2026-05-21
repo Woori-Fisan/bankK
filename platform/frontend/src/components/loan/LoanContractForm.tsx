@@ -188,7 +188,7 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                                 <div className="space-y-1">
                                     <p className="text-[10px] text-gray-400 font-bold uppercase">승인 한도</p>
                                     <p className="text-xs font-bold text-gray-900">
-                                        ₩ {formatAmount(data?.approvedLimit ?? product.limit)}
+                                        ₩ {formatAmount(product.limit)}
                                     </p>
                                 </div>
                                 <div className="space-y-1">
@@ -203,7 +203,7 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                             <div className="pt-4 border-t border-gray-100">
                                 <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">입금 계좌</p>
                                 <p className="text-xs font-bold text-gray-900">
-                                    {loanData.bank}은행 {loanData.accountNo}
+                                    {loanData.bank} {loanData.accountNo}
                                 </p>
                             </div>
                         </div>
