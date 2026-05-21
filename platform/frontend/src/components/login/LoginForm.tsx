@@ -59,10 +59,10 @@ const LoginForm: React.FC = () => {
     return (
         <form className="w-full space-y-6" onSubmit={handleSubmit}>
             <LoginInput
-                label="사번"
+                label="ID"
                 icon={UserRound}
                 type="text"
-                placeholder="사원번호를 입력하세요"
+                placeholder="ID를 입력하세요"
                 value={employeeId}
                 onChange={(e) => setEmployeeId(e.target.value)}
                 disabled={isSubmitting}

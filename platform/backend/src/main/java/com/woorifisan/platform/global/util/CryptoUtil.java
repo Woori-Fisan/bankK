@@ -32,16 +32,21 @@ public class CryptoUtil {
     }
 
     /**
-     * JWS 서명 검증
+     * JWS 서명 검증 및 페이로드 반환
+     * @return 검증 성공 시 페이로드 문자열 반환, 실패 시 null 반환
      */
-    public static boolean verifyJws(String jwsString, String publicKeyPem) {
+    public static String verifyJwsAndGetPayload(String jwsString, String publicKeyPem) {
         try {
             RSAPublicKey publicKey = parsePublicKey(publicKeyPem);
             JWSObject jwsObject = JWSObject.parse(jwsString);
-            return jwsObject.verify(new RSASSAVerifier(publicKey));
+            
+            if (jwsObject.verify(new RSASSAVerifier(publicKey))) {
+                return jwsObject.getPayload().toString();
+            }
+            return null;
         } catch (Exception e) {
             log.error("JWS 서명 검증 에러", e);
-            return false;
+            return null;
         }
     }
 

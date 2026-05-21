@@ -1,5 +1,7 @@
 package com.woorifisan.platform.domain.auth.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woorifisan.platform.domain.auth.dto.request.LoginRequest;
 import com.woorifisan.platform.domain.auth.dto.response.LoginResponse;
 import com.woorifisan.platform.domain.auth.dto.request.TokenRefreshRequest;
@@ -54,10 +56,40 @@ public class AuthService {
     // 로그인
     public LoginResponse login(LoginRequest request, String jwsSignature) {
 
-        // 1. 단말기 JWS 서명 검증
+        // 1. 단말기 JWS 서명 검증 및 페이로드 추출
         String formattedTerminalPublicKey = terminalPublicKey.replace("\\n", "\n");
-        if (!CryptoUtil.verifyJws(jwsSignature, formattedTerminalPublicKey)) {
+        String payloadJson = CryptoUtil.verifyJwsAndGetPayload(jwsSignature, formattedTerminalPublicKey);
+        
+        if (payloadJson == null) {
             log.warn("JWS 서명 검증 실패 - 로그인 요청 차단 (Employee: {})", request.getEmployeeId());
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        // 1-1. JWS 페이로드 무결성 및 Replay Attack 방지 (Timestamp 검증)
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode payloadNode = objectMapper.readTree(payloadJson);
+            
+            String payloadEmployeeId = payloadNode.path("employeeId").asText();
+            String payloadPassword = payloadNode.path("password").asText(); // 이 값은 암호화된 비밀번호
+            long timestamp = payloadNode.path("timestamp").asLong();
+
+            // A. 데이터 위변조 확인 (요청 데이터와 서명된 데이터가 일치하는지)
+            if (!request.getEmployeeId().equals(payloadEmployeeId) || !request.getPassword().equals(payloadPassword)) {
+                log.warn("JWS 페이로드 데이터 불일치 (위변조 의심) - Employee: {}", request.getEmployeeId());
+                throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            }
+
+            // B. Replay Attack 방지 (Timestamp가 현재 시간 기준 5분 이내인지 검증)
+            long currentTime = System.currentTimeMillis();
+            long allowedTimeWindow = 5 * 60 * 1000; // 5분 허용
+            if (currentTime - timestamp > allowedTimeWindow || timestamp > currentTime + 60000) { // 미래 시간은 1분 허용
+                log.warn("JWS Timestamp 만료 (Replay Attack 의심) - Employee: {}", request.getEmployeeId());
+                throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            }
+
+        } catch (Exception e) {
+            log.error("JWS 페이로드 검증 중 오류 발생", e);
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
