@@ -1,12 +1,11 @@
-package com.woorifisan.bank.auth.model;
+package com.woorifisan.bank.domain.key.model;
 
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 /**
  * RSA 키 원장 도메인 모델

@@ -1,4 +1,4 @@
-package com.woorifisan.bank.domain.customer.model;
+package com.woorifisan.bank.domain.account.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

@@ -1,0 +1,24 @@
+spring:
+  # 1. 실제 MySQL 대신 H2 인메모리 DB 사용
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;MODE=MySQL;NON_KEYWORDS=value
+    username: sa
+    password:
+
+  # 2. Flyway 끄기 — H2에 마이그레이션 파일 맞추기 어려움
+  flyway:
+    enabled: false
+
+  # 3. Spring Batch 스키마 초기화 끄기 — 테스트에서 불필요
+  batch:
+    jdbc:
+      initialize-schema: never
+    job:
+      enabled: false
+
+  # 테스트 시작 시 자동으로 DDL 실행
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/test-schema.sql
