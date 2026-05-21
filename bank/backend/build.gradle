@@ -53,26 +53,42 @@ ext {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-actuator'
-	implementation 'org.springframework.boot:spring-boot-starter-batch'
-	implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
-	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot'
-	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.5'
-	compileOnly 'org.projectlombok:lombok'
-	runtimeOnly 'com.mysql:mysql-connector-j'
-	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.5'
-	testImplementation 'org.springframework.batch:spring-batch-test'
-	testImplementation 'org.springframework.security:spring-security-test'
-	testCompileOnly 'org.projectlombok:lombok'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	testAnnotationProcessor 'org.projectlombok:lombok'
+	// Spring Boot Starters
+	implementation 'org.springframework.boot:spring-boot-starter-actuator' // 애플리케이션 모니터링 및 상태 확인
+	implementation 'org.springframework.boot:spring-boot-starter-batch'    // 대량 데이터 처리 및 배치 작업
+	implementation 'org.springframework.boot:spring-boot-starter-data-jdbc' // JDBC 기반 DB 접근
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis' // Redis 캐시 및 세션 관리
+	implementation 'org.springframework.boot:spring-boot-starter-security'   // 인증 및 인가 (보안)
+	implementation 'org.springframework.boot:spring-boot-starter-web'        // 웹 MVC 및 RESTful API 개발
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5' // Swagger UI 및 API 문서 자동화
 
-	implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+	// Monitoring & Observability
+	implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot' // DB 쿼리 실행 메트릭 수집
+
+	// Persistence Frameworks
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.5' // SQL 매퍼 MyBatis 연동
+
+	// Utilities
+	compileOnly 'org.projectlombok:lombok'              // 보일러플레이트 코드 자동 생성
+	annotationProcessor 'org.projectlombok:lombok'
+	implementation 'io.github.cdimascio:dotenv-java:3.0.0' // .env 파일 기반 환경변수 관리
+
+	// Database Driver
+	runtimeOnly 'com.mysql:mysql-connector-j'           // MySQL DB 드라이버
+
+    // Flyway
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
+
+	// Testing
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'         // 스프링 부트 통합 테스트
+	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.5' // MyBatis 단위 테스트
+	testImplementation 'org.springframework.batch:spring-batch-test'               // 배치 작업 테스트
+	testImplementation 'org.springframework.security:spring-security-test'         // 보안 기능 테스트
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'com.h2database:h2'
 }
 
 dependencyManagement {
