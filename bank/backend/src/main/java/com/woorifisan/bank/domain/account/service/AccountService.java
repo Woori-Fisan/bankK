@@ -6,7 +6,6 @@ import com.woorifisan.bank.domain.account.mapper.AccountMapper;
 import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

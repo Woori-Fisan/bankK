@@ -21,6 +21,16 @@ public enum SwaggerResponseDescription {
             ErrorCode.ACCOUNT_NOT_FOUND,
             ErrorCode.INVALID_INPUT,
             ErrorCode.INTERNAL_SERVER_ERROR
+    )),
+
+    ACCOUNT_WITHDRAWAL(List.of(
+            ErrorCode.ACCOUNT_NOT_FOUND,
+            ErrorCode.INSUFFICIENT_BALANCE,
+            ErrorCode.INVALID_ACCOUNT_TYPE,
+            ErrorCode.ACCOUNT_NOT_NORMAL,
+            ErrorCode.CONCURRENT_MODIFICATION,
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.INTERNAL_SERVER_ERROR
     ));
 
     private final List<ErrorCode> errorCodes;

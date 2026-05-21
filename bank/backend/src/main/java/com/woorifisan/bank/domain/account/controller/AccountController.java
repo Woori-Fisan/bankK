@@ -8,6 +8,7 @@ import com.woorifisan.bank.global.swagger.CustomExceptionDescription;
 import com.woorifisan.bank.global.swagger.SwaggerResponseDescription;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,7 +26,7 @@ public class AccountController {
     @Operation(summary = "잔액 조회", description = "계좌번호와 주민번호 앞자리를 이용해 잔액을 조회합니다.")
     @CustomExceptionDescription(SwaggerResponseDescription.ACCOUNT_INQUIRY)
     @PostMapping("/balance")
-    public ApiResponse<BalanceInquiryResponse> getBalance(@RequestBody BalanceInquiryRequest request) {
+    public ApiResponse<BalanceInquiryResponse> getBalance(@Valid @RequestBody BalanceInquiryRequest request) {
         return ApiResponse.success(accountService.getBalance(request));
     }
 }

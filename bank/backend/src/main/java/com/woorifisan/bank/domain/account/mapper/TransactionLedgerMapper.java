@@ -7,4 +7,6 @@ import org.apache.ibatis.annotations.Mapper;
 @Mapper
 public interface TransactionLedgerMapper {
     Optional<TransactionLedger> findByTxId(String txId);
+
+    void insert(TransactionLedger transactionLedger);
 }

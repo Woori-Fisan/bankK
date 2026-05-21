@@ -1,6 +1,7 @@
 package com.woorifisan.bank.domain.account.mapper;
 
 import com.woorifisan.bank.domain.account.model.Account;
+import java.math.BigDecimal;
 import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -15,5 +16,15 @@ public interface AccountMapper {
     Optional<Account> findByAccountNoHashAndRrnPrefix(
             @Param("accountNoHash") String accountNoHash,
             @Param("rrnPrefixEnc") String rrnPrefixEnc
+    );
+
+    /**
+     * 낙관적 락을 적용한 잔액 차감
+     * @return 수정된 행 수 (0이면 버전 불일치)
+     */
+    int subtractBalance(
+            @Param("id") Long id,
+            @Param("amount") BigDecimal amount,
+            @Param("version") Integer version
     );
 }

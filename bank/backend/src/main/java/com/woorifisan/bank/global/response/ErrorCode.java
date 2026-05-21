@@ -22,6 +22,10 @@ public enum ErrorCode {
 
     // 계좌
     ACCOUNT_NOT_FOUND("ACC_001", "계좌를 찾을 수 없거나 고객 정보가 일치하지 않습니다.", HttpStatus.NOT_FOUND),
+    INSUFFICIENT_BALANCE("ACC_002", "잔액이 부족합니다.", HttpStatus.BAD_REQUEST),
+    INVALID_ACCOUNT_TYPE("ACC_003", "출금이 불가능한 계좌 유형입니다.", HttpStatus.BAD_REQUEST),
+    ACCOUNT_NOT_NORMAL("ACC_004", "정상 상태의 계좌가 아닙니다.", HttpStatus.BAD_REQUEST),
+    CONCURRENT_MODIFICATION("ACC_005", "동시 수정이 발생했습니다. 다시 시도해주세요.", HttpStatus.CONFLICT),
 
     // 은행
     BANK_NOT_FOUND("BANK_001", "존재하지 않는 은행입니다.", HttpStatus.NOT_FOUND),
