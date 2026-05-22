@@ -6,7 +6,6 @@ import com.woorifisan.platform.domain.bank.external.client.BankExternalClient;
 import com.woorifisan.platform.domain.bank.external.dto.BankWithdrawalRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class WithdrawalService {
 
     private final BankExternalClient bankExternalClient;
-    private final PasswordEncoder passwordEncoder;
 
     /**
      * 출금 실행
@@ -29,15 +27,12 @@ public class WithdrawalService {
         log.info("출금 실행 요청 - 은행: {}, 계좌: {}, 금액: {}",
                 request.getWithdrawalBankCode(), request.getWithdrawalAccountNo(), request.getAmount());
 
-        // 계좌 비밀번호를 BCrypt로 암호화
-        String encodedPassword = passwordEncoder.encode(request.getWithdrawalPassword());
-
-        // 1. 외부 은행 전용 요청 DTO로 변환
+        // 1. 외부 은행 전용 요청 DTO로 변환 (비밀번호는 평문으로 전달)
         BankWithdrawalRequest bankRequest = BankWithdrawalRequest.of(
                 request.getEncryptedKey(),
                 request.getJwsSignature(),
                 request.getWithdrawalAccountNo(),
-                encodedPassword,
+                request.getWithdrawalPassword(),
                 request.getCustomerRrnPrefix(),
                 request.getAmount()
         );

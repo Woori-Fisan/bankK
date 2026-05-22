@@ -38,7 +38,7 @@ class WithdrawalServiceTest {
         WithdrawalRequest request = WithdrawalRequest.builder()
                 .withdrawalAccountNo("acc-hash-100")
                 .customerRrnPrefix("rrn-100")
-                .withdrawalPassword("1234") // 이미 해싱된 값이 들어온다고 가정
+                .withdrawalPassword("123456")
                 .amount(withdrawAmount)
                 .build();
 
@@ -61,7 +61,7 @@ class WithdrawalServiceTest {
         WithdrawalRequest request = WithdrawalRequest.builder()
                 .withdrawalAccountNo("acc-hash-100")
                 .customerRrnPrefix("rrn-100")
-                .withdrawalPassword("wrong-hash-string")
+                .withdrawalPassword("5678")
                 .amount(new BigDecimal("1000.00"))
                 .build();
 
@@ -78,7 +78,7 @@ class WithdrawalServiceTest {
         WithdrawalRequest request = WithdrawalRequest.builder()
                 .withdrawalAccountNo("acc-hash-101")
                 .customerRrnPrefix("rrn-101")
-                .withdrawalPassword("1234")
+                .withdrawalPassword("123456")
                 .amount(new BigDecimal("5000.00")) // 잔액은 1000
                 .build();
 
@@ -95,7 +95,7 @@ class WithdrawalServiceTest {
         WithdrawalRequest request = WithdrawalRequest.builder()
                 .withdrawalAccountNo("acc-hash-102")
                 .customerRrnPrefix("rrn-102")
-                .withdrawalPassword("1234")
+                .withdrawalPassword("123456")
                 .amount(new BigDecimal("1000.00"))
                 .build();
 
@@ -112,7 +112,7 @@ class WithdrawalServiceTest {
         WithdrawalRequest request = WithdrawalRequest.builder()
                 .withdrawalAccountNo("acc-hash-103")
                 .customerRrnPrefix("rrn-103")
-                .withdrawalPassword("1234")
+                .withdrawalPassword("123456")
                 .amount(new BigDecimal("1000.00"))
                 .build();
 
