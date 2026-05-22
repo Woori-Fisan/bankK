@@ -11,7 +11,7 @@
     </select>
 
     <select id="findActiveByCustomerId" resultType="LoanLedger">
-        SELECT * FROM loan_ledger WHERE customer_id = #{customerId} AND status = 'ACTIVE'
+        SELECT * FROM loan_ledger WHERE customer_id = #{customerId} AND status IN ('ACTIVE', 'APPROVED')
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">

@@ -7,5 +7,5 @@ import org.apache.ibatis.annotations.Mapper;
 @Mapper
 public interface CustomerMapper {
     Optional<Customer> findById(Long id);
-    Optional<Customer> findByCiHash(String ciHash);
+    Optional<Customer> findByCi(String ci);
 }

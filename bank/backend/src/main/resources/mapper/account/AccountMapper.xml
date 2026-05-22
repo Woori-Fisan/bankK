@@ -10,7 +10,7 @@
     </select>
 
     <select id="findByAccountNoPlain" resultType="Account">
-        SELECT * FROM account WHERE account_no_enc = #{accountNo}
+        SELECT * FROM account WHERE account_no = #{accountNo}
     </select>
 
     <update id="updateBalance">

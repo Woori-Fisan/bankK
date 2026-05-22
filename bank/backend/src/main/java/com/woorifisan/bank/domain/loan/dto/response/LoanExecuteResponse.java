@@ -10,6 +10,7 @@ import lombok.Getter;
 public class LoanExecuteResponse {
 
     private String loanNo;
+    private String customerName;
     private BigDecimal loanAmount;
     private BigDecimal interestRate;
     private String repaymentType;
