@@ -1,4 +1,4 @@
-package com.woorifisan.platform.domain.user.model;
+package com.woorifisan.platform.domain.agency.model;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;

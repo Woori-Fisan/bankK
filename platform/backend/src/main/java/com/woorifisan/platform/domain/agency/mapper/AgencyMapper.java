@@ -19,4 +19,5 @@ public interface AgencyMapper {
     // 전체 대행기관 목록 조회
     List<Agency> findAll();
 
+    boolean existsById(@Param("id") Long id);
 }
