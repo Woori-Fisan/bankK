@@ -9,6 +9,7 @@ interface EmployeeState {
     selectedEmployee: Employee | null;
     isLoading: boolean;
     error: string | null;
+    refreshKey: number;
     filters: {
         page: number;
         size: number;
@@ -23,6 +24,7 @@ interface EmployeeActions {
     setError: (error: string | null) => void;
     setPage: (page: number) => void;
     setFilterAgencyId: (agencyId?: number) => void;
+    triggerRefresh: () => void; // 신호 숫자를 증가시키는 함수
     resetState: () => void;
 }
 
@@ -34,6 +36,7 @@ const initialState: EmployeeState = {
     selectedEmployee: null,
     isLoading: false,
     error: null,
+    refreshKey: 0,
     filters: {
         page: 0,
         size: 20,
@@ -53,5 +56,7 @@ export const useEmployeeStore = create<EmployeeState & EmployeeActions>((set) =>
     setError: (error) => set({ error: error }),
     setPage: (page) => set((state) => ({ filters: { ...state.filters, page } })),
     setFilterAgencyId: (agencyId) => set((state) => ({ filters: { ...state.filters, agencyId } })),
+    // useEffect 실행 트리거
+    triggerRefresh: () => set((state) => ({ refreshKey: state.refreshKey + 1 })),
     resetState: () => set(initialState),
 }));

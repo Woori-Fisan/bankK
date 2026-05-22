@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useEmployeeStore } from '../../../store/useEmployeeStore';
 import { User, ShieldCheck, Lock, Unlock } from 'lucide-react';
-import DeleteEmployeeConfirmationModal from '../actions/DeleteEmployeeConfirmationModal';
-import ResetPasswordConfirmationModal from '../actions/ResetPasswordConfirmationModal';
+import Modal from '../../common/Modal';
+import DeleteEmployeeForm from '../actions/DeleteEmployeeForm';
+import ResetPasswordForm from '../actions/ResetPasswordForm';
 
 const EmployeeDetailPanel: React.FC = () => {
-    const { selectedEmployee, setPage, setSelectedEmployee } = useEmployeeStore();
+    const { selectedEmployee } = useEmployeeStore();
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [resetPasswordResult, setResetPasswordResult] = useState<string | null>(null);
@@ -26,8 +27,8 @@ const EmployeeDetailPanel: React.FC = () => {
                     <User className="w-8 h-8" />
                 </div>
                 <div className="text-center">
-                    <div className="text-xl font-bold text-gray-900">{selectedEmployee.employeeId}</div>
-                    <div className="text-sm text-gray-500">EMP-{selectedEmployee.employeeId.slice(-4)}</div>
+                    <div className="text-xl font-bold text-gray-900">{selectedEmployee.loginId}</div>
+                    <div className="text-sm text-gray-500">사번: {selectedEmployee.employeeNum}</div>
                 </div>
             </div>
 
@@ -82,46 +83,55 @@ const EmployeeDetailPanel: React.FC = () => {
 
             {selectedEmployee && (
                 <>
-                    <DeleteEmployeeConfirmationModal
+                    <Modal
                         isOpen={isDeleteModalOpen}
                         onClose={() => setIsDeleteModalOpen(false)}
-                        employeeId={selectedEmployee.employeeId}
-                        onSuccess={() => {
-                            setIsDeleteModalOpen(false);
-                        }}
-                    />
-                    <ResetPasswordConfirmationModal
+                        title="직원 삭제 확인"
+                        maxWidth="sm"
+                    >
+                        <DeleteEmployeeForm
+                            loginId={selectedEmployee.loginId}
+                            onSuccess={() => setIsDeleteModalOpen(false)}
+                            onCancel={() => setIsDeleteModalOpen(false)}
+                        />
+                    </Modal>
+
+                    <Modal
                         isOpen={isResetModalOpen}
                         onClose={() => setIsResetModalOpen(false)}
-                        employeeId={selectedEmployee.employeeId}
-                        onSuccess={(tempPassword) => {
-                            setResetPasswordResult(tempPassword);
-                            setShowResetSuccess(true);
-                            setIsResetModalOpen(false);
-                        }}
-                    />
+                        title="비밀번호 초기화 확인"
+                        maxWidth="sm"
+                    >
+                        <ResetPasswordForm
+                            loginId={selectedEmployee.loginId}
+                            onSuccess={() => {
+                                setShowResetSuccess(true);
+                                setIsResetModalOpen(false);
+                            }}
+                            onCancel={() => setIsResetModalOpen(false)}
+                        />
+                    </Modal>
 
-                    {showResetSuccess && (
-                        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50">
-                            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">비밀번호 초기화 완료</h3>
-                                <p className="text-gray-700 mb-4">
-                                    직원 <span className="font-bold">{selectedEmployee.employeeId}</span>의 비밀번호가 성공적으로 초기화되었습니다.
-                                </p>
-                                <p className="text-gray-700 mb-6">
-                                    **임시 비밀번호:** <span className="font-mono bg-gray-100 p-1 rounded break-all">{resetPasswordResult}</span>
-                                </p>
-                                <div className="flex justify-end">
-                                    <button
-                                        onClick={() => setShowResetSuccess(false)}
-                                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-                                    >
-                                        확인
-                                    </button>
-                                </div>
+                    <Modal
+                        isOpen={showResetSuccess}
+                        onClose={() => setShowResetSuccess(false)}
+                        title="비밀번호 초기화 완료"
+                        maxWidth="sm"
+                    >
+                        <div className="space-y-4">
+                            <p className="text-gray-700">
+                                직원 <span className="font-bold">{selectedEmployee.loginId}</span>의 비밀번호가 성공적으로 변경되었습니다.
+                            </p>
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={() => setShowResetSuccess(false)}
+                                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                                >
+                                    확인
+                                </button>
                             </div>
                         </div>
-                    )}
+                    </Modal>
                 </>
             )}
         </div>
