@@ -1,15 +1,14 @@
 package com.woorifisan.platform.domain.bank.service;
 
 import com.woorifisan.platform.domain.bank.dto.request.BalanceInquiryRequest;
-import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.request.HistoryInquiryRequest;
+import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransactionHistoryDto;
+import com.woorifisan.platform.global.config.BankNetworkConfig;
+import com.woorifisan.platform.global.config.BankNetworkConfig.BankProperty;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -18,16 +17,24 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
 /**
  * 계좌 조회 서비스 (더미 데이터 반환)
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AccountInquiryService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private final WebClient webClient;
+    private final BankNetworkConfig bankNetworkConfig;
 
     /**
      * 잔액 조회 실행
@@ -35,16 +42,26 @@ public class AccountInquiryService {
     public BalanceInquiryResponse getBalance(BalanceInquiryRequest request) {
         log.info("잔액 조회 요청 수신 - 계좌번호: {}", request.getAccountNo());
 
+        // Todo: 더미 로직 삭제
         if ("0000".equals(request.getAccountNo())) {
             throw new BusinessException(ErrorCode.TRANSFER_DEPOSIT_ACCOUNT_FAULT);
         }
         validateAccountAndBank(request.getAccountNo(), request.getBankCode());
 
-        // 명세서 기반 더미 데이터
-        return BalanceInquiryResponse.builder()
-                .balance(new BigDecimal("5420000"))
-                .status("NORMAL")
-                .build();
+        // 입력받은 은행 코드로 매칭되는 설정을 추출
+        BankProperty bankProperty = bankNetworkConfig.getBankProperty(request.getBankCode());
+
+        if (bankProperty == null) {
+            log.error("지원하지 않는 은행 코드입니다: {}", request.getBankCode());
+            throw new BusinessException(ErrorCode.TRANSFER_DEPOSIT_ACCOUNT_FAULT); // 적절한 에러 코드로 변경 권장
+        }
+
+        String balanceUrl = bankProperty.getUrl("balance");
+        log.info("은행 API 호출 URL: {}", balanceUrl);
+
+        // WebClient를 호출할 때 balanceUrl 사용 가능
+        // ... (이후 로직)
+        return null; // 임시 반환
     }
 
     /**
