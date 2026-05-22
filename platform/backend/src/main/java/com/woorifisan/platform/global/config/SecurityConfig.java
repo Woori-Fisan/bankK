@@ -2,6 +2,7 @@ package com.woorifisan.platform.global.config;
 
 import com.woorifisan.platform.global.filter.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,14 +18,20 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity  // @PreAuthorize 사용 위해 추가
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
+    private final HandlerExceptionResolver exceptionResolver;
+
+    public SecurityConfig(JwtProvider jwtProvider, @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
+        this.jwtProvider = jwtProvider;
+        this.exceptionResolver = exceptionResolver;
+    }
 
     // 인증 없이 접근 가능한 경로
     private static final String[] PUBLIC_URLS = {
@@ -60,6 +67,13 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("AGENCY_ADMIN")
                         .anyRequest().authenticated()
+                )
+                // Security 예외를 GlobalExceptionHandler로 전달하기 위한 설정
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) ->
+                                exceptionResolver.resolveException(request, response, null, authException))
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                exceptionResolver.resolveException(request, response, null, accessDeniedException))
                 )
                 // JwtAuthFilter를 UsernamePasswordAuthenticationFilter 앞에 등록
                 .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class);
