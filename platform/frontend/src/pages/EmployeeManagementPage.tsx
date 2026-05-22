@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import EmployeeList from '../components/employee-management/list/EmployeeList';
 import EmployeeDetailPanel from '../components/employee-management/detail/EmployeeDetailPanel';
-import RegisterEmployeeModal from '../components/employee-management/forms/RegisterEmployeeModal';
+import EmployeeRegistrationForm from '../components/employee-management/forms/EmployeeRegistrationForm';
+import Modal from '../components/common/Modal';
 import { useEmployeeStore } from '../store/useEmployeeStore';
 
 const EmployeeManagementPage: React.FC = () => {
     const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
-    const { setPage, setSelectedEmployee } = useEmployeeStore();
+    const { setPage, setSelectedEmployee, triggerRefresh } = useEmployeeStore();
 
     const handleRegistrationSuccess = () => {
         setIsRegisterModalOpen(false);
-        setPage(0);
+        setPage(0); // 첫 번째 페이지로 이동
+        triggerRefresh(); // 현재 페이지가 0이더라도 강제로 데이터를 다시 불러옴
         setSelectedEmployee(null);
     };
 
@@ -44,11 +46,17 @@ const EmployeeManagementPage: React.FC = () => {
                 </div>
             </div>
 
-            <RegisterEmployeeModal
+            <Modal
                 isOpen={isRegisterModalOpen}
                 onClose={() => setIsRegisterModalOpen(false)}
-                onSuccess={handleRegistrationSuccess}
-            />
+                title="새 직원 등록"
+                maxWidth="md"
+            >
+                <EmployeeRegistrationForm 
+                    onSuccess={handleRegistrationSuccess} 
+                    onCancel={() => setIsRegisterModalOpen(false)} 
+                />
+            </Modal>
         </div>
     );
 };

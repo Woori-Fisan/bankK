@@ -9,6 +9,7 @@ import {
     Landmark,
     LayoutDashboard,
 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 interface SidebarItemProps {
     icon: React.ElementType;
@@ -33,6 +34,8 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon: Icon, label, to }) => (
 );
 
 const Sidebar: React.FC = () => {
+    const { isAdmin } = useAuth();
+
     return (
         <aside className="w-64 bg-slate-900 flex flex-col flex-shrink-0">
             <div className="p-6 pb-8">
@@ -53,7 +56,7 @@ const Sidebar: React.FC = () => {
                 <SidebarItem icon={ArrowLeftRight} label="계좌 이체" to="/transfer" />
                 <SidebarItem icon={Banknote} label="출금 처리" to="/withdraw" />
                 <SidebarItem icon={Search} label="계좌 조회" to="/inquiry" />
-                <SidebarItem icon={UserCog} label="사용자 관리" to="/employee-management" />
+                {isAdmin && <SidebarItem icon={UserCog} label="사용자 관리" to="/employee-management" />}
             </nav>
         </aside>
     );

@@ -60,7 +60,13 @@ public enum ErrorCode {
     LOAN_TERMS_NOT_AGREED("LOAN_006", "필수 약관에 동의하지 않았습니다.", HttpStatus.BAD_REQUEST),
 
     // 출금
-    WITHDRAW_AMOUNT_FAULT("WITHDRAW_001", "출금 금액이 유효하지 않습니다.", HttpStatus.BAD_REQUEST);
+    WITHDRAW_AMOUNT_FAULT("WITHDRAW_001", "출금 금액이 유효하지 않습니다.", HttpStatus.BAD_REQUEST),
+
+    // 직원 관리
+    CHECKING_ADMIN("EMPLOYEE_001", "권한이 없는 요청입니다.", HttpStatus.BAD_REQUEST),
+    NON_EXISTENT_AGENCY("EMPLOYEE_002", "존재하지 않은 대행업체입니다.", HttpStatus.BAD_REQUEST),
+    DUPLICATE_EMPLOYEE_NUM("EMPLOYEE_003", "등록된 사번입니다.", HttpStatus.BAD_REQUEST),
+    ;
 
     private final String code;
     private final String message;

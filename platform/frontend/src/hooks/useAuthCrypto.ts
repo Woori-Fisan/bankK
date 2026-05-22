@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { encryptPassword, createJwsSignature } from '../utils/authCrypto';
 import { logoutApi } from '../api/auth';
 
+import { useAuth } from './useAuth';
+
 interface AuthCryptoResult {
     encryptAndSign: (password: string, employeeId: string) => Promise<{ encryptedPassword: string; jwsSignature: string } | null>;
     performLogout: () => Promise<void>;
@@ -14,6 +16,7 @@ export const useAuthCrypto = (): AuthCryptoResult => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
+    const { clearAuth } = useAuth();
 
     const encryptAndSign = useCallback(async (password: string, employeeId: string) => {
         setIsLoading(true);
@@ -56,6 +59,7 @@ export const useAuthCrypto = (): AuthCryptoResult => {
             // 2. 로컬 토큰 데이터 삭제 (서버 통신 실패 여부와 무관하게 로컬은 삭제)
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
+            clearAuth(); // 권한 정보 삭제 추가
             sessionStorage.removeItem('accessToken');
             
             setIsLoading(false);
@@ -63,7 +67,7 @@ export const useAuthCrypto = (): AuthCryptoResult => {
             // 3. 로그인 페이지로 리다이렉트
             navigate('/login', { replace: true });
         }
-    }, [navigate]);
+    }, [navigate, clearAuth]);
 
     return { encryptAndSign, performLogout, isLoading, error };
 };

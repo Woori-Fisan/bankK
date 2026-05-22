@@ -10,48 +10,67 @@ interface Props {
 const EmployeeRegistrationForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
     const [loginId, setLoginId] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState<'USER' | 'ADMIN'>('USER');
     const [agencyId, setAgencyId] = useState('');
+    const [employeeNum, setEmployeeNum] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async () => {
+        if (!loginId || !password || !agencyId || !employeeNum) {
+            setError('모든 필수 항목을 입력해주세요.');
+            return;
+        }
+
         setError(null);
         setIsLoading(true);
 
         const employeeData: RegisterEmployeeRequest = {
             loginId,
             password,
-            role,
+            role: 'USER', // 항상 USER로 강제
             agencyId: parseInt(agencyId, 10),
+            employeeNum,
         };
 
         try {
             await registerEmployee(employeeData);
             onSuccess();
-        } catch (err) {
-            if (err instanceof Error) {
-                setError(err.message || '직원 목록을 불러오는데 실패했습니다.');
-            } else {
-                setError('알 수 없는 오류로 직원 목록을 불러오는데 실패했습니다.');
-            }
+        } catch (err: any) {
+            const errorMessage = 
+                err.response?.data?.error?.message || 
+                err.response?.data?.message || 
+                err.message || 
+                '직원 등록에 실패했습니다.';
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6">
             <div>
                 <label htmlFor="loginId" className="block text-sm font-medium text-gray-700">
-                    사번 (Login ID)
+                    Login ID
                 </label>
                 <input
                     type="text"
                     id="loginId"
                     value={loginId}
                     onChange={(e) => setLoginId(e.target.value)}
+                    required
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                />
+            </div>
+            <div>
+                <label htmlFor="employeeNum" className="block text-sm font-medium text-gray-700">
+                    사번
+                </label>
+                <input
+                    type="text"
+                    id="employeeNum"
+                    value={employeeNum}
+                    onChange={(e) => setEmployeeNum(e.target.value)}
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                 />
@@ -73,15 +92,13 @@ const EmployeeRegistrationForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
                 <label htmlFor="role" className="block text-sm font-medium text-gray-700">
                     권한
                 </label>
-                <select
+                <input
+                    type="text"
                     id="role"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as 'USER' | 'ADMIN')}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
-                >
-                    <option value="USER">USER</option>
-                    <option value="ADMIN">ADMIN</option>
-                </select>
+                    value="USER"
+                    readOnly
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-100 text-gray-500 sm:text-sm cursor-not-allowed"
+                />
             </div>
             <div>
                 <label htmlFor="agencyId" className="block text-sm font-medium text-gray-700">
@@ -108,14 +125,15 @@ const EmployeeRegistrationForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
                     취소
                 </button>
                 <button
-                    type="submit"
+                    type="button"
+                    onClick={handleSubmit}
                     disabled={isLoading}
                     className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isLoading ? '등록 중...' : '직원 등록'}
                 </button>
             </div>
-        </form>
+        </div>
     );
 };
 
