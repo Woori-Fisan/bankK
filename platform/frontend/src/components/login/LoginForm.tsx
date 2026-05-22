@@ -5,8 +5,11 @@ import LoginInput from './LoginInput';
 import { useAuthCrypto } from '../../hooks/useAuthCrypto';
 import { login } from '../../api/auth';
 
+import { useAuth } from '../../hooks/useAuth';
+
 const LoginForm: React.FC = () => {
     const navigate = useNavigate();
+    const { setUserRole, clearAuth } = useAuth();
 
     const [employeeId, setEmployeeId] = useState('');
     const [password, setPassword] = useState('');
@@ -20,6 +23,7 @@ const LoginForm: React.FC = () => {
         e.preventDefault();
         setLoginMessage(null);
         setLoginSuccess(null);
+        clearAuth(); // 로그인 시도 전 기존 권한 정보 초기화
 
         if (!employeeId || !password) {
             setLoginMessage('아이디와 비밀번호를 모두 입력해주세요.');
@@ -42,6 +46,10 @@ const LoginForm: React.FC = () => {
             if (response.success) {
                 setLoginMessage(response.message || '로그인 성공!');
                 setLoginSuccess(true);
+                // role 정보가 있다면 Zustand 스토어에 저장 (권한 기반 UI 노출용)
+                if ((response as any).role) {
+                    setUserRole((response as any).role);
+                }
                 navigate('/main');
             } else {
                 setLoginMessage(response.message || '로그인 실패. 다시 시도해주세요.');

@@ -9,7 +9,11 @@ import {
 } from 'lucide-react';
 import ServiceCard from '../components/common/ServiceCard';
 
+import { useAuth } from '../hooks/useAuth';
+
 const MainPage: React.FC = () => {
+    const { isAdmin } = useAuth();
+
     return (
         <div className="flex-1 overflow-auto px-8 py-8">
             <div className="mb-8">
@@ -46,13 +50,15 @@ const MainPage: React.FC = () => {
                     description="대규모 현금 출금 업무를 관리하고 유동성을 조정하며 물리적 화폐 요청을 처리합니다."
                     to="/withdraw"
                 />
-                <ServiceCard
-                    icon={Users}
-                    bgIcon={UserCog}
-                    title="사용자 관리"
-                    description="플랫폼 접근 권한을 관리하고 역할 기반 접근 제어(RBAC) 프로필을 설정 및 감사 로그를 확인합니다."
-                    to="/employee-management"
-                />
+                {isAdmin && (
+                    <ServiceCard
+                        icon={Users}
+                        bgIcon={UserCog}
+                        title="사용자 관리"
+                        description="플랫폼 접근 권한을 관리하고 역할 기반 접근 제어(RBAC) 프로필을 설정 및 감사 로그를 확인합니다."
+                        to="/employee-management"
+                    />
+                )}
             </div>
         </div>
     );
