@@ -33,13 +33,16 @@ public class TransactionLedger {
      * 신규 거래 내역 생성을 위한 정적 팩토리 메서드
      */
     public static TransactionLedger of(String txId, Long accountId, String txType, BigDecimal amount, 
-                                     BigDecimal balanceAfter, String description, String status) {
+                                     BigDecimal balanceAfter, String targetBankCode, String targetAccount,
+                                     String description, String status) {
         return TransactionLedger.builder()
                 .txId(txId)
                 .accountId(accountId)
                 .txType(txType)
                 .amount(amount)
                 .balanceAfter(balanceAfter)
+                .targetBankCode(targetBankCode)
+                .targetAccount(targetAccount)
                 .description(description)
                 .status(status != null ? status : "SUCCESS")
                 .transactedAt(LocalDateTime.now())
