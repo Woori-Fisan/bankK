@@ -20,17 +20,18 @@ public class WithdrawalService {
      * 출금 실행
      *
      * @param request 출금 요청 정보
+     * @param jwsSignature JWS 전자서명 (헤더에서 전달받음)
      * @return 출금 결과 정보
      */
     @Transactional
-    public TransferResponse executeWithdraw(WithdrawalRequest request) {
+    public TransferResponse executeWithdraw(WithdrawalRequest request, String jwsSignature) {
         log.info("출금 실행 요청 - 은행: {}, 계좌: {}, 금액: {}",
                 request.getWithdrawalBankCode(), request.getWithdrawalAccountNo(), request.getAmount());
 
         // 1. 외부 은행 전용 요청 DTO로 변환 (비밀번호는 평문으로 전달)
         BankWithdrawalRequest bankRequest = BankWithdrawalRequest.of(
                 request.getEncryptedKey(),
-                request.getJwsSignature(),
+                jwsSignature,
                 request.getWithdrawalAccountNo(),
                 request.getWithdrawalPassword(),
                 request.getCustomerRrnPrefix(),

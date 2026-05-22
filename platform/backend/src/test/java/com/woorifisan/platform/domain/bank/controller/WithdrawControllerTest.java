@@ -1,6 +1,7 @@
 package com.woorifisan.platform.domain.bank.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -43,7 +44,6 @@ class WithdrawControllerTest {
         // given
         WithdrawalRequest request = new WithdrawalRequest();
         request.setEncryptedKey("encryptedKey");
-        request.setJwsSignature("jwsSignature");
         request.setWithdrawalBankCode("020");
         request.setWithdrawalAccountNo("1234567890");
         request.setWithdrawalPassword("password");
@@ -56,10 +56,11 @@ class WithdrawControllerTest {
                 .transactionDate("2023-05-20 10:00:00")
                 .build();
 
-        given(withdrawalService.executeWithdraw(any())).willReturn(response);
+        given(withdrawalService.executeWithdraw(any(WithdrawalRequest.class), anyString())).willReturn(response);
 
         // when & then
         mockMvc.perform(post("/api/v1/bank/withdrawals")
+                        .header("x-jws-signature", "jwsSignature")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -78,11 +79,34 @@ class WithdrawControllerTest {
 
         // when & then
         mockMvc.perform(post("/api/v1/bank/withdrawals")
+                        .header("x-jws-signature", "jwsSignature")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("ERR_001"))
+                .andDo(print());
+    }
+
+    @Test
+    @DisplayName("출금 실행 API 실패 테스트 - JWS 헤더 누락")
+    void executeWithdraw_api_fail_missing_header() throws Exception {
+        // given
+        WithdrawalRequest request = new WithdrawalRequest();
+        request.setEncryptedKey("encryptedKey");
+        request.setWithdrawalBankCode("020");
+        request.setWithdrawalAccountNo("1234567890");
+        request.setWithdrawalPassword("password");
+        request.setCustomerRrnPrefix("900101");
+        request.setAmount(new BigDecimal("10000"));
+
+        // when & then
+        mockMvc.perform(post("/api/v1/bank/withdrawals")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("ERR_003"))
                 .andDo(print());
     }
 }

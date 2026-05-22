@@ -33,7 +33,7 @@ class WithdrawalServiceTest {
     private WithdrawalService withdrawalService;
 
     @Test
-    @DisplayName("출금 실행 성공 케이스 - 비밀번호 평문 전달 확인")
+    @DisplayName("출금 실행 성공 케이스 - 비밀번호 평문 및 JWS 서명 전달 확인")
     void executeWithdraw_Success() {
         // given
         WithdrawalRequest request = new WithdrawalRequest();
@@ -42,8 +42,9 @@ class WithdrawalServiceTest {
         request.setWithdrawalPassword("1234");
         request.setAmount(new BigDecimal("10000"));
         request.setEncryptedKey("encKey");
-        request.setJwsSignature("signature");
         request.setCustomerRrnPrefix("900101");
+
+        String jwsSignature = "signature_from_header";
 
         TransferResponse expectedResponse = TransferResponse.builder()
                 .transactionId("TRX-001")
@@ -55,17 +56,18 @@ class WithdrawalServiceTest {
                 .thenReturn(expectedResponse);
 
         // when
-        TransferResponse actualResponse = withdrawalService.executeWithdraw(request);
+        TransferResponse actualResponse = withdrawalService.executeWithdraw(request, jwsSignature);
 
         // then
         assertThat(actualResponse).isNotNull();
         assertThat(actualResponse.getTransactionId()).isEqualTo("TRX-001");
         
-        // BankExternalClient로 전달된 요청 캡처하여 비밀번호 확인
+        // BankExternalClient로 전달된 요청 캡처하여 데이터 확인
         ArgumentCaptor<BankWithdrawalRequest> captor = ArgumentCaptor.forClass(BankWithdrawalRequest.class);
         verify(bankExternalClient).withdraw(eq("020"), captor.capture());
         
         assertThat(captor.getValue().getWithdrawalPassword()).isEqualTo("1234"); // 평문 확인
+        assertThat(captor.getValue().getJwsSignature()).isEqualTo(jwsSignature); // 헤더에서 온 서명 확인
     }
 
     @Test
@@ -82,7 +84,7 @@ class WithdrawalServiceTest {
                 .thenThrow(new BusinessException(ErrorCode.BANK_API_ERROR));
 
         // when & then
-        assertThatThrownBy(() -> withdrawalService.executeWithdraw(request))
+        assertThatThrownBy(() -> withdrawalService.executeWithdraw(request, "sig"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.BANK_API_ERROR);
     }
@@ -101,7 +103,7 @@ class WithdrawalServiceTest {
                 .thenThrow(new BusinessException(ErrorCode.TRANSFER_WITHDRAW_AMOUNT_FAULT));
 
         // when & then
-        assertThatThrownBy(() -> withdrawalService.executeWithdraw(request))
+        assertThatThrownBy(() -> withdrawalService.executeWithdraw(request, "sig"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.TRANSFER_WITHDRAW_AMOUNT_FAULT);
     }
