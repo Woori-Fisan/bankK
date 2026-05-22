@@ -34,7 +34,8 @@ public enum ErrorCode {
     LOAN_ACCOUNT_NOT_FOUND("LOAN_005", "입금 계좌를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     LOAN_ACCOUNT_ABNORMAL("LOAN_006", "입금 계좌가 정상 상태가 아닙니다.", HttpStatus.BAD_REQUEST),
     LOAN_ACCOUNT_PASSWORD_MISMATCH("LOAN_007", "계좌 비밀번호가 일치하지 않습니다.", HttpStatus.FORBIDDEN),
-    LOAN_CUSTOMER_NOT_FOUND("LOAN_008", "고객 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    LOAN_CUSTOMER_NOT_FOUND("LOAN_008", "고객 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    LOAN_INCOMPLETE_SALE_PREVENTION("LOAN_009", "동일 상품은 60일 이내 재실행이 불가합니다.", HttpStatus.CONFLICT);
 
     private final String code;
     private final String message;

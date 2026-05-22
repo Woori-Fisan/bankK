@@ -10,12 +10,15 @@ import com.woorifisan.bank.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.bank.domain.loan.dto.request.LoanExecuteRequest;
 import com.woorifisan.bank.domain.loan.dto.response.AvailableProductDto;
 import com.woorifisan.bank.domain.loan.dto.response.LoanEvaluateResponse;
+import com.woorifisan.bank.domain.loan.dto.response.LoanEvaluationStatusResponse;
 import com.woorifisan.bank.domain.loan.dto.response.LoanExecuteResponse;
 import com.woorifisan.bank.domain.loan.dto.response.LoanProductResponse;
+import com.woorifisan.bank.domain.loan.dto.response.TermsResponse;
 import com.woorifisan.bank.domain.loan.mapper.LoanLedgerMapper;
 import com.woorifisan.bank.domain.loan.mapper.LoanProductMapper;
 import com.woorifisan.bank.domain.loan.model.LoanLedger;
 import com.woorifisan.bank.domain.loan.model.LoanProduct;
+import com.woorifisan.bank.domain.terms.mapper.BankTermsMapper;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import java.math.BigDecimal;
@@ -36,25 +39,50 @@ public class LoanService {
 
     private static final BigDecimal MOCK_ANNUAL_INCOME = new BigDecimal("36000000");
     private static final BigDecimal DSR_LIMIT = new BigDecimal("40");
-    private static final BigDecimal MAX_LEGAL_RATE = new BigDecimal("20.00");
     private static final BigDecimal BASE_RATE = new BigDecimal("3.50");
+    private static final int CREDIT_SCORE_MIN = 600;
 
     private final CustomerMapper customerMapper;
     private final AccountMapper accountMapper;
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final LoanLedgerMapper loanLedgerMapper;
     private final LoanProductMapper loanProductMapper;
+    private final BankTermsMapper bankTermsMapper;
     private final BCryptPasswordEncoder passwordEncoder;
 
+    // ── BK-B11: 심사 약관 조회 ────────────────────────────────────────────────
+
     @Transactional(readOnly = true)
-    public List<LoanProductResponse> getActiveProducts() {
-        return loanProductMapper.findAllActive().stream()
-                .map(LoanProductResponse::from)
+    public List<TermsResponse> getEvaluationTerms() {
+        return bankTermsMapper.findActiveByTermsType("EVALUATION").stream()
+                .map(TermsResponse::from)
                 .toList();
     }
 
+    // ── BK-B12: 계약 약관 조회 ────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<TermsResponse> getContractTerms(Long productId, Long evaluationId) {
+        LoanLedger ledger = loanLedgerMapper.findById(evaluationId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_NOT_FOUND));
+
+        if (!"APPROVED".equals(ledger.getStatus())) {
+            throw new BusinessException(ErrorCode.LOAN_INVALID_STATUS);
+        }
+
+        loanProductMapper.findByProductId(productId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_PRODUCT_NOT_FOUND));
+
+        return bankTermsMapper.findActiveByTermsType("CONTRACT").stream()
+                .map(TermsResponse::from)
+                .toList();
+    }
+
+    // ── BK-B13 ~ B19: 대출 심사 ───────────────────────────────────────────────
+
     @Transactional
     public LoanEvaluateResponse evaluateLoan(LoanEvaluateRequest request) {
+        // BK-B21: 계좌 유효성 검증 (심사 단계에서 입금 계좌 사전 확인)
         Account account = accountMapper.findByAccountNoPlain(request.getDepositAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
 
@@ -66,36 +94,73 @@ public class LoanService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_CUSTOMER_NOT_FOUND));
 
         String loanNo = generateLoanNo();
+
+        // BK-B13: NICE Mock 신용점수 조회
         int creditScore = getMockCreditScore(customer.getId());
 
-        if (creditScore < 600) {
-            saveLoanLedger(loanNo, customer.getId(), account.getId(), request,
-                    creditScore, BigDecimal.ZERO, null, null, "REJECTED", "신용점수 미달 (" + creditScore + "점)");
-            return LoanEvaluateResponse.rejected(loanNo, creditScore, BigDecimal.ZERO, "신용점수 미달 (" + creditScore + "점)");
+        // BK-B14: 신용점수 컷 600점 미만 REJECTED
+        if (creditScore < CREDIT_SCORE_MIN) {
+            LoanLedger saved = saveLoanLedger(loanNo, customer.getId(), account.getId(), request,
+                    creditScore, BigDecimal.ZERO, null, "REJECTED",
+                    "신용점수 미달 (" + creditScore + "점)");
+            return LoanEvaluateResponse.rejected(saved.getId(), loanNo,
+                    creditScore, BigDecimal.ZERO, "신용점수 미달 (" + creditScore + "점)");
         }
 
+        // BK-B17: 금리 산출
         BigDecimal appliedRate = calculateAppliedRate(creditScore);
 
         List<LoanLedger> activeLoans = loanLedgerMapper.findActiveByCustomerId(customer.getId());
-        BigDecimal dsr = calculateDsr(activeLoans, request.getRequestedAmount(), appliedRate, request.getRequestedPeriod());
+
+        // BK-B15: DSR 계산, 40% 초과 REJECTED
+        BigDecimal dsr = calculateDsr(activeLoans, request.getRequestedAmount(), appliedRate,
+                request.getRequestedPeriod());
 
         if (dsr.compareTo(DSR_LIMIT) > 0) {
-            saveLoanLedger(loanNo, customer.getId(), account.getId(), request,
-                    creditScore, dsr, appliedRate, null, "REJECTED", "DSR 초과 (" + dsr + "%)");
-            return LoanEvaluateResponse.rejected(loanNo, creditScore, dsr, "DSR 초과 (" + dsr + "%)");
+            LoanLedger saved = saveLoanLedger(loanNo, customer.getId(), account.getId(), request,
+                    creditScore, dsr, appliedRate, "REJECTED",
+                    "DSR 초과 (" + dsr + "%)");
+            return LoanEvaluateResponse.rejected(saved.getId(), loanNo,
+                    creditScore, dsr, "DSR 초과 (" + dsr + "%)");
         }
 
-        BigDecimal approvedLimit = calculateApprovedLimit(activeLoans, appliedRate, request.getRequestedPeriod())
-                .min(request.getRequestedAmount());
+        // BK-B16: 대출 한도 산출
+        BigDecimal approvedLimit = calculateApprovedLimit(activeLoans, appliedRate,
+                request.getRequestedPeriod()).min(request.getRequestedAmount());
 
-        List<AvailableProductDto> products = loanProductMapper.findMatchingProducts(approvedLimit, appliedRate)
+        // BK-B18: 추천 상품 필터링 및 정렬
+        List<AvailableProductDto> products = loanProductMapper
+                .findMatchingProducts(approvedLimit, appliedRate)
                 .stream().map(AvailableProductDto::from).toList();
 
-        saveLoanLedger(loanNo, customer.getId(), account.getId(), request,
-                creditScore, dsr, appliedRate, null, "APPROVED", null);
+        // BK-B19: 심사 결과 저장
+        LoanLedger saved = saveLoanLedger(loanNo, customer.getId(), account.getId(), request,
+                creditScore, dsr, appliedRate, "APPROVED", null);
 
-        return LoanEvaluateResponse.approved(loanNo, approvedLimit, appliedRate, creditScore, dsr, products);
+        return LoanEvaluateResponse.approved(saved.getId(), loanNo,
+                approvedLimit, appliedRate, creditScore, dsr, products);
     }
+
+    // ── BK-B20: 심사 상태 Polling ─────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public LoanEvaluationStatusResponse getEvaluationStatus(Long evaluationId) {
+        LoanLedger ledger = loanLedgerMapper.findById(evaluationId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_NOT_FOUND));
+
+        BigDecimal approvedLimit = null;
+        if ("APPROVED".equals(ledger.getStatus())) {
+            // 승인된 경우 한도 재산출 (심사 당시 저장하지 않으므로 재계산)
+            List<LoanLedger> activeLoans = loanLedgerMapper.findActiveByCustomerId(ledger.getCustomerId());
+            approvedLimit = calculateApprovedLimit(activeLoans,
+                    ledger.getInterestRate(), ledger.getRequestedPeriod())
+                    .min(ledger.getRequestedAmount());
+        }
+
+        return LoanEvaluationStatusResponse.from(ledger, approvedLimit);
+    }
+
+    // ── BK-B21 ~ B24, B27: 대출 실행 ────────────────────────────────────────
 
     @Transactional
     public LoanExecuteResponse executeLoan(LoanExecuteRequest request) {
@@ -112,6 +177,13 @@ public class LoanService {
         LoanProduct product = loanProductMapper.findByProductId(request.getProductId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_PRODUCT_NOT_FOUND));
 
+        // BK-B24: 불완전판매 방지 — 동일 상품 60일 내 재실행 금지
+        if (loanLedgerMapper.existsRecentActiveByCustomerAndProduct(
+                loanLedger.getCustomerId(), product.getProductId())) {
+            throw new BusinessException(ErrorCode.LOAN_INCOMPLETE_SALE_PREVENTION);
+        }
+
+        // BK-B21: 계좌 유효성 검증 (비관적 락)
         Account account = accountMapper.findByIdForUpdate(loanLedger.getLinkedAccountId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
 
@@ -119,6 +191,7 @@ public class LoanService {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_ABNORMAL);
         }
 
+        // BK-B22: 계좌 비밀번호 검증
         if (!passwordEncoder.matches(request.getAccountPassword(), account.getPasswordHash())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_PASSWORD_MISMATCH);
         }
@@ -126,9 +199,12 @@ public class LoanService {
         BigDecimal interestRate = loanLedger.getInterestRate();
         LocalDate startDate = LocalDate.now();
         LocalDate endDate = startDate.plusMonths(request.getRepaymentPeriod());
+
+        // BK-B27: 월 상환금액 계산
         BigDecimal monthlyPayment = calculateMonthlyPayment(
                 request.getLoanAmount(), interestRate, request.getRepaymentPeriod());
 
+        // BK-B23: 단일 트랜잭션 — 대출 원장 갱신 + 잔액 증가 + 거래 기록
         LoanLedger forUpdate = LoanLedger.builder()
                 .loanNo(request.getLoanNo())
                 .productId(product.getProductId())
@@ -162,11 +238,20 @@ public class LoanService {
                 .build();
     }
 
+    // ── 기존 상품 목록 조회 ───────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<LoanProductResponse> getActiveProducts() {
+        return loanProductMapper.findAllActive().stream()
+                .map(LoanProductResponse::from)
+                .toList();
+    }
+
     // ── private helpers ──────────────────────────────────────────────────────
 
-    private void saveLoanLedger(String loanNo, Long customerId, Long accountId,
+    private LoanLedger saveLoanLedger(String loanNo, Long customerId, Long accountId,
             LoanEvaluateRequest req, int creditScore, BigDecimal dsr,
-            BigDecimal rate, BigDecimal approvedLimit, String status, String rejectReason) {
+            BigDecimal rate, String status, String rejectReason) {
         LoanLedger ledger = LoanLedger.builder()
                 .loanNo(loanNo)
                 .customerId(customerId)
@@ -184,17 +269,23 @@ public class LoanService {
                 .status(status)
                 .build();
         loanLedgerMapper.insert(ledger);
+        return ledger;
     }
 
+    // BK-B13: NICE 신용정보원 연계 Mock (실제 연동 전 stub)
     private int getMockCreditScore(Long customerId) {
         return 750;
     }
 
+    // BK-B17: 신용점수 기반 금리 산출
     private BigDecimal calculateAppliedRate(int creditScore) {
+        if (creditScore >= 900) return BASE_RATE.add(new BigDecimal("0.50"));
         if (creditScore >= 800) return BASE_RATE.add(new BigDecimal("1.50"));
+        if (creditScore >= 700) return BASE_RATE.add(new BigDecimal("2.50"));
         return BASE_RATE.add(new BigDecimal("3.00"));
     }
 
+    // BK-B15: DSR 계산
     private BigDecimal calculateDsr(List<LoanLedger> activeLoans, BigDecimal newAmount,
             BigDecimal rate, int period) {
         BigDecimal existingMonthly = activeLoans.stream()
@@ -205,14 +296,14 @@ public class LoanService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal newMonthly = calculateMonthlyPayment(newAmount, rate, period);
-        BigDecimal annualRepayment = existingMonthly.add(newMonthly)
-                .multiply(new BigDecimal("12"));
+        BigDecimal annualRepayment = existingMonthly.add(newMonthly).multiply(new BigDecimal("12"));
 
         return annualRepayment.divide(MOCK_ANNUAL_INCOME, 4, RoundingMode.HALF_UP)
                 .multiply(new BigDecimal("100"))
                 .setScale(2, RoundingMode.HALF_UP);
     }
 
+    // BK-B16: DSR 40% 이내 최대 대출 한도 역산
     private BigDecimal calculateApprovedLimit(List<LoanLedger> activeLoans,
             BigDecimal rate, int period) {
         BigDecimal maxAnnual = MOCK_ANNUAL_INCOME.multiply(new BigDecimal("0.40"));
@@ -228,10 +319,11 @@ public class LoanService {
 
         if (availableMonthly.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
 
-        // 역산: M = P * r(1+r)^n / ((1+r)^n-1)  →  P = M * ((1+r)^n-1) / (r*(1+r)^n)
         if (rate.compareTo(BigDecimal.ZERO) == 0) {
             return availableMonthly.multiply(new BigDecimal(period)).setScale(0, RoundingMode.DOWN);
         }
+
+        // 역산: M = P·r(1+r)^n / ((1+r)^n − 1) → P = M·((1+r)^n − 1) / (r·(1+r)^n)
         BigDecimal r = rate.divide(new BigDecimal("1200"), 10, RoundingMode.HALF_UP);
         BigDecimal pow = BigDecimal.ONE.add(r).pow(period, new MathContext(20));
         BigDecimal limit = availableMonthly
@@ -241,6 +333,7 @@ public class LoanService {
         return limit.min(new BigDecimal("100000000"));
     }
 
+    // BK-B27: 원리금균등상환 월 납입금 계산
     BigDecimal calculateMonthlyPayment(BigDecimal principal, BigDecimal annualRate, int months) {
         if (principal.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
         if (annualRate.compareTo(BigDecimal.ZERO) == 0) {
@@ -255,5 +348,4 @@ public class LoanService {
     private String generateLoanNo() {
         return "LN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
     }
-
 }

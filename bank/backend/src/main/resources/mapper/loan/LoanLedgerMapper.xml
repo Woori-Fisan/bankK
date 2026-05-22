@@ -44,4 +44,15 @@
         WHERE loan_no = #{loanNo}
     </update>
 
+    <!-- BK-B24: 동일 고객·상품의 60일 내 ACTIVE 대출 존재 여부 -->
+    <select id="existsRecentActiveByCustomerAndProduct" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1 FROM loan_ledger
+            WHERE customer_id = #{customerId}
+              AND product_id  = #{productId}
+              AND status      = 'ACTIVE'
+              AND start_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+        )
+    </select>
+
 </mapper>
