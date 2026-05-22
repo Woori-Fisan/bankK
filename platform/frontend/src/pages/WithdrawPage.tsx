@@ -11,7 +11,7 @@ const WithdrawPage: React.FC = () => {
     const [step, setStep] = useState<'entry' | 'confirm' | 'success' | 'failure'>('entry');
     const [withdrawData, setWithdrawData] = useState<WithdrawData | null>(null);
     const [withdrawResult, setWithdrawResult] = useState<WithdrawResult | null>(null);
-    const [errorType, setErrorType] = useState<'INVALID_PASSWORD' | 'SYSTEM_ERROR'>('SYSTEM_ERROR');
+    const [errorType, setErrorType] = useState<'INVALID_PASSWORD' | 'SUSPENDED_ACCOUNT' | 'SYSTEM_ERROR'>('SYSTEM_ERROR');
     const [isPinpadOpen, setIsPinpadOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -69,16 +69,28 @@ const WithdrawPage: React.FC = () => {
                 setStep('success');
             } else {
                 // 실패 처리
-                if (response.error?.code === 'AUTH_004') {
+                const code = response.error?.code;
+                if (code === 'BANK_003') {
                     setErrorType('INVALID_PASSWORD');
+                } else if (code === 'TRANSFER_005') {
+                    setErrorType('SUSPENDED_ACCOUNT');
                 } else {
                     setErrorType('SYSTEM_ERROR');
                 }
                 setStep('failure');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('출금 처리 중 오류 발생:', error);
-            setErrorType('SYSTEM_ERROR');
+            
+            // Axios 에러인 경우 응답 바디의 에러 코드 확인
+            const errorCode = error.response?.data?.error?.code;
+            if (errorCode === 'BANK_003') {
+                setErrorType('INVALID_PASSWORD');
+            } else if (errorCode === 'TRANSFER_005') {
+                setErrorType('SUSPENDED_ACCOUNT');
+            } else {
+                setErrorType('SYSTEM_ERROR');
+            }
             setStep('failure');
         } finally {
             setIsProcessing(false);
