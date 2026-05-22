@@ -1,4 +1,4 @@
-package com.woorifisan.platform.bank.controller;
+package com.woorifisan.platform.domain.bank.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.woorifisan.platform.domain.bank.controller.WithdrawController;
 import com.woorifisan.platform.domain.bank.dto.request.WithdrawalRequest;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.service.WithdrawalService;
