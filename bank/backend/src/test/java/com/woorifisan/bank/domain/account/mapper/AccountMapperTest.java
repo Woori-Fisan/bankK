@@ -10,10 +10,12 @@ import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 
 @MybatisTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 실제 DB 또는 설정된 DB 사용
-@ActiveProfiles("test") // 테스트 프로파일 사용 (필요 시)
+@ActiveProfiles("test") // 테스트 프로파일 사용
+@Sql("/sql/test-data.sql") // 테스트 데이터 삽입
 class AccountMapperTest {
 
     @Autowired
