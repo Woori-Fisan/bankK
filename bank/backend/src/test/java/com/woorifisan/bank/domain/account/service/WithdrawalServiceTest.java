@@ -30,9 +30,6 @@ class WithdrawalServiceTest {
     @Autowired
     private AccountMapper accountMapper;
 
-    // "1234"에 대한 예시 해시 문자열 (테스트용, SQL 파일의 값과 일치해야 함)
-    private static final String DUMMY_HASH = "$2a$10$8.UnVuG9HHgffUDAlk8qfOuVGkqRzgVymGe07xd00DMxs.TVu4ATA";
-
     @Test
     @DisplayName("성공: 모든 조건이 충족되면 출금이 완료되고 잔액이 차감된다")
     void 출금_성공() {
@@ -41,7 +38,7 @@ class WithdrawalServiceTest {
         WithdrawalRequest request = WithdrawalRequest.builder()
                 .withdrawalAccountNo("acc-hash-100")
                 .customerRrnPrefix("rrn-100")
-                .withdrawalPassword(DUMMY_HASH) // 이미 해싱된 값이 들어온다고 가정
+                .withdrawalPassword("1234") // 이미 해싱된 값이 들어온다고 가정
                 .amount(withdrawAmount)
                 .build();
 
@@ -71,7 +68,7 @@ class WithdrawalServiceTest {
         // when & then
         assertThatThrownBy(() -> withdrawalService.withdraw(request))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.BANK_PW_ERROR);
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCOUNT_PW_ERROR);
     }
 
     @Test
@@ -81,7 +78,7 @@ class WithdrawalServiceTest {
         WithdrawalRequest request = WithdrawalRequest.builder()
                 .withdrawalAccountNo("acc-hash-101")
                 .customerRrnPrefix("rrn-101")
-                .withdrawalPassword(DUMMY_HASH)
+                .withdrawalPassword("1234")
                 .amount(new BigDecimal("5000.00")) // 잔액은 1000
                 .build();
 
@@ -98,7 +95,7 @@ class WithdrawalServiceTest {
         WithdrawalRequest request = WithdrawalRequest.builder()
                 .withdrawalAccountNo("acc-hash-102")
                 .customerRrnPrefix("rrn-102")
-                .withdrawalPassword(DUMMY_HASH)
+                .withdrawalPassword("1234")
                 .amount(new BigDecimal("1000.00"))
                 .build();
 
@@ -115,7 +112,7 @@ class WithdrawalServiceTest {
         WithdrawalRequest request = WithdrawalRequest.builder()
                 .withdrawalAccountNo("acc-hash-103")
                 .customerRrnPrefix("rrn-103")
-                .withdrawalPassword(DUMMY_HASH)
+                .withdrawalPassword("1234")
                 .amount(new BigDecimal("1000.00"))
                 .build();
 

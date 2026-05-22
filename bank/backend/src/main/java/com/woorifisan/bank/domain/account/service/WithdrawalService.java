@@ -13,6 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class WithdrawalService {
 
     private final AccountMapper accountMapper;
     private final TransactionLedgerMapper transactionLedgerMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public WithdrawalResponse withdraw(WithdrawalRequest request) {
@@ -65,7 +67,7 @@ public class WithdrawalService {
                 .build();
     }
 
-    private void validateWithdrawal(Account account, String inputPasswordHash, BigDecimal amount) {
+    private void validateWithdrawal(Account account, String inputPassword, BigDecimal amount) {
         // 1. 계좌 유형 및 상태 확인
         if (!"DEPOSIT".equals(account.getAccountType())) {
             throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
@@ -76,10 +78,9 @@ public class WithdrawalService {
         }
 
         // 2. 비밀번호 검증
-        // 가정: 입력값(inputPasswordHash)은 이미 bcrypt 등으로 해싱된 상태임
         // TODO: RSA 복호화
-        if (!inputPasswordHash.equals(account.getPasswordHash())) {
-            throw new BusinessException(ErrorCode.BANK_PW_ERROR);
+        if (passwordEncoder.matches(inputPassword, account.getPasswordHash())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_PW_ERROR);
         }
 
         // 3. 잔액 확인

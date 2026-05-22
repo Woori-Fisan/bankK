@@ -26,10 +26,11 @@ public enum ErrorCode {
     INVALID_ACCOUNT_TYPE("ACC_003", "출금이 불가능한 계좌 유형입니다.", HttpStatus.UNPROCESSABLE_ENTITY),
     ACCOUNT_NOT_NORMAL("ACC_004", "정상 상태의 계좌가 아닙니다.", HttpStatus.UNPROCESSABLE_ENTITY),
     CONCURRENT_MODIFICATION("ACC_005", "동시 수정이 발생했습니다. 다시 시도해주세요.", HttpStatus.CONFLICT),
+    ACCOUNT_PW_ERROR("ACC_006", "계좌 비밀번호가 틀렸습니다.", HttpStatus.FORBIDDEN),
 
     // 은행
     BANK_NOT_FOUND("BANK_001", "존재하지 않는 은행입니다.", HttpStatus.NOT_FOUND),
-    BANK_PW_ERROR("BANK_002", "계좌 비밀번호가 틀렸습니다.", HttpStatus.FORBIDDEN),
+
     // 멱등성
     DUPLICATE_REQUEST("IDEM_001", "중복 요청입니다.", HttpStatus.CONFLICT);
     // 이체
