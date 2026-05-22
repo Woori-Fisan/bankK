@@ -5,7 +5,7 @@
         SELECT * FROM customer WHERE id = #{id}
     </select>
 
-    <select id="findByCiHash" resultType="Customer">
-        SELECT * FROM customer WHERE ci_hash = #{ciHash}
+    <select id="findByCi" resultType="Customer">
+        SELECT * FROM customer WHERE ci = #{ci}
     </select>
 </mapper>

@@ -29,7 +29,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,7 +48,6 @@ public class LoanService {
     private final LoanLedgerMapper loanLedgerMapper;
     private final LoanProductMapper loanProductMapper;
     private final BankTermsMapper bankTermsMapper;
-    private final BCryptPasswordEncoder passwordEncoder;
 
     // ── BK-B11: 심사 약관 조회 ────────────────────────────────────────────────
 
@@ -60,7 +58,7 @@ public class LoanService {
                 .toList();
     }
 
-    // ── BK-B12: 계약 약관 조회 ────────────────────────────────────────────────
+    // ── BK-B20: 계약 약관 조회 ────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<TermsResponse> getContractTerms(Long productId, Long evaluationId) {
@@ -83,6 +81,12 @@ public class LoanService {
 
     @Transactional
     public LoanEvaluateResponse evaluateLoan(LoanEvaluateRequest request) {
+        if (!Boolean.TRUE.equals(request.getIsCreditInfoAgreed())
+                || !Boolean.TRUE.equals(request.getIsProductTermsAgreed())
+                || !Boolean.TRUE.equals(request.getIsDocumentCollected())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
         // BK-B21: 계좌 유효성 검증 (심사 단계에서 입금 계좌 사전 확인)
         Account account = accountMapper.findByAccountNoPlain(request.getDepositAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
@@ -93,6 +97,11 @@ public class LoanService {
 
         Customer customer = customerMapper.findById(account.getCustomerId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_CUSTOMER_NOT_FOUND));
+
+        // BKC04: 주민번호 앞 7자리 본인 확인
+        if (!request.getCustomerRrnPrefix().equals(customer.getRrnPrefix())) {
+            throw new BusinessException(ErrorCode.LOAN_CUSTOMER_IDENTITY_MISMATCH);
+        }
 
         String loanNo = generateLoanNo();
 
@@ -108,8 +117,16 @@ public class LoanService {
                     creditScore, BigDecimal.ZERO, "신용점수 미달 (" + creditScore + "점)");
         }
 
-        // BK-B17: 금리 산출
+        // BK-B17: 금리 산출 + 법정최고금리 20% 초과 시 REJECTED
         BigDecimal appliedRate = calculateAppliedRate(creditScore);
+
+        if (appliedRate.compareTo(new BigDecimal("20")) > 0) {
+            LoanLedger saved = saveLoanLedger(loanNo, customer.getId(), account.getId(), request,
+                    creditScore, BigDecimal.ZERO, BigDecimal.ZERO, appliedRate, "REJECTED",
+                    "법정최고금리 초과 (" + appliedRate + "%)");
+            return LoanEvaluateResponse.rejected(saved.getId(), loanNo,
+                    creditScore, BigDecimal.ZERO, "법정최고금리 초과 (" + appliedRate + "%)");
+        }
 
         List<LoanLedger> activeLoans = loanLedgerMapper.findActiveByCustomerId(customer.getId());
 
@@ -190,9 +207,12 @@ public class LoanService {
         }
 
         // BK-B22: 계좌 비밀번호 검증
-        if (!passwordEncoder.matches(request.getAccountPassword(), account.getPasswordHash())) {
+        if (!request.getAccountPassword().equals(account.getPassword())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_PASSWORD_MISMATCH);
         }
+
+        Customer customer = customerMapper.findById(account.getCustomerId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_CUSTOMER_NOT_FOUND));
 
         BigDecimal interestRate = loanLedger.getInterestRate();
         LocalDate startDate = LocalDate.now();
@@ -218,13 +238,14 @@ public class LoanService {
         accountMapper.updateBalance(account.getId(), request.getLoanAmount());
 
         BigDecimal balanceAfter = account.getBalance().add(request.getLoanAmount());
-        String txId = "LOAN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
+        String txId = "LOAN-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
         transactionLedgerMapper.insert(TransactionLedger.of(
                 txId, account.getId(), "LOAN", request.getLoanAmount(),
                 balanceAfter, product.getProductName() + " 대출 실행", "SUCCESS"));
 
         return LoanExecuteResponse.builder()
                 .loanNo(request.getLoanNo())
+                .customerName(customer.getCustomerName())
                 .loanAmount(request.getLoanAmount())
                 .interestRate(interestRate)
                 .repaymentType(request.getRepaymentType())

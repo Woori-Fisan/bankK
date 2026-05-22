@@ -57,19 +57,19 @@ public class LoanController {
         return ResponseEntity.ok(ApiResponse.success(loanService.evaluateLoan(request)));
     }
 
-    // ── BK-B20: 심사 상태 Polling ────────────────────────────────────────────
+    // ── 심사 상태 Polling (플랫폼 PL-B11 연계) ───────────────────────────────
 
-    @Operation(summary = "대출 심사 상태 조회 (BK-B20)",
-               description = "evaluationId로 심사 상태를 polling합니다. APPROVED / REJECTED / SUBMITTED")
+    @Operation(summary = "대출 심사 상태 조회",
+               description = "evaluationId로 심사 상태를 polling합니다. APPROVED / REJECTED")
     @GetMapping("/evaluation/{evaluationId}/status")
     public ResponseEntity<ApiResponse<LoanEvaluationStatusResponse>> getEvaluationStatus(
             @PathVariable Long evaluationId) {
         return ResponseEntity.ok(ApiResponse.success(loanService.getEvaluationStatus(evaluationId)));
     }
 
-    // ── BK-B25: 계약 서류(약관) 조회 ─────────────────────────────────────────
+    // ── BK-B20: 계약 서류(약관) 조회 ─────────────────────────────────────────
 
-    @Operation(summary = "대출 계약 약관 조회 (BK-B25)",
+    @Operation(summary = "대출 계약 약관 조회 (BK-B20)",
                description = "심사 승인 후 계약 단계에서 고객에게 제시할 약관 목록을 반환합니다. evaluationId가 APPROVED여야 합니다.")
     @GetMapping("/contract/terms/{productId}/{evaluationId}")
     public ResponseEntity<ApiResponse<List<TermsResponse>>> getContractTerms(
@@ -82,7 +82,7 @@ public class LoanController {
     // ── BK-B21 ~ B24, B27: 대출 실행 ────────────────────────────────────────
 
     @Operation(summary = "대출 실행 (BK-B21~B24, B27)",
-               description = "계좌 유효성 + 비밀번호 검증 → 60일 불완전판매 방지 → 단일 트랜잭션 대출 실행 → 월 상환금 계산")
+               description = "계좌 유효성 + 비밀번호 검증 → 60일 불완전판매 방지 → 단일 트랜잭션 실행(원장갱신·잔액증가·거래기록) → 월 상환금 계산")
     @PostMapping("/execution")
     public ResponseEntity<ApiResponse<LoanExecuteResponse>> execute(
             @RequestBody @Valid LoanExecuteRequest request) {
