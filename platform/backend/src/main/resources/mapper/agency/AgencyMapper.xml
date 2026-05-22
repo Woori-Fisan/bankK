@@ -16,4 +16,10 @@
         SELECT * FROM agency
     </select>
 
+    <select id="existsById" resultType="boolean">
+        SELECT EXISTS (
+        SELECT 1 FROM agency WHERE id = #{id}
+        )
+    </select>
+
 </mapper>
