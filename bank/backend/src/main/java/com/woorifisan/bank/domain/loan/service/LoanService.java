@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +49,7 @@ public class LoanService {
     private final LoanLedgerMapper loanLedgerMapper;
     private final LoanProductMapper loanProductMapper;
     private final BankTermsMapper bankTermsMapper;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     // ── BK-B11: 심사 약관 조회 ────────────────────────────────────────────────
 
@@ -206,8 +208,8 @@ public class LoanService {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_ABNORMAL);
         }
 
-        // BK-B22: 계좌 비밀번호 검증
-        if (!request.getAccountPassword().equals(account.getPassword())) {
+        // BK-B22: 계좌 비밀번호 검증 (bcrypt)
+        if (!passwordEncoder.matches(request.getAccountPassword(), account.getPassword())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_PASSWORD_MISMATCH);
         }
 
@@ -310,7 +312,8 @@ public class LoanService {
             BigDecimal rate, int period) {
         BigDecimal existingMonthly = activeLoans.stream()
                 .map(l -> calculateMonthlyPayment(
-                        l.getLoanAmount() != null ? l.getLoanAmount() : BigDecimal.ZERO,
+                        l.getLoanAmount() != null ? l.getLoanAmount()
+                                : (l.getApprovedLimit() != null ? l.getApprovedLimit() : BigDecimal.ZERO),
                         l.getInterestRate() != null ? l.getInterestRate() : rate,
                         l.getRepaymentPeriod() != null ? l.getRepaymentPeriod() : period))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -329,7 +332,8 @@ public class LoanService {
         BigDecimal maxAnnual = MOCK_ANNUAL_INCOME.multiply(new BigDecimal("0.40"));
         BigDecimal existingMonthly = activeLoans.stream()
                 .map(l -> calculateMonthlyPayment(
-                        l.getLoanAmount() != null ? l.getLoanAmount() : BigDecimal.ZERO,
+                        l.getLoanAmount() != null ? l.getLoanAmount()
+                                : (l.getApprovedLimit() != null ? l.getApprovedLimit() : BigDecimal.ZERO),
                         l.getInterestRate() != null ? l.getInterestRate() : rate,
                         l.getRepaymentPeriod() != null ? l.getRepaymentPeriod() : period))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
