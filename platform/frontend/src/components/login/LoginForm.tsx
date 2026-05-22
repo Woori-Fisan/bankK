@@ -9,7 +9,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 const LoginForm: React.FC = () => {
     const navigate = useNavigate();
-    const { setUserRole } = useAuth();
+    const { setUserRole, clearAuth } = useAuth();
 
     const [employeeId, setEmployeeId] = useState('');
     const [password, setPassword] = useState('');
@@ -23,6 +23,7 @@ const LoginForm: React.FC = () => {
         e.preventDefault();
         setLoginMessage(null);
         setLoginSuccess(null);
+        clearAuth(); // 로그인 시도 전 기존 권한 정보 초기화
 
         if (!employeeId || !password) {
             setLoginMessage('아이디와 비밀번호를 모두 입력해주세요.');
