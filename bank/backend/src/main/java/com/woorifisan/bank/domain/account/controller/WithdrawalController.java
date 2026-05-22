@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Withdrawal", description = "출금 API")
 @RestController
-@RequestMapping("/api/v1/baas/withdrawal")
+@RequestMapping("/api/v1/baas/withdrawals")
 @RequiredArgsConstructor
 public class WithdrawalController {
 
@@ -25,7 +25,7 @@ public class WithdrawalController {
 
     @Operation(summary = "현금 출금", description = "계좌에서 현금을 출금합니다. (보안 필드 포함)")
     @CustomExceptionDescription(SwaggerResponseDescription.ACCOUNT_WITHDRAWAL)
-    @PostMapping("/withdrawal")
+    @PostMapping
     public ApiResponse<WithdrawalResponse> withdraw(@Valid @RequestBody WithdrawalRequest request) {
         return ApiResponse.success(withdrawalService.withdraw(request));
     }
