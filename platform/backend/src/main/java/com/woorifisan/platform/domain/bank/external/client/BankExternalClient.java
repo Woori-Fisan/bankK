@@ -11,8 +11,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 /**
  * 외부 은행 코어 시스템과의 통신을 전담하는 클라이언트 클래스입니다.
@@ -49,19 +51,35 @@ public class BankExternalClient {
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(request)
                     .retrieve()
+                    // 4xx, 5xx 에러 발생 시 바디를 읽어서 BusinessException으로 변환
+                    .onStatus(HttpStatusCode::isError, clientResponse -> 
+                        clientResponse.bodyToMono(new ParameterizedTypeReference<ApiResponse<BalanceInquiryResponse>>() {})
+                            .flatMap(errorBody -> {
+                                String bankErrorCode = (errorBody.getError() != null) ? errorBody.getError().getCode() : "UNKNOWN";
+                                return Mono.error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
+                            })
+                    )
                     .bodyToMono(new ParameterizedTypeReference<ApiResponse<BalanceInquiryResponse>>() {})
                     .block();
 
-            if (response != null && response.isSuccess()) {
-                return response.getData();
-            } else {
-                String errorCode = (response != null && response.getError() != null) ? response.getError().getCode() : "UNKNOWN_ERROR";
-                log.error("외부 은행 API 응답 에러 - 코드: {}", errorCode);
-                throw new BusinessException(ErrorCode.BANK_API_ERROR);
-            }
+            return response != null ? response.getData() : null;
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("외부 은행 API 통신 중 오류 발생", e);
             throw new BusinessException(ErrorCode.BANK_API_ERROR);
         }
+    }
+
+    /**
+     * 은행 코어의 에러 코드를 플랫폼 내부 에러 코드로 변환합니다.
+     */
+    private ErrorCode mapToInternalErrorCode(String bankErrorCode) {
+        return switch (bankErrorCode) {
+            case "ACC_001" -> ErrorCode.INQUIRY_ACCOUNT_NOTFOUND;
+            case "ERR_001" -> ErrorCode.INVALID_INPUT;
+            case "ERR_002" -> ErrorCode.INTERNAL_SERVER_ERROR;
+            default -> ErrorCode.BANK_API_ERROR;
+        };
     }
 }
