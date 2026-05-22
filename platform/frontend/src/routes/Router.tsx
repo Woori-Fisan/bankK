@@ -9,8 +9,11 @@ import EmployeeManagementPage from '../pages/EmployeeManagementPage';
 import LoanApplication from '../pages/LoanApplication';
 import TransferPage from '../pages/TransferPage';
 import PrivateRoute from './PrivateRoute';
+import { useAuth } from '../hooks/useAuth';
 
 const Router = () => {
+  const { isAdmin } = useAuth();
+
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
@@ -18,15 +21,20 @@ const Router = () => {
         <Route element={<PrivateRoute />}>
           <Route index element={<MainPage />} />
           <Route path="main" element={<MainPage />} />
+
           <Route path="inquiry" element={<AccountInquiry />} />
           <Route path="pinpad-test" element={<PinpadTestPage />} />
           <Route path="loan" element={<LoanApplication />} />
           <Route path="withdraw" element={<WithdrawPage />} />
           <Route path="transfer" element={<TransferPage />} />
-          <Route path="employee-management" element={<EmployeeManagementPage />} />
+
+          {/* 관리자 전용 경로 */}
+          {isAdmin && (
+            <Route path="employee-management" element={<EmployeeManagementPage />} />
+          )}
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };

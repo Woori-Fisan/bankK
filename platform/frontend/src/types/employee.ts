@@ -1,5 +1,6 @@
 export interface Employee {
-    employeeId: string;
+    loginId: string;
+    employeeNum: string;
     agencyId: number;
     role: 'USER' | 'ADMIN';
     isLocked: boolean;
@@ -19,6 +20,7 @@ export interface RegisterEmployeeRequest {
     password: string; // RSA encrypted
     role: 'USER' | 'ADMIN';
     agencyId: number;
+    employeeNum: string;
 }
 
 export interface DeleteEmployeeResponse {
@@ -27,9 +29,12 @@ export interface DeleteEmployeeResponse {
     updatedAt: string; // ISO-8601
 }
 
+export interface ResetPasswordRequest {
+    password: string; // RSA encrypted
+}
+
 export interface ResetPasswordResponse {
     loginId: string;
-    temporaryPassword: string;
     isLocked: boolean;
     updatedAt: string; // ISO-8601
 }
