@@ -5,8 +5,11 @@ import LoginInput from './LoginInput';
 import { useAuthCrypto } from '../../hooks/useAuthCrypto';
 import { login } from '../../api/auth';
 
+import { useAuth } from '../../hooks/useAuth';
+
 const LoginForm: React.FC = () => {
     const navigate = useNavigate();
+    const { setUserRole } = useAuth();
 
     const [employeeId, setEmployeeId] = useState('');
     const [password, setPassword] = useState('');
@@ -42,6 +45,10 @@ const LoginForm: React.FC = () => {
             if (response.success) {
                 setLoginMessage(response.message || '로그인 성공!');
                 setLoginSuccess(true);
+                // role 정보가 있다면 Zustand 스토어에 저장 (권한 기반 UI 노출용)
+                if ((response as any).role) {
+                    setUserRole((response as any).role);
+                }
                 navigate('/main');
             } else {
                 setLoginMessage(response.message || '로그인 실패. 다시 시도해주세요.');
