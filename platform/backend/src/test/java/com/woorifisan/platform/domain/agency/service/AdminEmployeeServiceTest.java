@@ -79,7 +79,7 @@ class AdminEmployeeServiceTest {
 
         // when & then
         BusinessException exception = assertThrows(BusinessException.class, () -> adminEmployeeService.registerEmployee(request));
-        assertEquals(ErrorCode.USER_ALREADY_EXISTS, exception.getErrorCode());
+        assertEquals(ErrorCode.DUPLICATE_EMPLOYEE_NUM, exception.getErrorCode());
     }
 
     @Test
@@ -98,7 +98,7 @@ class AdminEmployeeServiceTest {
 
             // when & then
             BusinessException exception = assertThrows(BusinessException.class, () -> adminEmployeeService.registerEmployee(request));
-            assertEquals(ErrorCode.INVALID_CREDENTIALS, exception.getErrorCode());
+            assertEquals(ErrorCode.INVALID_TOKEN, exception.getErrorCode());
         }
     }
 
@@ -173,7 +173,7 @@ class AdminEmployeeServiceTest {
 
             // when & then
             BusinessException exception = assertThrows(BusinessException.class, () -> adminEmployeeService.resetPassword("testUser", request));
-            assertEquals(ErrorCode.INVALID_CREDENTIALS, exception.getErrorCode());
+            assertEquals(ErrorCode.INVALID_TOKEN, exception.getErrorCode());
         }
     }
 

@@ -65,6 +65,7 @@ public enum ErrorCode {
     // 직원 관리
     CHECKING_ADMIN("EMPLOYEE_001", "권한이 없는 요청입니다.", HttpStatus.BAD_REQUEST),
     NON_EXISTENT_AGENCY("EMPLOYEE_002", "존재하지 않은 대행업체입니다.", HttpStatus.BAD_REQUEST),
+    DUPLICATE_EMPLOYEE_NUM("EMPLOYEE_003", "등록된 사번입니다.", HttpStatus.BAD_REQUEST),
     ;
 
     private final String code;

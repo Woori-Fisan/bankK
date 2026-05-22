@@ -76,7 +76,7 @@ public class AdminEmployeeService {
         // 3. 대행업체 내 사번 중복 확인 (삭제되지 않은 사용자 기준) [EMPLOYEE_003]
         boolean isEmployeeNumExist = agencyUserMapper.existsByEmployeeNum(request.agencyId(), request.employeeNum());
         if (isEmployeeNumExist) {
-            throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS);
+            throw new BusinessException(ErrorCode.DUPLICATE_EMPLOYEE_NUM);
         }
 
 
@@ -85,8 +85,8 @@ public class AdminEmployeeService {
             String formattedPlatformPrivateKey = platformPrivateKey.replace("\\n", "\n");
             decryptedPassword = CryptoUtil.decryptJwe(request.password(), formattedPlatformPrivateKey);
         } catch (Exception e) {
-            log.error("JWE 비밀번호 복호화 실패 - 로그인 요청 차단 (Employee: {})", request.loginId(), e);
-            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            log.error("JWE 비밀번호 복호화 실패 - 직원 등록 요청 실패 (Employee: {})", request.loginId(), e);
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
 
         // 3. 패스워드 인코딩
@@ -106,7 +106,6 @@ public class AdminEmployeeService {
     @Transactional
     public EmployeeDeleteResponse deleteEmployee(String loginId) {
         // 1. 기존 유저 존재 여부 확인 [USER_001]
-        log.info(loginId);
         boolean isUserExist = agencyUserMapper.existsByLoginId(loginId);
         if (!isUserExist) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
@@ -140,8 +139,8 @@ public class AdminEmployeeService {
             String formattedPlatformPrivateKey = platformPrivateKey.replace("\\n", "\n");
             decryptedPassword = CryptoUtil.decryptJwe(request.password(), formattedPlatformPrivateKey);
         } catch (Exception e) {
-            log.error("JWE 비밀번호 복호화 실패 - 로그인 요청 차단 (Employee: {})", loginId, e);
-            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            log.error("JWE 비밀번호 복호화 실패 - 비밀번호 초기화 요청 실패 (Employee: {})", loginId, e);
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
 
         // 3. 패스워드 인코딩
