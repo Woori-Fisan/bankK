@@ -3,6 +3,8 @@ package com.woorifisan.bank.domain.account.dto.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -10,7 +12,9 @@ import lombok.NoArgsConstructor;
  * 잔액 조회 요청 DTO
  */
 @Getter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Schema(description = "잔액 조회 요청 정보")
 public class BalanceInquiryRequest {
 

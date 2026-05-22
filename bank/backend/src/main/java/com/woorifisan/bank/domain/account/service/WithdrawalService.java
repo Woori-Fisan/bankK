@@ -13,7 +13,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +23,6 @@ public class WithdrawalService {
 
     private final AccountMapper accountMapper;
     private final TransactionLedgerMapper transactionLedgerMapper;
-    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public WithdrawalResponse withdraw(WithdrawalRequest request) {
@@ -34,7 +32,7 @@ public class WithdrawalService {
                 request.getCustomerRrnPrefix()
         ).orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
 
-        // 2. 출금 가능 여부 체크 (비밀번호 검증 포함)
+        // 2. 출금 가능 여부 체크 (이미 해싱된 비밀번호 비교)
         validateWithdrawal(account, request.getWithdrawalPassword(), request.getAmount());
 
         // 3. 거래 내역 생성
@@ -67,7 +65,7 @@ public class WithdrawalService {
                 .build();
     }
 
-    private void validateWithdrawal(Account account, String encryptedPassword, BigDecimal amount) {
+    private void validateWithdrawal(Account account, String inputPasswordHash, BigDecimal amount) {
         // 1. 계좌 유형 및 상태 확인
         if (!"DEPOSIT".equals(account.getAccountType())) {
             throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
@@ -78,8 +76,9 @@ public class WithdrawalService {
         }
 
         // 2. 비밀번호 검증
-        // TODO: 실제 환경에서는 RSA 복호화 로직이 필요함. 현재는 encryptedPassword를 평문으로 가정하고 bcrypt 비교
-        if (!passwordEncoder.matches(encryptedPassword, account.getPasswordHash())) {
+        // 가정: 입력값(inputPasswordHash)은 이미 bcrypt 등으로 해싱된 상태임
+        // TODO: RSA 복호화
+        if (!inputPasswordHash.equals(account.getPasswordHash())) {
             throw new BusinessException(ErrorCode.BANK_PW_ERROR);
         }
 

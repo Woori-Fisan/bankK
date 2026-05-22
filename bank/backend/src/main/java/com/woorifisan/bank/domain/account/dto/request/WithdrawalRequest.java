@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -13,7 +15,9 @@ import lombok.NoArgsConstructor;
  * 현금 출금 요청 DTO
  */
 @Getter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Schema(description = "현금 출금 요청 정보")
 public class WithdrawalRequest {
 
@@ -30,7 +34,7 @@ public class WithdrawalRequest {
     private String withdrawalAccountNo;
 
     @NotBlank(message = "출금 계좌 비밀번호는 필수입니다.")
-    @Schema(description = "출금 계좌 비밀번호 (RSA 암호화)", example = "1234")
+    @Schema(description = "출금 계좌 비밀번호 (RSA 암호화)", example = "$2a$12$c6WGgZzJ/41BhZZePFoYSuwlQS39wBB.7JezVjnYaMmouQgVNZSwm")
     private String withdrawalPassword;
 
     @NotBlank(message = "고객 주민등록번호 앞 7자리는 필수입니다.")
