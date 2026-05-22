@@ -19,13 +19,13 @@
             loan_no, customer_id, linked_account_id,
             requested_amount, requested_period,
             is_credit_info_agreed, is_product_terms_agreed, is_document_collected,
-            applied_credit_score, applied_dsr, interest_rate,
+            applied_credit_score, applied_dsr, approved_limit, interest_rate,
             reject_reason, reviewed_at, status
         ) VALUES (
             #{loanNo}, #{customerId}, #{linkedAccountId},
             #{requestedAmount}, #{requestedPeriod},
             #{isCreditInfoAgreed}, #{isProductTermsAgreed}, #{isDocumentCollected},
-            #{appliedCreditScore}, #{appliedDsr}, #{interestRate},
+            #{appliedCreditScore}, #{appliedDsr}, #{approvedLimit}, #{interestRate},
             #{rejectReason}, #{reviewedAt}, #{status}
         )
     </insert>

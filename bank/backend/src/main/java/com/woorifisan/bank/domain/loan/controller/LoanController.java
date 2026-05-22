@@ -71,12 +71,12 @@ public class LoanController {
 
     @Operation(summary = "대출 계약 약관 조회 (BK-B25)",
                description = "심사 승인 후 계약 단계에서 고객에게 제시할 약관 목록을 반환합니다. evaluationId가 APPROVED여야 합니다.")
-    @GetMapping("/contract/terms/{loanProductCode}/{evaluationId}")
+    @GetMapping("/contract/terms/{productId}/{evaluationId}")
     public ResponseEntity<ApiResponse<List<TermsResponse>>> getContractTerms(
-            @PathVariable Long loanProductCode,
+            @PathVariable Long productId,
             @PathVariable Long evaluationId) {
         return ResponseEntity.ok(ApiResponse.success(
-                loanService.getContractTerms(loanProductCode, evaluationId)));
+                loanService.getContractTerms(productId, evaluationId)));
     }
 
     // ── BK-B21 ~ B24, B27: 대출 실행 ────────────────────────────────────────
