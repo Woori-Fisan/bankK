@@ -102,5 +102,5 @@ bank:
     "020":
       base-url: ${WOORI_BASE_URL:http://localhost:8081/api/v1/baas}
       endpoints:
-        balance: "/accounts/balance"
+        balance: "/account/balance"
         withdraw: "/withdrawals"

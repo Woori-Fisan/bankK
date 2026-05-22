@@ -5,8 +5,8 @@ import com.woorifisan.platform.domain.bank.dto.request.HistoryInquiryRequest;
 import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransactionHistoryDto;
-import com.woorifisan.platform.global.config.BankNetworkConfig;
-import com.woorifisan.platform.global.config.BankNetworkConfig.BankProperty;
+import com.woorifisan.platform.domain.bank.external.client.BankExternalClient;
+import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryRequest;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import java.math.BigDecimal;
@@ -20,10 +20,9 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 
 /**
- * 계좌 조회 서비스 (더미 데이터 반환)
+ * 계좌 조회 서비스
  */
 @Slf4j
 @Service
@@ -33,8 +32,7 @@ public class AccountInquiryService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    private final WebClient webClient;
-    private final BankNetworkConfig bankNetworkConfig;
+    private final BankExternalClient bankExternalClient;
 
     /**
      * 잔액 조회 실행
@@ -48,24 +46,19 @@ public class AccountInquiryService {
         }
         validateAccountAndBank(request.getAccountNo(), request.getBankCode());
 
-        // 입력받은 은행 코드로 매칭되는 설정을 추출
-        BankProperty bankProperty = bankNetworkConfig.getBankProperty(request.getBankCode());
+        // 은행 시스템으로 보낼 요청 DTO 구성 (더미 보안 값 포함)
+        BankBalanceInquiryRequest bankRequest = BankBalanceInquiryRequest.of(
+                request.getEncryptedKey(),
+                request.getJwsSignature(),
+                request.getAccountNo(),
+                request.getCustomerRrnPrefix()
+        );
 
-        if (bankProperty == null) {
-            log.error("지원하지 않는 은행 코드입니다: {}", request.getBankCode());
-            throw new BusinessException(ErrorCode.TRANSFER_DEPOSIT_ACCOUNT_FAULT); // 적절한 에러 코드로 변경 권장
-        }
-
-        String balanceUrl = bankProperty.getUrl("balance");
-        log.info("은행 API 호출 URL: {}", balanceUrl);
-
-        // WebClient를 호출할 때 balanceUrl 사용 가능
-        // ... (이후 로직)
-        return null; // 임시 반환
+        return bankExternalClient.fetchBalance(request.getBankCode(), bankRequest);
     }
 
     /**
-     * 거래내역 조회 실행
+     * 거래내역 조회 실행 (더미 데이터 반환)
      */
     public HistoryInquiryResponse getHistory(HistoryInquiryRequest request) {
         log.info("거래내역 조회 요청 수신 - 기간: {} ~ {}, 페이지: {}, 사이즈: {}", 
@@ -127,32 +120,23 @@ public class AccountInquiryService {
 
     /*
     * 더미 데이터 생성 코드
-    *
-    * 요청 일자의 1일 마다 1~3개의 건수를 생성
     */
     private List<TransactionHistoryDto> generateDummyDataBetween(LocalDate startDate, LocalDate endDate) {
         List<TransactionHistoryDto> dummyList = new ArrayList<>();
-        BigDecimal currentBalance = new BigDecimal("10000000"); // 초기 잔액 1000만 원 가정
+        BigDecimal currentBalance = new BigDecimal("10000000");
         
         long daysBetween = ChronoUnit.DAYS.between(startDate, endDate);
         
-        // 매일 1~3건의 더미 거래 생성
         int txCounter = 1;
         for (int i = 0; i <= daysBetween; i++) {
             LocalDate currentDate = startDate.plusDays(i);
-            
-            // 하루에 무작위로 1~3건 발생 (더미 로직)
             int txPerDay = (int) (Math.random() * 3) + 1;
             
             for (int j = 0; j < txPerDay; j++) {
-                // 시간은 대충 낮 시간대로 분산
                 LocalDateTime txDateTime = currentDate.atTime(9 + j * 4, (int) (Math.random() * 59), 0);
-                
-                // 입/출금 무작위 결정 (70% 확률로 출금)
                 boolean isWithdraw = Math.random() < 0.7;
                 String txType = isWithdraw ? "WITHDRAW" : "DEPOSIT";
                 
-                // 금액도 무작위 (출금은 1~5만 원, 입금은 50~200만 원)
                 BigDecimal amount;
                 String counterpart;
                 String desc;
@@ -190,12 +174,9 @@ public class AccountInquiryService {
      * 비즈니스 로직 검증 (더미 데이터 기준)
      */
     private void validateAccountAndBank(String accountNo, String bankCode) {
-        // 더미 로직: 계좌번호가 "0000000000"인 경우 유효하지 않은 계좌 (INQUIRY_001)
         if ("0000000000".equals(accountNo)) {
             throw new BusinessException(ErrorCode.INQUIRY_ACCOUNT_NOTFOUND);
         }
-
-        // 더미 로직: 은행 코드가 "999"인 경우 은행 API 에러 (BANK_002)
         if ("999".equals(bankCode)) {
             throw new BusinessException(ErrorCode.BANK_API_ERROR);
         }
