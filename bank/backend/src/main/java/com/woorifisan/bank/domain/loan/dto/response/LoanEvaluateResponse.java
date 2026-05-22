@@ -11,6 +11,7 @@ import lombok.Getter;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class LoanEvaluateResponse {
 
+    private Long evaluationId;
     private String loanNo;
     private String status;
     private String rejectReason;
@@ -20,10 +21,11 @@ public class LoanEvaluateResponse {
     private BigDecimal dsr;
     private List<AvailableProductDto> availableProducts;
 
-    public static LoanEvaluateResponse approved(String loanNo, BigDecimal approvedLimit,
-            BigDecimal interestRate, int creditScore, BigDecimal dsr,
-            List<AvailableProductDto> availableProducts) {
+    public static LoanEvaluateResponse approved(Long evaluationId, String loanNo,
+            BigDecimal approvedLimit, BigDecimal interestRate, int creditScore,
+            BigDecimal dsr, List<AvailableProductDto> availableProducts) {
         return LoanEvaluateResponse.builder()
+                .evaluationId(evaluationId)
                 .loanNo(loanNo)
                 .status("APPROVED")
                 .approvedLimit(approvedLimit)
@@ -34,9 +36,10 @@ public class LoanEvaluateResponse {
                 .build();
     }
 
-    public static LoanEvaluateResponse rejected(String loanNo, int creditScore,
-            BigDecimal dsr, String rejectReason) {
+    public static LoanEvaluateResponse rejected(Long evaluationId, String loanNo,
+            int creditScore, BigDecimal dsr, String rejectReason) {
         return LoanEvaluateResponse.builder()
+                .evaluationId(evaluationId)
                 .loanNo(loanNo)
                 .status("REJECTED")
                 .creditScore(creditScore)
