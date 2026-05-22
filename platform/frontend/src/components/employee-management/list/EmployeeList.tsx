@@ -16,8 +16,6 @@ const EmployeeList: React.FC = () => {
                 if (!response.data) {
                     throw new Error('서버에서 직원 목록 데이터를 받지 못했습니다.');
                 }
-
-                console.log(response);
                 
                 setEmployees(response.data);
                 setError(null);
