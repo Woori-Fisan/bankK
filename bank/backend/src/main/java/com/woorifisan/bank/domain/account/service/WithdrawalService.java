@@ -79,7 +79,7 @@ public class WithdrawalService {
 
         // 2. 비밀번호 검증
         // TODO: RSA 복호화
-        if (passwordEncoder.matches(inputPassword, account.getPasswordHash())) {
+        if (!passwordEncoder.matches(inputPassword, account.getPasswordHash())) {
             throw new BusinessException(ErrorCode.ACCOUNT_PW_ERROR);
         }
 
