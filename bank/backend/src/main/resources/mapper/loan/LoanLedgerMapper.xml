@@ -1,7 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.woorifisan.bank.domain.loan.mapper.LoanLedgerMapper">
+
     <select id="findById" resultType="LoanLedger">
         SELECT * FROM loan_ledger WHERE id = #{id}
     </select>
+
+    <select id="findByLoanNo" resultType="LoanLedger">
+        SELECT * FROM loan_ledger WHERE loan_no = #{loanNo}
+    </select>
+
+    <select id="findActiveByCustomerId" resultType="LoanLedger">
+        SELECT * FROM loan_ledger WHERE customer_id = #{customerId} AND status IN ('ACTIVE', 'APPROVED')
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO loan_ledger (
+            loan_no, customer_id, linked_account_id,
+            requested_amount, requested_period,
+            is_credit_info_agreed, is_product_terms_agreed, is_document_collected,
+            applied_credit_score, applied_dsr, approved_limit, interest_rate,
+            reject_reason, reviewed_at, status
+        ) VALUES (
+            #{loanNo}, #{customerId}, #{linkedAccountId},
+            #{requestedAmount}, #{requestedPeriod},
+            #{isCreditInfoAgreed}, #{isProductTermsAgreed}, #{isDocumentCollected},
+            #{appliedCreditScore}, #{appliedDsr}, #{approvedLimit}, #{interestRate},
+            #{rejectReason}, #{reviewedAt}, #{status}
+        )
+    </insert>
+
+    <update id="updateExecution">
+        UPDATE loan_ledger SET
+            product_id          = #{productId},
+            loan_amount         = #{loanAmount},
+            current_loan_balance = #{loanAmount},
+            interest_rate       = #{interestRate},
+            repayment_type      = #{repaymentType},
+            repayment_period    = #{repaymentPeriod},
+            start_date          = #{startDate},
+            end_date            = #{endDate},
+            status              = 'ACTIVE'
+        WHERE loan_no = #{loanNo}
+    </update>
+
+    <!-- BK-B24: 동일 고객·상품의 60일 내 ACTIVE 대출 존재 여부 -->
+    <select id="existsRecentActiveByCustomerAndProduct" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1 FROM loan_ledger
+            WHERE customer_id = #{customerId}
+              AND product_id  = #{productId}
+              AND status      = 'ACTIVE'
+              AND start_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+        )
+    </select>
+
 </mapper>
