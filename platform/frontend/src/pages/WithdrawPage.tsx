@@ -122,10 +122,7 @@ const WithdrawPage: React.FC = () => {
             <main className="w-full flex-1 flex justify-center items-start pt-4">
                 {step === 'entry' ? (
                     <WithdrawEntryForm 
-                        initialData={withdrawData ? {
-                            birthDate: withdrawData.birthDate,
-                            amount: withdrawData.amount
-                        } : undefined}
+                        initialData={withdrawData || undefined}
                         onNext={handleNext} 
                     />
                 ) : step === 'confirm' && withdrawData ? (

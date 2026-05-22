@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AlertCircle } from 'lucide-react';
 import WithdrawAccountSection from '../sections/WithdrawAccountSection';
 import AmountInputSection from '../sections/AmountInputSection';
 import WithdrawFeeSection from '../sections/WithdrawFeeSection';
@@ -7,10 +8,7 @@ import type { WithdrawData } from '../../../types/withdraw';
 import { getBalance } from '../../../api/transfer';
 
 export interface WithdrawEntryFormProps {
-    initialData?: {
-        amount: string;
-        birthDate?: string;
-    };
+    initialData?: WithdrawData;
     onNext: (data: WithdrawData) => void;
 }
 
@@ -21,15 +19,16 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
         accountNumber: string;
         balance?: number;
     }>({
-        bankName: '우리은행',
-        accountNumber: '',
-        balance: undefined,
+        bankName: initialData?.sourceAccount.bankName || '우리은행',
+        accountNumber: initialData?.sourceAccount.accountNumber || '',
+        balance: initialData?.sourceAccount.balance,
     });
 
     const [birthDate, setBirthDate] = useState(initialData?.birthDate || '');
     const [amount, setAmount] = useState(initialData?.amount || '0');
     const [fee] = useState(0);
     const [isCheckingBalance, setIsCheckingBalance] = useState(false);
+    const [apiError, setApiError] = useState<string | null>(null);
 
     // 2. 계좌 조회 Debounce 로직 (onBlur 활용)
     // 포커스 탈출 시 API 호출을 위해 별도 핸들러 구현
@@ -43,6 +42,8 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
         if (isCheckingBalance) return;
 
         setIsCheckingBalance(true);
+        setApiError(null); // 새로운 요청 시 에러 초기화
+        
         // 기존 잔액 초기화 (새로운 조회를 시각적으로 알림)
         setSourceAccount(prev => ({ ...prev, balance: undefined }));
 
@@ -77,10 +78,14 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                 }));
                 console.log(`[onBlur] 출금 계좌 조회 완료: 잔액 ${fetchedBalance}`);
             } else {
-                console.error('잔액 조회 실패:', response.error?.message);
+                const errorMessage = response.error?.message || '사용자의 정보를 찾을 수 없습니다.';
+                setApiError(errorMessage);
+                console.error('잔액 조회 실패:', errorMessage);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('API 호출 중 오류 발생:', error);
+            const errorMessage = error.response?.data?.error?.message || '사용자의 정보를 찾을 수 없습니다.';
+            setApiError(errorMessage);
         } finally {
             setIsCheckingBalance(false);
         }
@@ -89,16 +94,19 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
     // 3. 핸들러
     const handleSourceBankChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSourceAccount(prev => ({ ...prev, bankName: e.target.value, balance: undefined }));
+        setApiError(null);
     };
 
     const handleSourceAccountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSourceAccount(prev => ({ ...prev, accountNumber: e.target.value, balance: undefined }));
+        setApiError(null);
     };
 
     const handleBirthDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 7);
         setBirthDate(val);
         setSourceAccount(prev => ({ ...prev, balance: undefined }));
+        setApiError(null);
     };
 
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,6 +141,12 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
         });
     };
 
+    const isNextDisabled = 
+        sourceAccount.balance === undefined || 
+        isCheckingBalance || 
+        !amount || 
+        parseInt(amount, 10) === 0;
+
     return (
         <div className="w-full max-w-4xl mx-auto bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
             <div className="p-8 md:p-12 space-y-10">
@@ -141,6 +155,14 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                 </header>
 
                 <div className="space-y-10">
+                    {/* 상단 API 에러 영역 (계좌를 찾을 수 없을 때 등) */}
+                    {apiError && (
+                        <div className="mb-6 flex items-center gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                            <span className="text-sm font-bold">{apiError}</span>
+                        </div>
+                    )}
+
                     <WithdrawAccountSection 
                         bankName={sourceAccount.bankName}
                         accountNumber={sourceAccount.accountNumber}
@@ -199,6 +221,7 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                         onAmountChange={handleAmountChange}
                         onQuickAmountAdd={handleQuickAmountAdd}
                         onAllIn={handleAllIn}
+                        disabled={sourceAccount.balance === undefined || isCheckingBalance}
                     />
 
                     <WithdrawFeeSection fee={fee} isWaived={true} />
@@ -208,7 +231,12 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                     <button
                         type="button"
                         onClick={handleSubmit}
-                        className="w-full py-5 bg-emerald-800 text-white text-xl font-black rounded-2xl hover:bg-emerald-900 active:scale-[0.98] transition-all shadow-lg shadow-emerald-800/20"
+                        disabled={isNextDisabled}
+                        className={`w-full py-5 text-white text-xl font-black rounded-2xl transition-all shadow-lg ${
+                            isNextDisabled
+                                ? 'bg-gray-300 cursor-not-allowed shadow-none'
+                                : 'bg-emerald-800 hover:bg-emerald-900 active:scale-[0.98] shadow-emerald-800/20'
+                        }`}
                     >
                         다음
                     </button>
