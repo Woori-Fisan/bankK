@@ -38,7 +38,7 @@ public class WithdrawalService {
         validateWithdrawal(account, request.getWithdrawalPassword(), request.getAmount());
 
         // 3. 거래 내역 생성
-        String txId = "TXW-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String txId = "TXW-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
         BigDecimal balanceAfter = account.getBalance().subtract(request.getAmount());
         
         TransactionLedger ledger = TransactionLedger.of(
@@ -55,6 +55,12 @@ public class WithdrawalService {
         // 4. 원장 업데이트 (낙관적 락)
         int updatedRows = accountMapper.subtractBalance(account.getId(), request.getAmount(), account.getVersion());
         if (updatedRows == 0) {
+            Account currentAccount = accountMapper.findById(account.getId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+
+            if (currentAccount.getBalance().compareTo(request.getAmount()) < 0) {
+                throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
+            }
             throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
         }
 
