@@ -36,7 +36,7 @@ class WithdrawalServiceTest {
         // given
         BigDecimal withdrawAmount = new BigDecimal("30000.00");
         WithdrawalRequest request = WithdrawalRequest.builder()
-                .withdrawalAccountNo("acc-hash-100")
+                .withdrawalAccountNo("acc-100")
                 .customerRrnPrefix("rrn-100")
                 .withdrawalPassword("123456")
                 .amount(withdrawAmount)
@@ -50,7 +50,7 @@ class WithdrawalServiceTest {
         assertThat(response.getBalanceAfter()).isEqualByComparingTo(new BigDecimal("70000.00"));
         
         // DB 잔액 확인
-        Account updatedAccount = accountMapper.findByAccountNoHashAndRrnPrefix("acc-hash-100", "rrn-100").get();
+        Account updatedAccount = accountMapper.findByAccountNoAndRrnPrefix("acc-100", "rrn-100").get();
         assertThat(updatedAccount.getBalance()).isEqualByComparingTo(new BigDecimal("70000.00"));
     }
 
@@ -59,7 +59,7 @@ class WithdrawalServiceTest {
     void 출금_실패_비밀번호불일치() {
         // given
         WithdrawalRequest request = WithdrawalRequest.builder()
-                .withdrawalAccountNo("acc-hash-100")
+                .withdrawalAccountNo("acc-100")
                 .customerRrnPrefix("rrn-100")
                 .withdrawalPassword("5678")
                 .amount(new BigDecimal("1000.00"))
@@ -76,7 +76,7 @@ class WithdrawalServiceTest {
     void 출금_실패_잔액부족() {
         // given
         WithdrawalRequest request = WithdrawalRequest.builder()
-                .withdrawalAccountNo("acc-hash-101")
+                .withdrawalAccountNo("acc-101")
                 .customerRrnPrefix("rrn-101")
                 .withdrawalPassword("123456")
                 .amount(new BigDecimal("5000.00")) // 잔액은 1000
@@ -93,7 +93,7 @@ class WithdrawalServiceTest {
     void 출금_실패_계좌잠금() {
         // given
         WithdrawalRequest request = WithdrawalRequest.builder()
-                .withdrawalAccountNo("acc-hash-102")
+                .withdrawalAccountNo("acc-102")
                 .customerRrnPrefix("rrn-102")
                 .withdrawalPassword("123456")
                 .amount(new BigDecimal("1000.00"))
@@ -110,7 +110,7 @@ class WithdrawalServiceTest {
     void 출금_실패_계좌유형부적합() {
         // given
         WithdrawalRequest request = WithdrawalRequest.builder()
-                .withdrawalAccountNo("acc-hash-103")
+                .withdrawalAccountNo("acc-103")
                 .customerRrnPrefix("rrn-103")
                 .withdrawalPassword("123456")
                 .amount(new BigDecimal("1000.00"))

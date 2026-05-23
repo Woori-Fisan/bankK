@@ -1,7 +1,6 @@
 package com.woorifisan.platform.domain.bank.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -56,7 +55,7 @@ class WithdrawControllerTest {
                 .transactionDate("2023-05-20 10:00:00")
                 .build();
 
-        given(withdrawalService.executeWithdraw(any(WithdrawalRequest.class), anyString())).willReturn(response);
+        given(withdrawalService.executeWithdraw(any(WithdrawalRequest.class))).willReturn(response);
 
         // when & then
         mockMvc.perform(post("/api/v1/bank/withdrawals")

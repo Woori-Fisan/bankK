@@ -44,8 +44,6 @@ class WithdrawalServiceTest {
         request.setEncryptedKey("encKey");
         request.setCustomerRrnPrefix("900101");
 
-        String jwsSignature = "signature_from_header";
-
         TransferResponse expectedResponse = TransferResponse.builder()
                 .transactionId("TRX-001")
                 .transactionDate("2024-05-22 10:00:00")
@@ -56,7 +54,7 @@ class WithdrawalServiceTest {
                 .thenReturn(expectedResponse);
 
         // when
-        TransferResponse actualResponse = withdrawalService.executeWithdraw(request, jwsSignature);
+        TransferResponse actualResponse = withdrawalService.executeWithdraw(request);
 
         // then
         assertThat(actualResponse).isNotNull();
@@ -67,7 +65,6 @@ class WithdrawalServiceTest {
         verify(bankExternalClient).withdraw(eq("020"), captor.capture());
         
         assertThat(captor.getValue().getWithdrawalPassword()).isEqualTo("1234"); // 평문 확인
-        assertThat(captor.getValue().getJwsSignature()).isEqualTo(jwsSignature); // 헤더에서 온 서명 확인
     }
 
     @Test
@@ -84,7 +81,7 @@ class WithdrawalServiceTest {
                 .thenThrow(new BusinessException(ErrorCode.BANK_API_ERROR));
 
         // when & then
-        assertThatThrownBy(() -> withdrawalService.executeWithdraw(request, "sig"))
+        assertThatThrownBy(() -> withdrawalService.executeWithdraw(request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.BANK_API_ERROR);
     }
@@ -103,7 +100,7 @@ class WithdrawalServiceTest {
                 .thenThrow(new BusinessException(ErrorCode.TRANSFER_WITHDRAW_AMOUNT_FAULT));
 
         // when & then
-        assertThatThrownBy(() -> withdrawalService.executeWithdraw(request, "sig"))
+        assertThatThrownBy(() -> withdrawalService.executeWithdraw(request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.TRANSFER_WITHDRAW_AMOUNT_FAULT);
     }

@@ -14,11 +14,11 @@ public interface AccountMapper {
     void updateBalance(@Param("id") Long id, @Param("amount") BigDecimal amount);
 
     /**
-     * 계좌번호 해시와 암호화된 주민번호 앞자리를 이용해 계좌 정보 조회
+     * 계좌번호와 주민번호 앞자리를 이용해 계좌 정보 조회
      */
-    Optional<Account> findByAccountNoHashAndRrnPrefix(
-            @Param("accountNoHash") String accountNoHash,
-            @Param("rrnPrefixEnc") String rrnPrefixEnc
+    Optional<Account> findByAccountNoAndRrnPrefix(
+            @Param("accountNo") String accountNo,
+            @Param("rrnPrefix") String rrnPrefix
     );
 
     /**

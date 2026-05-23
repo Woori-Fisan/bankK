@@ -17,13 +17,13 @@
         UPDATE account SET balance = balance + #{amount} WHERE id = #{id}
     </update>
 
-    <select id="findByAccountNoHashAndRrnPrefix" resultType="Account">
+    <select id="findByAccountNoAndRrnPrefix" resultType="Account">
         SELECT
             a.*
         FROM account a
         INNER JOIN customer c ON a.customer_id = c.id
-        WHERE a.account_no_hash = #{accountNoHash}
-          AND c.rrn_prefix_enc = #{rrnPrefixEnc}
+        WHERE a.account_no = #{accountNo}
+          AND c.rrn_prefix = #{rrnPrefix}
     </select>
 
     <update id="subtractBalance">

@@ -30,8 +30,8 @@ class AccountServiceTest {
     void 잔액조회_성공() {
         // given
         BalanceInquiryRequest request = BalanceInquiryRequest.builder()
-                .accountNo("service-test-acc-hash")
-                .customerRrnPrefix("service-test-rrn-prefix")
+                .accountNo("111-222-3333")
+                .customerRrnPrefix("9501014")
                 .build();
 
         // when
@@ -47,8 +47,8 @@ class AccountServiceTest {
     void 잔액조회_실패_계좌번호불일치() {
         // given
         BalanceInquiryRequest request = BalanceInquiryRequest.builder()
-                .accountNo("wrong-acc-hash")
-                .customerRrnPrefix("service-test-rrn-prefix")
+                .accountNo("wrong-acc")
+                .customerRrnPrefix("9501014")
                 .build();
 
         // when & then
@@ -62,7 +62,7 @@ class AccountServiceTest {
     void 잔액조회_실패_주민번호불일치() {
         // given
         BalanceInquiryRequest request = BalanceInquiryRequest.builder()
-                .accountNo("service-test-acc-hash")
+                .accountNo("111-222-3333")
                 .customerRrnPrefix("wrong-rrn-prefix")
                 .build();
 

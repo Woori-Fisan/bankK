@@ -14,7 +14,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,9 +30,9 @@ public class WithdrawController {
     @PostMapping
     public ApiResponse<TransferResponse> executeWithdraw(
             @Parameter(hidden = true) @CurrentUser Long staffId,
-            @RequestHeader(value = "x-jws-signature") String jwsSignature,
+//            @RequestHeader(value = "x-jws-signature") String jwsSignature,
             @Valid @RequestBody WithdrawalRequest request) {
-        TransferResponse response = withdrawalService.executeWithdraw(request, jwsSignature);
+        TransferResponse response = withdrawalService.executeWithdraw(request);
         return ApiResponse.success(response);
     }
 }

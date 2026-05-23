@@ -29,7 +29,7 @@ public class WithdrawalService {
     @Transactional
     public WithdrawalResponse withdraw(WithdrawalRequest request) {
         // 1. 계좌 및 고객 정보 검증
-        Account account = accountMapper.findByAccountNoHashAndRrnPrefix(
+        Account account = accountMapper.findByAccountNoAndRrnPrefix(
                 request.getWithdrawalAccountNo(),
                 request.getCustomerRrnPrefix()
         ).orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
@@ -58,7 +58,7 @@ public class WithdrawalService {
             throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
         }
 
-        log.info("출금 완료: 계좌={}, 금액={}, 잔액={}", account.getAccountNoHash(), request.getAmount(), balanceAfter);
+        log.info("출금 완료: 계좌={}, 금액={}, 잔액={}", account.getAccountNo(), request.getAmount(), balanceAfter);
 
         return WithdrawalResponse.builder()
                 .transactionId(txId)
@@ -78,8 +78,8 @@ public class WithdrawalService {
         }
 
         // 2. 비밀번호 검증
-        // TODO: RSA 복호화
-        if (!passwordEncoder.matches(inputPassword, account.getPasswordHash())) {
+        log.info("비밀번호 검증: 입력={}, 저장={}", inputPassword, account.getPassword());
+        if (!passwordEncoder.matches(inputPassword, account.getPassword())) {
             throw new BusinessException(ErrorCode.ACCOUNT_PW_ERROR);
         }
 
