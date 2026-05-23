@@ -34,7 +34,7 @@ public class WithdrawalRequest {
     private String withdrawalAccountNo;
 
     @NotBlank(message = "출금 계좌 비밀번호는 필수입니다.")
-    @Schema(description = "출금 계좌 비밀번호 (RSA 암호화)", example = "$2a$12$c6WGgZzJ/41BhZZePFoYSuwlQS39wBB.7JezVjnYaMmouQgVNZSwm")
+    @Schema(description = "출금 계좌 비밀번호 (RSA 암호화)", example = "123456")
     private String withdrawalPassword;
 
     @NotBlank(message = "고객 주민등록번호 앞 7자리는 필수입니다.")
