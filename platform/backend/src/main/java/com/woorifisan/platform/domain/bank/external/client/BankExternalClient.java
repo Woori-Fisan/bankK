@@ -64,7 +64,12 @@ public class BankExternalClient {
                     .bodyToMono(new ParameterizedTypeReference<ApiResponse<BalanceInquiryResponse>>() {})
                     .block();
 
-            return response != null ? response.getData() : null;
+            if (response == null || response.getData() == null) {
+                log.error("외부 은행 API 응답 바디 또는 데이터가 null입니다. 은행코드: {}", bankCode);
+                throw new BusinessException(ErrorCode.BANK_API_ERROR);
+            }
+
+            return response.getData();
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
@@ -107,7 +112,12 @@ public class BankExternalClient {
                     .bodyToMono(new ParameterizedTypeReference<ApiResponse<TransferResponse>>() {})
                     .block();
 
-            return response != null ? response.getData() : null;
+            if (response == null || response.getData() == null) {
+                log.error("외부 은행 API 응답 바디 또는 데이터가 null입니다. 은행코드: {}", bankCode);
+                throw new BusinessException(ErrorCode.BANK_API_ERROR);
+            }
+
+            return response.getData();
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {

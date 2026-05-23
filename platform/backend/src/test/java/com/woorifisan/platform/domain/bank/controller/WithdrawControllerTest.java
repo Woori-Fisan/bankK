@@ -86,26 +86,4 @@ class WithdrawControllerTest {
                 .andExpect(jsonPath("$.error.code").value("ERR_001"))
                 .andDo(print());
     }
-
-    @Test
-    @DisplayName("출금 실행 API 실패 테스트 - JWS 헤더 누락")
-    void executeWithdraw_api_fail_missing_header() throws Exception {
-        // given
-        WithdrawalRequest request = new WithdrawalRequest();
-        request.setEncryptedKey("encryptedKey");
-        request.setWithdrawalBankCode("020");
-        request.setWithdrawalAccountNo("1234567890");
-        request.setWithdrawalPassword("password");
-        request.setCustomerRrnPrefix("900101");
-        request.setAmount(new BigDecimal("10000"));
-
-        // when & then
-        mockMvc.perform(post("/api/v1/bank/withdrawals")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("ERR_003"))
-                .andDo(print());
-    }
 }

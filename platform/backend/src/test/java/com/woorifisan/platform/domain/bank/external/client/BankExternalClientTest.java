@@ -8,7 +8,9 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
+import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryRequest;
+import com.woorifisan.platform.domain.bank.external.dto.BankWithdrawalRequest;
 import com.woorifisan.platform.global.config.BankNetworkConfig;
 import com.woorifisan.platform.global.config.BankNetworkConfig.BankProperty;
 import com.woorifisan.platform.global.exception.BusinessException;
@@ -124,6 +126,77 @@ class BankExternalClientTest {
 
         // when & then
         assertThatThrownBy(() -> bankExternalClient.fetchBalance(bankCode, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.BANK_API_ERROR);
+    }
+
+    @Test
+    @DisplayName("잔액 조회 시 응답 바디가 null인 경우 실패")
+    void fetchBalance_Fail_NullResponse() {
+        // given
+        BankProperty bankProperty = new BankProperty();
+        bankProperty.setBaseUrl("http://bank-core");
+        bankProperty.getEndpoints().put("balance", "/api/v1/accounts/balance");
+
+        when(bankNetworkConfig.getBankProperty(bankCode)).thenReturn(bankProperty);
+
+        BankBalanceInquiryRequest request = BankBalanceInquiryRequest.of("key", "sig", "acc", "900101");
+
+        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(any(ParameterizedTypeReference.class))).thenReturn(Mono.empty());
+
+        // when & then
+        assertThatThrownBy(() -> bankExternalClient.fetchBalance(bankCode, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.BANK_API_ERROR);
+    }
+
+    @Test
+    @DisplayName("출금 성공 케이스")
+    void withdraw_Success() {
+        // given
+        BankProperty bankProperty = new BankProperty();
+        bankProperty.setBaseUrl("http://bank-core");
+        bankProperty.getEndpoints().put("withdraw", "/api/v1/baas/withdrawals");
+
+        when(bankNetworkConfig.getBankProperty(bankCode)).thenReturn(bankProperty);
+
+        BankWithdrawalRequest request = BankWithdrawalRequest.of("key", "sig", "123-456", "password", "900101", new BigDecimal("10000"));
+        TransferResponse expectedData = TransferResponse.builder()
+                .transactionId("tx-123")
+                .balanceAfter(new BigDecimal("90000"))
+                .build();
+        ApiResponse<TransferResponse> apiResponse = ApiResponse.success(expectedData);
+
+        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(any(ParameterizedTypeReference.class))).thenReturn(Mono.just(apiResponse));
+
+        // when
+        TransferResponse actualResponse = bankExternalClient.withdraw(bankCode, request);
+
+        // then
+        assertThat(actualResponse).isNotNull();
+        assertThat(actualResponse.getTransactionId()).isEqualTo("tx-123");
+    }
+
+    @Test
+    @DisplayName("출금 시 응답 데이터(data)가 null인 경우 실패")
+    void withdraw_Fail_NullData() {
+        // given
+        BankProperty bankProperty = new BankProperty();
+        bankProperty.setBaseUrl("http://bank-core");
+        bankProperty.getEndpoints().put("withdraw", "/api/v1/baas/withdrawals");
+
+        when(bankNetworkConfig.getBankProperty(bankCode)).thenReturn(bankProperty);
+
+        BankWithdrawalRequest request = BankWithdrawalRequest.of("key", "sig", "123-456", "password", "900101", new BigDecimal("10000"));
+        ApiResponse<TransferResponse> apiResponse = ApiResponse.success(null);
+
+        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(any(ParameterizedTypeReference.class))).thenReturn(Mono.just(apiResponse));
+
+        // when & then
+        assertThatThrownBy(() -> bankExternalClient.withdraw(bankCode, request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.BANK_API_ERROR);
     }
