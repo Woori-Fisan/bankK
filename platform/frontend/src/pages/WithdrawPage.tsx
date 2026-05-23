@@ -38,10 +38,11 @@ const WithdrawPage: React.FC = () => {
         try {
             // 은행명 -> 은행코드 매핑
             const bankCodeMap: Record<string, string> = {
-                '국민': '004', 'KB국민': '004',
-                '우리': '020', '우리은행': '020',
-                '신한': '088', '신한은행': '088',
-                '농협': '011', 'NH농협': '011'
+                '국민은행': '004', 'KB국민은행': '004',
+                '우리은행': '020',
+                '신한은행': '088',
+                '하나은행': '081',
+                '농협은행': '011', 'NH농협은행': '011'
             };
             const bankCode = bankCodeMap[withdrawData.sourceAccount.bankName] || '020';
 
