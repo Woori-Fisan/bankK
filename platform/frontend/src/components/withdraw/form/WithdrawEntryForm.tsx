@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { AlertCircle } from 'lucide-react';
 import WithdrawAccountSection from '../sections/WithdrawAccountSection';
 import AmountInputSection from '../sections/AmountInputSection';
@@ -29,6 +29,8 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
     const [fee] = useState(0);
     const [isCheckingBalance, setIsCheckingBalance] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
+
+    const rrnBackRef = useRef<HTMLInputElement>(null);
 
     // 2. 계좌 조회 로직 (onBlur 활용)
     const handleCheckBalance = async () => {
@@ -175,7 +177,7 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                                                 setSourceAccount(prev => ({ ...prev, balance: undefined }));
                                                 setApiError(null);
                                                 if (val.length === 6) {
-                                                    document.getElementById('rrn-back-withdraw')?.focus();
+                                                    rrnBackRef.current?.focus();
                                                 }
                                             }
                                         }}
@@ -186,7 +188,7 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                                 <span className="text-gray-400 font-bold text-xl">-</span>
                                 <div className="flex-[1.2] flex items-center gap-2">
                                     <input
-                                        id="rrn-back-withdraw"
+                                        ref={rrnBackRef}
                                         type="text"
                                         inputMode="numeric"
                                         maxLength={1}
