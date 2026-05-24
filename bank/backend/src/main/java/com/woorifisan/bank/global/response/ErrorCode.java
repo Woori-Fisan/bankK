@@ -24,8 +24,14 @@ public enum ErrorCode {
     BANK_NOT_FOUND("BANK_001", "존재하지 않는 은행입니다.", HttpStatus.NOT_FOUND),
     BANK_PW_ERROR("BANK_002", "계좌 비밀번호가 틀렸습니다.", HttpStatus.FORBIDDEN),
     // 멱등성
-    DUPLICATE_REQUEST("IDEM_001", "중복 요청입니다.", HttpStatus.CONFLICT);
+    DUPLICATE_REQUEST("IDEM_001", "중복 요청입니다.", HttpStatus.CONFLICT),
     // 이체
+
+    //조회
+    INQUIRY_ACCOUNT_NOTFOUND("INQUIRY_001", "사용자의 정보를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
+    INQUIRY_INVALID_DATE_RANGE("INQUIRY_002", "조회 기간을 확인해주세요.", HttpStatus.BAD_REQUEST),
+    ;
+
 
     private final String code;
     private final String message;

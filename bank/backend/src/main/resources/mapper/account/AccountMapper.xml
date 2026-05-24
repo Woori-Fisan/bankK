@@ -4,4 +4,8 @@
     <select id="findById" resultType="Account">
         SELECT * FROM account WHERE id = #{id}
     </select>
+
+    <select id="findByAccountNoHash" resultType="Account">
+        SELECT * FROM account WHERE account_no_hash = #{accountNoHash}
+    </select>
 </mapper>
