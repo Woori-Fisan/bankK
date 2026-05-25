@@ -5,13 +5,8 @@
         SELECT * FROM transaction_ledger WHERE tx_id = #{txId}
     </select>
 
-    <insert id="insertLedger">
-        INSERT INTO transaction_ledger (
-            tx_id, account_id, tx_type, amount, balance_after,
-            target_bank_code, target_account, description, status, transacted_at
-        ) VALUES (
-            #{txId}, #{accountId}, #{txType}, #{amount}, #{balanceAfter},
-            #{targetBankCode}, #{targetAccount}, #{description}, #{status}, #{transactedAt}
-        )
+    <insert id="insert">
+        INSERT INTO transaction_ledger (tx_id, account_id, tx_type, amount, balance_after, description, status, transacted_at)
+        VALUES (#{txId}, #{accountId}, #{txType}, #{amount}, #{balanceAfter}, #{description}, #{status}, #{transactedAt})
     </insert>
 </mapper>

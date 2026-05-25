@@ -5,27 +5,15 @@
         SELECT * FROM account WHERE id = #{id}
     </select>
 
-    <select id="findRecipientByHash" resultType="com.woorifisan.bank.domain.account.dto.response.RecipientResponse">
-        SELECT
-            c.customer_name AS depositorName,
-            '우리은행' AS depositBankName,
-            a.account_no_enc AS depositAccountNo,
-            a.status AS accountStatus
-        FROM account a
-        JOIN customer c ON a.customer_id = c.id
-        WHERE a.account_no_hash = #{accountNoHash}
+    <select id="findByIdForUpdate" resultType="Account">
+        SELECT * FROM account WHERE id = #{id} FOR UPDATE
     </select>
 
-    <select id="findByAccountNoHashWithLock" resultType="com.woorifisan.bank.domain.account.model.Account">
-        SELECT * FROM account 
-        WHERE account_no_hash = #{accountNoHash}
-        FOR UPDATE
+    <select id="findByAccountNoPlain" resultType="Account">
+        SELECT * FROM account WHERE account_no = #{accountNo}
     </select>
 
     <update id="updateBalance">
-        UPDATE account 
-        SET balance = #{balance}, 
-            updated_at = NOW() 
-        WHERE id = #{id}
+        UPDATE account SET balance = balance + #{amount} WHERE id = #{id}
     </update>
 </mapper>

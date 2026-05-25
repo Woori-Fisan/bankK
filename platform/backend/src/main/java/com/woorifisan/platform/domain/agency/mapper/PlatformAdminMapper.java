@@ -1,6 +1,6 @@
-package com.woorifisan.platform.domain.user.mapper;
+package com.woorifisan.platform.domain.agency.mapper;
 
-import com.woorifisan.platform.domain.user.model.PlatformAdmin;
+import com.woorifisan.platform.domain.agency.model.PlatformAdmin;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 

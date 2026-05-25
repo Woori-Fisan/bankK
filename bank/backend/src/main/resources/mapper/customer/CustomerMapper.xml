@@ -4,4 +4,8 @@
     <select id="findById" resultType="Customer">
         SELECT * FROM customer WHERE id = #{id}
     </select>
+
+    <select id="findByCi" resultType="Customer">
+        SELECT * FROM customer WHERE ci = #{ci}
+    </select>
 </mapper>
