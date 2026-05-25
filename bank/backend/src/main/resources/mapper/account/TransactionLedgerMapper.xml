@@ -4,4 +4,9 @@
     <select id="findByTxId" resultType="TransactionLedger">
         SELECT * FROM transaction_ledger WHERE tx_id = #{txId}
     </select>
+
+    <insert id="insert">
+        INSERT INTO transaction_ledger (tx_id, account_id, tx_type, amount, balance_after, description, status, transacted_at)
+        VALUES (#{txId}, #{accountId}, #{txType}, #{amount}, #{balanceAfter}, #{description}, #{status}, #{transactedAt})
+    </insert>
 </mapper>

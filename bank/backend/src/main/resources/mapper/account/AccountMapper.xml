@@ -4,4 +4,16 @@
     <select id="findById" resultType="Account">
         SELECT * FROM account WHERE id = #{id}
     </select>
+
+    <select id="findByIdForUpdate" resultType="Account">
+        SELECT * FROM account WHERE id = #{id} FOR UPDATE
+    </select>
+
+    <select id="findByAccountNoPlain" resultType="Account">
+        SELECT * FROM account WHERE account_no = #{accountNo}
+    </select>
+
+    <update id="updateBalance">
+        UPDATE account SET balance = balance + #{amount} WHERE id = #{id}
+    </update>
 </mapper>

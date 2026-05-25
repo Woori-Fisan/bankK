@@ -36,6 +36,7 @@ public class LoanLedger {
     // 심사 결과 정보
     private Integer appliedCreditScore;     // 심사 시점 신용 점수
     private BigDecimal appliedDsr;          // 심사 시점 DSR (%)
+    private BigDecimal approvedLimit;       // 심사 승인 한도
     private String rejectReason;            // 거절 사유
     private LocalDateTime reviewedAt;       // 심사 완료 일시
 
