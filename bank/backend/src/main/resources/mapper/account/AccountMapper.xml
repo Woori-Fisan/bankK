@@ -20,4 +20,23 @@
     <update id="updateBalance">
         UPDATE account SET balance = balance + #{amount} WHERE id = #{id}
     </update>
+
+    <select id="findByAccountNoAndRrnPrefix" resultType="Account">
+        SELECT
+            a.*
+        FROM account a
+        INNER JOIN customer c ON a.customer_id = c.id
+        WHERE a.account_no = #{accountNo}
+          AND c.rrn_prefix = #{rrnPrefix}
+    </select>
+
+    <update id="subtractBalance">
+        UPDATE account
+        SET balance = balance - #{amount},
+            version = version + 1,
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND version = #{version}
+          AND balance >= #{amount}
+    </update>
 </mapper>

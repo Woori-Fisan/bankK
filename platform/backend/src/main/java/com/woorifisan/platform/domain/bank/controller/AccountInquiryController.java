@@ -5,6 +5,8 @@ import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.request.HistoryInquiryRequest;
 import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
 import com.woorifisan.platform.domain.bank.service.AccountInquiryService;
+import com.woorifisan.platform.global.config.swagger.CustomExceptionDescription;
+import com.woorifisan.platform.global.config.swagger.SwaggerResponseDescription;
 import com.woorifisan.platform.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ public class AccountInquiryController {
 
     private final AccountInquiryService accountInquiryService;
 
+    @CustomExceptionDescription(SwaggerResponseDescription.BANK_BALANCE)
     @PostMapping("/balance")
     public ApiResponse<BalanceInquiryResponse> getBalance(@Valid @RequestBody BalanceInquiryRequest request) {
         BalanceInquiryResponse response = accountInquiryService.getBalance(request);

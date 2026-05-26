@@ -3,6 +3,8 @@ package com.woorifisan.bank.domain.account.service;
 import com.woorifisan.bank.domain.account.dto.request.TransactionHistoryRequest;
 import com.woorifisan.bank.domain.account.dto.response.TransactionHistoryDto;
 import com.woorifisan.bank.domain.account.dto.response.TransactionHistoryResponse;
+import com.woorifisan.bank.domain.account.dto.request.BalanceInquiryRequest;
+import com.woorifisan.bank.domain.account.dto.response.BalanceInquiryResponse;
 import com.woorifisan.bank.domain.account.mapper.AccountMapper;
 import com.woorifisan.bank.domain.account.mapper.TransactionLedgerMapper;
 import com.woorifisan.bank.domain.account.model.Account;
@@ -39,8 +41,26 @@ public class AccountService {
      * 거래 내역 조회
      */
     @Transactional(readOnly = true)
+    public BalanceInquiryResponse getBalance(BalanceInquiryRequest request) {
+        // 1. 계좌 및 고객 정보 검증 쿼리 호출
+        Account account = accountMapper.findByAccountNoAndRrnPrefix(
+                request.getAccountNo(),
+                request.getCustomerRrnPrefix()
+        ).orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+
+        // 2. 응답 반환
+        return BalanceInquiryResponse.builder()
+                .balance(account.getBalance())
+                .status(account.getStatus())
+                .build();
+    }
+
+    /**
+     * 거래 내역 조회
+     */
+    @Transactional(readOnly = true)
     public TransactionHistoryResponse getTransactionHistoryList(TransactionHistoryRequest request) {
-        log.info("은행 서버 거래내역 조회 요청 수신 - 계좌해시: {}, 기간: {} ~ {}, 페이지: {}, 사이즈: {}", 
+        log.info("은행 서버 거래내역 조회 요청 수신 - 계좌해시: {}, 기간: {} ~ {}, 페이지: {}, 사이즈: {}",
                 request.getAccountNo(), request.getStartDate(), request.getEndDate(), request.getPage(), request.getSize());
 
         // 1. 날짜 검증
@@ -49,8 +69,8 @@ public class AccountService {
         // 2. 계좌 조회 (Blind Index 활용)
         // TODO: 실제 환경에서는 request.getAccountNo()를 복호화한 후 SHA-256 해싱하여 검색해야 함
         // 현재는 간단한 세팅을 위해 입력받은 값을 그대로 해시로 가정하거나 임시 로직으로 처리
-        String accountNoHash = request.getAccountNo(); 
-        
+        String accountNoHash = request.getAccountNo();
+
         Account account = accountMapper.findByAccountNo(accountNoHash)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INQUIRY_ACCOUNT_NOTFOUND));
 
@@ -64,8 +84,8 @@ public class AccountService {
 
         // 4. 전체 건수 조회
         int totalCount = transactionLedgerMapper.countHistory(
-                account.getId(), 
-                request.getStartDate(), 
+                account.getId(),
+                request.getStartDate(),
                 request.getEndDate()
         );
 
