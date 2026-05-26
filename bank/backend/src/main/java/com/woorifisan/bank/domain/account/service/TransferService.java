@@ -64,6 +64,9 @@ public class TransferService {
             throw new BusinessException(ErrorCode.BANK_PW_ERROR);
         }
 
+        Account receiver = accountMapper.findByAccountNoPlain(request.getDepositAccountNo())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+
         // 7. 계좌 락 (ID 순서대로 락을 걸어 데드락 방지)
         if (sender.getId() < receiver.getId()) {
             sender = accountMapper.findByIdForUpdate(sender.getId())
