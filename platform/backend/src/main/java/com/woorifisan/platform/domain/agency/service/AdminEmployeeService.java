@@ -62,19 +62,19 @@ public class AdminEmployeeService {
     @Transactional
     public void registerEmployee(EmployeeRegisterRequest request) {
         // 1. 유저 아이디(로그인 ID) 중복 확인 [USER_002]
-        boolean isUserExist = agencyUserMapper.existsByLoginId(request.loginId());
+        boolean isUserExist = agencyUserMapper.existsByLoginId(request.getLoginId());
         if (isUserExist) {
             throw new BusinessException(ErrorCode.USER_ALREADY_EXISTS);
         }
 
         // 2. 대행업체 존재 여부 확인 [EMPLOYEE_002]
-        boolean isAgencyExist = agencyMapper.existsById(request.agencyId());
+        boolean isAgencyExist = agencyMapper.existsById(request.getAgencyId());
         if (!isAgencyExist) {
             throw new BusinessException(ErrorCode.NON_EXISTENT_AGENCY);
         }
 
         // 3. 대행업체 내 사번 중복 확인 (삭제되지 않은 사용자 기준) [EMPLOYEE_003]
-        boolean isEmployeeNumExist = agencyUserMapper.existsByEmployeeNum(request.agencyId(), request.employeeNum());
+        boolean isEmployeeNumExist = agencyUserMapper.existsByEmployeeNum(request.getAgencyId(), request.getEmployeeNum());
         if (isEmployeeNumExist) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMPLOYEE_NUM);
         }
@@ -83,9 +83,9 @@ public class AdminEmployeeService {
         String decryptedPassword;
         try {
             String formattedPlatformPrivateKey = platformPrivateKey.replace("\\n", "\n");
-            decryptedPassword = CryptoUtil.decryptJwe(request.password(), formattedPlatformPrivateKey);
+            decryptedPassword = CryptoUtil.decryptJwe(request.getPassword(), formattedPlatformPrivateKey);
         } catch (Exception e) {
-            log.error("JWE 비밀번호 복호화 실패 - 직원 등록 요청 실패 (Employee: {})", request.loginId(), e);
+            log.error("JWE 비밀번호 복호화 실패 - 직원 등록 요청 실패 (Employee: {})", request.getLoginId(), e);
             throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
 
@@ -93,7 +93,7 @@ public class AdminEmployeeService {
         String encodedPassword = passwordEncoder.encode(decryptedPassword);
 
         // 4. 모델(Entity) 생성 후 DB 저장 및 오류 처리 [ERR_002]
-        AgencyUser employee = AgencyUser.of(request.loginId(), encodedPassword, request.role(), request.agencyId(), request.employeeNum());
+        AgencyUser employee = AgencyUser.of(request.getLoginId(), encodedPassword, request.getRole(), request.getAgencyId(), request.getEmployeeNum());
         int insertedRows = agencyUserMapper.insertEmployee(employee);
         if (insertedRows == 0) {
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
@@ -137,7 +137,7 @@ public class AdminEmployeeService {
         String decryptedPassword;
         try {
             String formattedPlatformPrivateKey = platformPrivateKey.replace("\\n", "\n");
-            decryptedPassword = CryptoUtil.decryptJwe(request.password(), formattedPlatformPrivateKey);
+            decryptedPassword = CryptoUtil.decryptJwe(request.getPassword(), formattedPlatformPrivateKey);
         } catch (Exception e) {
             log.error("JWE 비밀번호 복호화 실패 - 비밀번호 초기화 요청 실패 (Employee: {})", loginId, e);
             throw new BusinessException(ErrorCode.INVALID_TOKEN);
