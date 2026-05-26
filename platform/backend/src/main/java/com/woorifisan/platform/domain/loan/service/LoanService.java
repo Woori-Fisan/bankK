@@ -223,13 +223,18 @@ public class LoanService {
                     // 은행 코어의 AvailableProductDto 필드명(productId, productName, minLimit, maxLimit, minRate)에 맞춰 매핑 수정
                     List<Map<String, Object>> bankProducts = (List<Map<String, Object>>) evalData.get("availableProducts");
                     List<AvailableProductDto> products = bankProducts.stream()
-                            .map(p -> AvailableProductDto.builder()
-                                    .loanProductCode(String.valueOf(p.get("productId")))
-                                    .loanProductName(String.valueOf(p.get("productName")))
-                                    .minAmount(new BigDecimal(String.valueOf(p.get("minLimit"))))
-                                    .maxAmount(new BigDecimal(String.valueOf(p.get("maxLimit"))))
-                                    .interestRate(new BigDecimal(String.valueOf(p.get("minRate")))) // interestRate -> minRate로 수정
-                                    .loanPeriodMonths(36).build()).toList();
+                            .map(p -> {
+                                Object minLimit = p.get("minLimit");
+                                Object maxLimit = p.get("maxLimit");
+                                Object minRate = p.get("minRate");
+                                return AvailableProductDto.builder()
+                                        .loanProductCode(String.valueOf(p.get("productId")))
+                                        .loanProductName(String.valueOf(p.get("productName")))
+                                        .minAmount(minLimit != null ? new BigDecimal(minLimit.toString()) : BigDecimal.ZERO)
+                                        .maxAmount(maxLimit != null ? new BigDecimal(maxLimit.toString()) : BigDecimal.ZERO)
+                                        .interestRate(minRate != null ? new BigDecimal(minRate.toString()) : BigDecimal.ZERO)
+                                        .loanPeriodMonths(36).build();
+                            }).toList();
 
                     result = LoanEvaluationResultResponse.builder()
                             .applicationId(applicationId)
