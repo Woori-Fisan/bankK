@@ -31,6 +31,14 @@ public enum SwaggerResponseDescription {
             ErrorCode.DUPLICATE_REQUEST
     )),
 
+    BANK_INQUIRY(List.of(
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.BANK_NOT_FOUND,
+            ErrorCode.BANK_API_ERROR,
+            ErrorCode.INQUIRY_ACCOUNT_NOTFOUND,
+            ErrorCode.INQUIRY_INVALID_DATE_RANGE
+    )),
+
     BANK_WITHDRAW(List.of(
             ErrorCode.INVALID_INPUT,
             ErrorCode.INTERNAL_SERVER_ERROR,
@@ -49,6 +57,18 @@ public enum SwaggerResponseDescription {
     USER_MANAGEMENT(List.of(
             ErrorCode.USER_NOT_FOUND,
             ErrorCode.USER_ALREADY_EXISTS
+    )),
+
+    BANK_LOAN(List.of(
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.BANK_NOT_FOUND,
+            ErrorCode.BANK_API_ERROR,
+            ErrorCode.LOAN_BANK_ROUTING_ERROR,
+            ErrorCode.LOAN_EVALUATION_NOT_FOUND,
+            ErrorCode.LOAN_PRODUCT_NOT_FOUND,
+            ErrorCode.LOAN_ALREADY_EXECUTED,
+            ErrorCode.LOAN_EVALUATION_REJECTED,
+            ErrorCode.LOAN_TERMS_NOT_AGREED
     ));
 
     private final List<ErrorCode> errorCodes;

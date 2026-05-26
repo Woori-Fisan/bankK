@@ -87,8 +87,8 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
         if (!formData.userName?.trim()) errors.userName = '성명을 입력해주세요.';
         if (!formData.rrn?.trim()) {
             errors.rrn = '주민등록번호를 입력해주세요.';
-        } else if (!/^\d{6}-?\d{7}$/.test(formData.rrn.trim())) {
-            errors.rrn = '올바른 주민등록번호 형식을 입력해주세요. (예: 900101-1234567)';
+        } else if (!/^\d{6}-[1-4]$/.test(formData.rrn.trim())) {
+            errors.rrn = '올바른 주민등록번호 형식을 입력해주세요. (예: 900101-1)';
         }
         if (!formData.bankCode) errors.bank = '은행을 선택해주세요.';
         if (!formData.accountNo?.trim()) {
@@ -176,22 +176,23 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                             </div>
                             <div>
                                 <label htmlFor="rrn" className="block text-[11px] text-gray-500 mb-1">
-                                    주민등록번호
+                                    주민등록번호 앞 7자리
                                 </label>
                                 <input
                                     id="rrn"
                                     type="text"
                                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="900101-1234567"
+                                    placeholder="900101-1"
+                                    maxLength={8}
                                     value={formData.rrn}
                                     onChange={(e) => setFormData({ ...formData, rrn: e.target.value })}
                                     onBlur={() => {
                                         if (!formData.rrn?.trim())
                                             setFieldErrors((p) => ({ ...p, rrn: '주민등록번호를 입력해주세요.' }));
-                                        else if (!/^\d{6}-?\d{7}$/.test(formData.rrn.trim()))
+                                        else if (!/^\d{6}-[1-4]$/.test(formData.rrn.trim()))
                                             setFieldErrors((p) => ({
                                                 ...p,
-                                                rrn: '올바른 형식을 입력해주세요. (예: 900101-1234567)',
+                                                rrn: '올바른 형식을 입력해주세요. (예: 900101-1)',
                                             }));
                                         else setFieldErrors((p) => ({ ...p, rrn: undefined }));
                                     }}
