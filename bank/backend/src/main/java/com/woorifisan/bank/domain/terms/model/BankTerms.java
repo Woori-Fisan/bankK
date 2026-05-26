@@ -21,6 +21,7 @@ public class BankTerms {
     private String version;
     private String title;
     private String termsUrl;
+    private String termsContent;
     private Boolean isMandatory;
     private Boolean isActive;
     private String termsType;       // EVALUATION | CONTRACT
