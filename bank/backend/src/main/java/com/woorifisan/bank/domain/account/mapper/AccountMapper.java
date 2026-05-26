@@ -1,5 +1,6 @@
 package com.woorifisan.bank.domain.account.mapper;
 
+import com.woorifisan.bank.domain.account.dto.response.RecipientResponse;
 import com.woorifisan.bank.domain.account.model.Account;
 import java.math.BigDecimal;
 import java.util.Optional;

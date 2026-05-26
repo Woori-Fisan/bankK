@@ -242,8 +242,15 @@ public class LoanService {
         BigDecimal balanceAfter = account.getBalance().add(request.getLoanAmount());
         String txId = "LOAN-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
         transactionLedgerMapper.insert(TransactionLedger.of(
-                txId, account.getId(), "LOAN", request.getLoanAmount(),
-                balanceAfter, product.getProductName() + " 대출 실행", "SUCCESS"));
+                txId, 
+                account.getId(), 
+                "LOAN", 
+                request.getLoanAmount(),
+                balanceAfter, 
+                null, // targetBankCode
+                null, // targetAccount
+                product.getProductName() + " 대출 실행", 
+                "SUCCESS"));
 
         return LoanExecuteResponse.builder()
                 .loanNo(request.getLoanNo())
