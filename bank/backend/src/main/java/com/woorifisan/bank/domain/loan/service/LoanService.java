@@ -27,6 +27,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -94,7 +95,7 @@ public class LoanService {
         }
 
         // 입금 계좌의 은행 코드가 이 은행과 일치하는지 검증
-        if (!request.getDepositBankCode().equals(bankCode)) {
+        if (!Objects.equals(bankCode, request.getDepositBankCode())) {
             throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH);
         }
 
@@ -112,8 +113,8 @@ public class LoanService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_CUSTOMER_NOT_FOUND));
 
         // BKC04: 주민번호 앞 7자리 + 고객명 본인 확인
-        if (!request.getCustomerRrnPrefix().equals(customer.getRrnPrefix())
-                || !request.getCustomerName().equals(customer.getCustomerName())) {
+        if (!customer.getRrnPrefix().equals(request.getCustomerRrnPrefix())
+                || !customer.getCustomerName().equals(request.getCustomerName())) {
             throw new BusinessException(ErrorCode.LOAN_CUSTOMER_IDENTITY_MISMATCH);
         }
 
