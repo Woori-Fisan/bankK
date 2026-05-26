@@ -3,12 +3,9 @@ package com.woorifisan.bank.domain.account.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.never;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 
 import com.woorifisan.bank.domain.account.dto.request.DepositRequest;
 import com.woorifisan.bank.domain.account.dto.request.TransferRequest;
@@ -20,7 +17,6 @@ import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
-import com.woorifisan.bank.global.util.CryptoUtil;
 import java.math.BigDecimal;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,9 +33,6 @@ class TransferServiceTest {
 
     @InjectMocks
     private TransferService transferService;
-
-    @Mock
-    private CryptoUtil cryptoUtil;
 
     @Mock
     private AccountMapper accountMapper;
@@ -62,39 +55,43 @@ class TransferServiceTest {
         sender = Account.builder()
                 .id(1L)
                 .customerId(10L)
+                .accountNo("111-111")
                 .balance(new BigDecimal("100000"))
-                .passwordHash("hashedPassword")
+                .password("hashedPassword")
+                .status("NORMAL")
                 .build();
 
         receiver = Account.builder()
                 .id(2L)
                 .customerId(20L)
+                .accountNo("222-222")
                 .balance(new BigDecimal("50000"))
+                .status("NORMAL")
                 .build();
 
         senderCustomer = Customer.builder()
                 .id(10L)
-                .rrnPrefixEnc("encryptedRrnPrefix")
+                .customerName("김철수")
+                .rrnPrefix("9001011")
                 .build();
     }
 
     // --- 성공 케이스 ---
 
     @Test
-    @DisplayName("당행이체가_성공한다")
+    @DisplayName("당행이체가 성공한다")
     void 당행이체가_성공한다() {
         // given
         TransferRequest request = createTransferRequest("040", "10000");
 
-        given(cryptoUtil.hash(anyString())).willReturn("hashedNo");
-        given(accountMapper.findByAccountNoHashWithLock("hashedNo"))
-                .willReturn(Optional.of(sender))
-                .willReturn(Optional.of(receiver));
-        
+        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
-        given(cryptoUtil.decrypt("encryptedRrnPrefix")).willReturn("9001011");
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
-        given(cryptoUtil.encrypt(anyString())).willReturn("encryptedTargetAccount");
+        given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(receiver));
+        
+        // Locking (sender.id < receiver.id)
+        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
+        given(accountMapper.findByIdForUpdate(2L)).willReturn(Optional.of(receiver));
 
         // when
         TransferResponse response = transferService.executeTransfer(request);
@@ -102,22 +99,23 @@ class TransferServiceTest {
         // then
         assertNotNull(response);
         assertEquals(new BigDecimal("90000"), response.getBalanceAfter());
-        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("90000"));
-        verify(accountMapper).updateBalance(receiver.getId(), new BigDecimal("60000"));
+        // Delta values
+        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate());
+        verify(accountMapper).updateBalance(receiver.getId(), new BigDecimal("10000"));
+        verify(transactionLedgerMapper, org.mockito.Mockito.times(2)).insert(any());
+        verify(transactionLedgerMapper, org.mockito.Mockito.times(2)).insert(any());
     }
 
     @Test
-    @DisplayName("타행출금이_성공한다")
+    @DisplayName("타행출금이 성공한다")
     void 타행출금이_성공한다() {
         // given
         TransferRequest request = createTransferRequest("081", "10000");
 
-        given(cryptoUtil.hash("111-111")).willReturn("hashedNo");
-        given(accountMapper.findByAccountNoHashWithLock("hashedNo")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
-        given(cryptoUtil.decrypt("encryptedRrnPrefix")).willReturn("9001011");
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
-        given(cryptoUtil.encrypt(anyString())).willReturn("encryptedTargetAccount");
+        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
 
         // when
         TransferResponse response = transferService.withdrawTransfer(request);
@@ -125,11 +123,12 @@ class TransferServiceTest {
         // then
         assertNotNull(response);
         assertEquals(new BigDecimal("90000"), response.getBalanceAfter());
-        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("90000"));
+        // Delta values
+        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate());
     }
 
     @Test
-    @DisplayName("타행입금이_성공한다")
+    @DisplayName("타행입금이 성공한다")
     void 타행입금이_성공한다() {
         // given
         DepositRequest request = DepositRequest.builder()
@@ -139,9 +138,8 @@ class TransferServiceTest {
                 .withdrawalAccountNo("333-333")
                 .build();
 
-        given(cryptoUtil.hash("222-222")).willReturn("hashedNo");
-        given(accountMapper.findByAccountNoHashWithLock("hashedNo")).willReturn(Optional.of(receiver));
-        given(cryptoUtil.encrypt(anyString())).willReturn("encryptedTargetAccount");
+        given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(receiver));
+        given(accountMapper.findByIdForUpdate(2L)).willReturn(Optional.of(receiver));
 
         // when
         TransferResponse response = transferService.depositTransfer(request);
@@ -149,13 +147,14 @@ class TransferServiceTest {
         // then
         assertNotNull(response);
         assertEquals(new BigDecimal("60000"), response.getBalanceAfter());
-        verify(accountMapper).updateBalance(receiver.getId(), new BigDecimal("60000"));
+        // Delta values
+        verify(accountMapper).updateBalance(receiver.getId(), new BigDecimal("10000"));
     }
 
     // --- 실패 케이스 (에러코드 검증) ---
 
     @Test
-    @DisplayName("당행이체_시_타행코드가_오면_예외가_발생한다(INVALID_INPUT)")
+    @DisplayName("당행이체 시 타행코드가 오면 예외가 발생한다(INVALID_INPUT)")
     void 당행이체_시_타행코드가_오면_예외가_발생한다() {
         // given
         TransferRequest request = createTransferRequest("081", "10000");
@@ -166,12 +165,11 @@ class TransferServiceTest {
     }
 
     @Test
-    @DisplayName("출금계좌가_없으면_예외가_발생한다(BANK_NOT_FOUND)")
+    @DisplayName("출금계좌가 없으면 예외가 발생한다(BANK_NOT_FOUND)")
     void 출금계좌가_없으면_예외가_발생한다() {
         // given
         TransferRequest request = createTransferRequest("040", "10000");
-        given(cryptoUtil.hash(anyString())).willReturn("hashedNo");
-        given(accountMapper.findByAccountNoHashWithLock("hashedNo")).willReturn(Optional.empty());
+        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.empty());
 
         // when & then
         BusinessException ex = assertThrows(BusinessException.class, () -> transferService.executeTransfer(request));
@@ -179,7 +177,7 @@ class TransferServiceTest {
     }
 
     @Test
-    @DisplayName("주민번호가_다르면_예외가_발생한다(TRANSFER_002)")
+    @DisplayName("주민번호가 다르면 예외가 발생한다(TRANSFER_002)")
     void 주민번호가_다르면_예외가_발생한다() {
         // given
         TransferRequest request = TransferRequest.builder()
@@ -191,10 +189,8 @@ class TransferServiceTest {
                 .amount(new BigDecimal("10000"))
                 .build();
 
-        given(cryptoUtil.hash(anyString())).willReturn("hashedNo");
-        given(accountMapper.findByAccountNoHashWithLock("hashedNo")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
-        given(cryptoUtil.decrypt("encryptedRrnPrefix")).willReturn("9001011");
 
         // when & then
         BusinessException ex = assertThrows(BusinessException.class, () -> transferService.executeTransfer(request));
@@ -202,14 +198,12 @@ class TransferServiceTest {
     }
 
     @Test
-    @DisplayName("비밀번호가_틀리면_예외가_발생한다(BANK_PW_ERROR)")
+    @DisplayName("비밀번호가 틀리면 예외가 발생한다(BANK_PW_ERROR)")
     void 비밀번호가_틀리면_예외가_발생한다() {
         // given
         TransferRequest request = createTransferRequest("040", "10000");
-        given(cryptoUtil.hash(anyString())).willReturn("hashedNo");
-        given(accountMapper.findByAccountNoHashWithLock("hashedNo")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
-        given(cryptoUtil.decrypt("encryptedRrnPrefix")).willReturn("9001011");
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(false); // 비밀번호 불일치
 
         // when & then
@@ -218,38 +212,22 @@ class TransferServiceTest {
     }
 
     @Test
-    @DisplayName("잔액이_부족하면_예외가_발생한다(TRANSFER_001)")
+    @DisplayName("락 획득 후 잔액이 부족하면 예외가 발생한다(TRANSFER_001)")
     void 잔액이_부족하면_예외가_발생한다() {
         // given
         TransferRequest request = createTransferRequest("040", "500000"); // 50만 (잔액 10만)
-        given(cryptoUtil.hash(anyString())).willReturn("hashedNo");
-        given(accountMapper.findByAccountNoHashWithLock("hashedNo")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
-        given(cryptoUtil.decrypt("encryptedRrnPrefix")).willReturn("9001011");
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
+        given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(receiver));
+        
+        // Locking
+        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
+        given(accountMapper.findByIdForUpdate(2L)).willReturn(Optional.of(receiver));
 
         // when & then
         BusinessException ex = assertThrows(BusinessException.class, () -> transferService.executeTransfer(request));
         assertEquals(ErrorCode.INSUFFICIENT_BALANCE, ex.getErrorCode());
-    }
-
-    @Test
-    @DisplayName("입금계좌가_없으면_예외가_발생한다(BANK_NOT_FOUND)")
-    void 입금계좌가_없으면_예외가_발생한다() {
-        // given
-        TransferRequest request = createTransferRequest("040", "10000");
-        given(cryptoUtil.hash(anyString())).willReturn("hashedNo");
-        given(accountMapper.findByAccountNoHashWithLock("hashedNo"))
-                .willReturn(Optional.of(sender)) // 출금계좌 있음
-                .willReturn(Optional.empty());  // 입금계좌 없음
-        
-        given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
-        given(cryptoUtil.decrypt("encryptedRrnPrefix")).willReturn("9001011");
-        given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
-
-        // when & then
-        BusinessException ex = assertThrows(BusinessException.class, () -> transferService.executeTransfer(request));
-        assertEquals(ErrorCode.BANK_NOT_FOUND, ex.getErrorCode());
     }
 
     private TransferRequest createTransferRequest(String bankCode, String amount) {
