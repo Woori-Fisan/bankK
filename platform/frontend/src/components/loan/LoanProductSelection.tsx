@@ -44,16 +44,12 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, a
 
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const raw = e.target.value.replace(/,/g, '');
+        if (raw === '') { setExecuteAmount(0); setAmountError(null); return; }
         const val = Number(raw);
         if (isNaN(val)) return;
-        setExecuteAmount(val);
-        if (val < 1_000_000) {
-            setAmountError('최소 100만원 이상 입력해주세요.');
-        } else if (selectedProduct && val > effectiveLimit) {
-            setAmountError(`승인 한도(${formatAmount(effectiveLimit)}) 이내로 입력해주세요.`);
-        } else {
-            setAmountError(null);
-        }
+        const capped = Math.min(val, effectiveLimit);
+        setExecuteAmount(capped);
+        setAmountError(capped < 1_000_000 ? '최소 100만원 이상 입력해주세요.' : null);
     };
 
     const formatAmount = (amt: number) => {
@@ -156,15 +152,24 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, a
                                 <label className="block text-[11px] text-gray-500 font-bold mb-2">
                                     대출 신청 금액
                                 </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        value={executeAmount.toLocaleString()}
-                                        onChange={handleAmountChange}
-                                        className={`w-full px-3 py-2.5 pr-8 bg-gray-50 border rounded-xl text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none ${amountError ? 'border-red-400' : 'border-gray-200'}`}
-                                    />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 font-medium">원</span>
+                                <div className="flex items-center gap-2">
+                                    <div className="relative flex-1">
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={executeAmount.toLocaleString()}
+                                            onChange={handleAmountChange}
+                                            className={`w-full px-3 py-2.5 pr-8 bg-gray-50 border rounded-xl text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none ${amountError ? 'border-red-400' : 'border-gray-200'}`}
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 font-medium">원</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setExecuteAmount(effectiveLimit); setAmountError(null); }}
+                                        className="shrink-0 px-3 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold rounded-xl border border-emerald-200 transition-colors whitespace-nowrap"
+                                    >
+                                        최대 한도 적용
+                                    </button>
                                 </div>
                                 {amountError && (
                                     <p className="mt-1 text-[11px] text-red-500">{amountError}</p>
