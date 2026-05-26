@@ -5,7 +5,7 @@ import TransactionFilter from '../components/account/TransactionFilter';
 import type { FilterState } from '../components/account/TransactionFilter';
 import TransactionTable from '../components/account/TransactionTable';
 import type { Transaction } from '../components/account/TransactionTable';
-import AccountInputStep from './AccountInputStep';
+import AccountInputStep from '../components/account/AccountInputStep';
 import { fetchBalance, fetchTransactionHistory } from '../api/inquiry';
 
 const AccountInquiry: React.FC = () => {
@@ -35,7 +35,7 @@ const AccountInquiry: React.FC = () => {
                 ...info,
                 startDate: filters.startDate,
                 endDate: filters.endDate,
-                page: page, // 요청하는 페이지 번호
+                page: page - 1, // 백엔드(0-based) 규격에 맞춰 -1 처리
                 size: pageSize // 일관된 사이즈 사용
             });
 
@@ -67,6 +67,15 @@ const AccountInquiry: React.FC = () => {
         setIsLoading(true);
         setApiError(''); // 새로운 요청 시 기존 에러 초기화
         
+        const defaultFilters: FilterState = {
+            startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
+            endDate: new Date().toISOString().split('T')[0],
+        };
+
+        // [수정] 새로운 조회를 위해 페이지와 필터 상태를 초기화
+        setCurrentPage(1);
+        setCurrentFilters(defaultFilters);
+
         try {
             // 잔액 조회
             const balanceRes = await fetchBalance(data);
@@ -74,8 +83,8 @@ const AccountInquiry: React.FC = () => {
                 setBalanceData(balanceRes.data);
             }
             
-            // 거래 내역 조회 (초기 로딩)
-            await loadTransactions(data, currentFilters, 1);
+            // 거래 내역 조회 (초기 로딩 - 초기화된 필터값 사용)
+            await loadTransactions(data, defaultFilters, 1);
             
             // 두 API가 모두 성공해야만 다음 단계로 넘어감
             setStep(2);
@@ -114,7 +123,7 @@ const AccountInquiry: React.FC = () => {
         setIsLoading(false);
     };
 
-    // 페이지 번호 눌렀을 때 (진짜 Server-side Pagination)
+    // 페이지 번호 눌렀을 때
     const handlePageChange = async (page: number) => {
         setIsLoading(true);
         setApiError(''); // 페이지 이동 시 기존 에러 초기화

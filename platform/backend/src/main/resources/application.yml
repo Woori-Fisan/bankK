@@ -96,3 +96,12 @@ springdoc:
 # 로깅
 logging:
   config: classpath:logback-spring.xml
+
+bank:
+  urls:
+    "020":
+      base-url: ${WOORI_BASE_URL:http://localhost:8081/api/v1/baas}
+      endpoints:
+        balance: "/account/balance"
+        history: "/account/transactions"
+        withdraw: "/withdrawals"
