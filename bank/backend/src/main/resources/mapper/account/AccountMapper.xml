@@ -5,6 +5,10 @@
         SELECT * FROM account WHERE id = #{id}
     </select>
 
+    <select id="findByAccountNo" resultType="Account">
+        SELECT * FROM account WHERE account_no = #{accountNo}
+    </select>
+
     <select id="findByIdForUpdate" resultType="Account">
         SELECT * FROM account WHERE id = #{id} FOR UPDATE
     </select>
