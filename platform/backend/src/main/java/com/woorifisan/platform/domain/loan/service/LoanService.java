@@ -26,10 +26,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -82,7 +84,7 @@ public class LoanService {
                     .uri("/api/v1/loan/evaluation/terms")
                     .retrieve()
                     .bodyToMono(new ParameterizedTypeReference<com.woorifisan.platform.global.response.ApiResponse<List<Map<String, Object>>>>() {})
-                    .block();
+                    .block(Duration.ofSeconds(5));
 
             if (bankResponse == null || bankResponse.getData() == null) {
                 throw new BusinessException(ErrorCode.BANK_API_ERROR);
@@ -91,9 +93,9 @@ public class LoanService {
             // 은행 응답을 플랫폼 DTO로 변환
             List<TermsDocumentDto> documents = bankResponse.getData().stream()
                     .map(terms -> TermsDocumentDto.builder()
-                            .documentType(String.valueOf(terms.get("termsCode")))
-                            .documentName(String.valueOf(terms.get("title")))
-                            .documentUrl(String.valueOf(terms.get("termsUrl")))
+                            .documentType(Objects.toString(terms.get("termsCode"), null))
+                            .documentName(Objects.toString(terms.get("title"), null))
+                            .documentUrl(Objects.toString(terms.get("termsUrl"), null))
                             .documentContent(terms.get("termsContent") != null ? String.valueOf(terms.get("termsContent")) : null)
                             .isMandatory(Boolean.TRUE.equals(terms.get("isMandatory")))
                             .build())
@@ -146,15 +148,20 @@ public class LoanService {
                     .bodyValue(bankRequest)
                     .retrieve()
                     .bodyToMono(new ParameterizedTypeReference<com.woorifisan.platform.global.response.ApiResponse<Map<String, Object>>>() {})
-                    .block();
+                    .block(Duration.ofSeconds(5));
 
             if (bankResponse == null || bankResponse.getData() == null) {
                 throw new BusinessException(ErrorCode.BANK_API_ERROR);
             }
 
             Map<String, Object> evalData = bankResponse.getData();
-            String evaluationId = String.valueOf(evalData.get("evaluationId")); // 은행 내부 ID (Long)
-            String loanNo = String.valueOf(evalData.get("loanNo"));           // 플랫폼용 식별자 (LN-XXX)
+            Object evalIdObj = evalData.get("evaluationId");
+            Object loanNoObj = evalData.get("loanNo");
+            if (evalIdObj == null || loanNoObj == null) {
+                throw new BusinessException(ErrorCode.BANK_API_ERROR);
+            }
+            String evaluationId = String.valueOf(evalIdObj); // 은행 내부 ID (Long)
+            String loanNo = String.valueOf(loanNoObj);       // 플랫폼용 식별자 (LN-XXX)
 
             // Redis 상태 저장 (SSE 및 다음 단계에서 사용)
             redisTemplate.opsForValue().set(String.format(REDIS_APP_GUID_KEY, applicationId), guid, GUID_TTL_HOURS, TimeUnit.HOURS);
@@ -219,8 +226,9 @@ public class LoanService {
                 LoanEvaluationResultResponse result;
                 if ("APPROVED".equals(status)) {
                     // 은행 코어의 AvailableProductDto 필드명(productId, productName, minLimit, maxLimit, minRate)에 맞춰 매핑 수정
+                    @SuppressWarnings("unchecked")
                     List<Map<String, Object>> bankProducts = (List<Map<String, Object>>) evalData.get("availableProducts");
-                    List<AvailableProductDto> products = bankProducts.stream()
+                    List<AvailableProductDto> products = (bankProducts != null ? bankProducts : List.<Map<String, Object>>of()).stream()
                             .map(p -> {
                                 Object minLimit = p.get("minLimit");
                                 Object maxLimit = p.get("maxLimit");
@@ -253,6 +261,7 @@ public class LoanService {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 log.warn("[{}] SSE 스레드 중단", guid);
+                emitter.complete();
             } catch (Exception e) {
                 log.error("[{}] SSE 처리 중 예외 발생", guid, e);
                 emitter.completeWithError(e);
@@ -291,15 +300,15 @@ public class LoanService {
                     .uri("/api/v1/loan/contract/terms/{productId}/{evaluationId}", loanProductCode, bankInternalId)
                     .retrieve()
                     .bodyToMono(new ParameterizedTypeReference<com.woorifisan.platform.global.response.ApiResponse<List<Map<String, Object>>>>() {})
-                    .block();
+                    .block(Duration.ofSeconds(5));
 
             if (bankResponse == null || bankResponse.getData() == null) throw new BusinessException(ErrorCode.BANK_API_ERROR);
 
             List<TermsDocumentDto> documents = bankResponse.getData().stream()
                     .map(terms -> TermsDocumentDto.builder()
-                            .documentType(String.valueOf(terms.get("termsCode")))
-                            .documentName(String.valueOf(terms.get("title")))
-                            .documentUrl(String.valueOf(terms.get("termsUrl")))
+                            .documentType(Objects.toString(terms.get("termsCode"), null))
+                            .documentName(Objects.toString(terms.get("title"), null))
+                            .documentUrl(Objects.toString(terms.get("termsUrl"), null))
                             .documentContent(terms.get("termsContent") != null ? String.valueOf(terms.get("termsContent")) : null)
                             .isMandatory(Boolean.TRUE.equals(terms.get("isMandatory"))).build()).toList();
 
@@ -343,24 +352,31 @@ public class LoanService {
                     .bodyValue(bankRequest)
                     .retrieve()
                     .bodyToMono(new ParameterizedTypeReference<com.woorifisan.platform.global.response.ApiResponse<Map<String, Object>>>() {})
-                    .block();
+                    .block(Duration.ofSeconds(5));
 
             if (bankResponse == null || bankResponse.getData() == null) throw new BusinessException(ErrorCode.BANK_API_ERROR);
 
             Map<String, Object> execData = bankResponse.getData();
+            Object loanAmountObj   = execData.get("loanAmount");
+            Object interestRateObj = execData.get("interestRate");
+            Object repaymentObj    = execData.get("repaymentPeriod");
+            Object monthlyObj      = execData.get("monthlyPayment");
+            if (loanAmountObj == null || interestRateObj == null || repaymentObj == null || monthlyObj == null) {
+                throw new BusinessException(ErrorCode.BANK_API_ERROR);
+            }
             log.info("[{}] 대출 실행 완료 - loanNo: {}", guid, execData.get("loanNo"));
 
             return LoanExecuteResponse.builder()
-                    .loanId(String.valueOf(execData.get("loanNo")))
-                    .borrowerName(String.valueOf(execData.get("customerName")))
+                    .loanId(Objects.toString(execData.get("loanNo"), null))
+                    .borrowerName(Objects.toString(execData.get("customerName"), null))
                     .depositTransactionId("TXN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase())
-                    .loanBalance(new BigDecimal(String.valueOf(execData.get("loanAmount"))))
-                    .executeAmount(new BigDecimal(String.valueOf(execData.get("loanAmount"))))
-                    .interestRate(new BigDecimal(String.valueOf(execData.get("interestRate"))))
-                    .repaymentPeriod(Integer.parseInt(String.valueOf(execData.get("repaymentPeriod"))))
-                    .monthlyPayment(new BigDecimal(String.valueOf(execData.get("monthlyPayment"))))
-                    .repaymentStartDate(String.valueOf(execData.get("startDate")))
-                    .maturityDate(String.valueOf(execData.get("endDate"))).build();
+                    .loanBalance(new BigDecimal(loanAmountObj.toString()))
+                    .executeAmount(new BigDecimal(loanAmountObj.toString()))
+                    .interestRate(new BigDecimal(interestRateObj.toString()))
+                    .repaymentPeriod(Integer.parseInt(repaymentObj.toString()))
+                    .monthlyPayment(new BigDecimal(monthlyObj.toString()))
+                    .repaymentStartDate(Objects.toString(execData.get("startDate"), null))
+                    .maturityDate(Objects.toString(execData.get("endDate"), null)).build();
 
         } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
             log.warn("[{}] 은행 API 오류 응답 (대출 실행) - status: {}, body: {}", guid, e.getStatusCode(), e.getResponseBodyAsString());
