@@ -5,6 +5,10 @@ import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
+import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
+import com.woorifisan.platform.domain.bank.external.dto.BankRecipientResponse;
+import com.woorifisan.platform.domain.bank.external.dto.BankTransferRequest;
+import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankWithdrawalRequest;
 import com.woorifisan.platform.global.config.BankNetworkConfig;
 import com.woorifisan.platform.global.config.BankNetworkConfig.BankProperty;
@@ -32,6 +36,102 @@ public class BankExternalClient {
     private final BankNetworkConfig bankNetworkConfig;
 
     /**
+     * 특정 은행의 수취인 조회 API를 호출합니다.
+     *
+     * @param bankCode 은행 코드
+     * @param request  은행 전용 수취인 조회 요청 DTO
+     * @return 수취인 조회 결과 응답
+     */
+    public BankRecipientResponse fetchRecipient(String bankCode, BankRecipientRequest request) {
+        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
+
+        if (bankProperty == null) {
+            log.error("지원하지 않는 은행 코드입니다: {}", bankCode);
+            throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+        }
+
+        String url = bankProperty.getUrl("recipient");
+        log.info("외부 은행 API 호출 [수취인조회] - URL: {}, 은행코드: {}", url, bankCode);
+
+        try {
+            ApiResponse<BankRecipientResponse> response = webClient.post()
+                    .uri(url)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, clientResponse ->
+                            clientResponse.bodyToMono(new ParameterizedTypeReference<ApiResponse<BankRecipientResponse>>() {})
+                                    .flatMap(errorBody -> {
+                                        String bankErrorCode = (errorBody.getError() != null) ? errorBody.getError().getCode() : "UNKNOWN";
+                                        return Mono.error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
+                                    })
+                    )
+                    .bodyToMono(new ParameterizedTypeReference<ApiResponse<BankRecipientResponse>>() {})
+                    .block();
+
+            if (response == null || response.getData() == null) {
+                log.error("외부 은행 API 응답 바디 또는 데이터가 null입니다. 은행코드: {}", bankCode);
+                throw new BusinessException(ErrorCode.BANK_API_ERROR);
+            }
+
+            return response.getData();
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("외부 은행 API 통신 중 오류 발생", e);
+            throw new BusinessException(ErrorCode.BANK_API_ERROR);
+        }
+    }
+
+    /**
+     * 특정 은행의 이체 API를 호출합니다.
+     *
+     * @param bankCode 은행 코드
+     * @param request  은행 전용 이체 요청 DTO
+     * @return 이체 결과 응답
+     */
+    public BankTransferResponse executeTransfer(String bankCode, BankTransferRequest request) {
+        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
+
+        if (bankProperty == null) {
+            log.error("지원하지 않는 은행 코드입니다: {}", bankCode);
+            throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+        }
+
+        String url = bankProperty.getUrl("transfer");
+        log.info("외부 은행 API 호출 [이체] - URL: {}, 은행코드: {}", url, bankCode);
+
+        try {
+            ApiResponse<BankTransferResponse> response = webClient.post()
+                    .uri(url)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, clientResponse ->
+                            clientResponse.bodyToMono(new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {})
+                                    .flatMap(errorBody -> {
+                                        String bankErrorCode = (errorBody.getError() != null) ? errorBody.getError().getCode() : "UNKNOWN";
+                                        return Mono.error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
+                                    })
+                    )
+                    .bodyToMono(new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {})
+                    .block();
+
+            if (response == null || response.getData() == null) {
+                log.error("외부 은행 API 응답 바디 또는 데이터가 null입니다. 은행코드: {}", bankCode);
+                throw new BusinessException(ErrorCode.BANK_API_ERROR);
+            }
+
+            return response.getData();
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("외부 은행 API 통신 중 오류 발생", e);
+            throw new BusinessException(ErrorCode.BANK_API_ERROR);
+        }
+    }
+
+    /**
      * 특정 은행의 잔액 조회 API를 호출합니다.
      *
      * @param bankCode 은행 코드
@@ -55,7 +155,6 @@ public class BankExternalClient {
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(request)
                     .retrieve()
-                    // 4xx, 5xx 에러 발생 시 바디를 읽어서 BusinessException으로 변환
                     .onStatus(HttpStatusCode::isError, clientResponse -> 
                         clientResponse.bodyToMono(new ParameterizedTypeReference<ApiResponse<BalanceInquiryResponse>>() {})
                             .flatMap(errorBody -> {
@@ -146,7 +245,6 @@ public class BankExternalClient {
         String url = bankProperty.getUrl("history");
         log.info("외부 은행 API 호출 [거래내역] - URL: {}, 은행코드: {}", url, bankCode);
 
-        // [GEMINI.md 2.4] 블랙박스 로깅
         log.info("[TX_PAYLOAD_LOG] 은행 서버 요청 송신 - Account: {}, JWS: {}, EncryptedKey: {}",
                 request.getAccountNo(), request.getJwsSignature(), request.getEncryptedKey());
 

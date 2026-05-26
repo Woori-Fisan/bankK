@@ -47,6 +47,8 @@ public class WithdrawalService {
                 "WITHDRAW",
                 request.getAmount(),
                 balanceAfter,
+                null,
+                null,
                 "현금 출금",
                 "SUCCESS"
         );

@@ -107,3 +107,5 @@ bank:
         balance: "/account/balance"
         history: "/account/transactions"
         withdraw: "/withdrawals"
+        recipient: "/transfer/recipient"
+        transfer: "/transfer"
