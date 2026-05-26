@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { AlertCircle } from 'lucide-react';
 import WithdrawAccountSection from '../sections/WithdrawAccountSection';
 import AmountInputSection from '../sections/AmountInputSection';
 import WithdrawFeeSection from '../sections/WithdrawFeeSection';
@@ -7,10 +8,7 @@ import type { WithdrawData } from '../../../types/withdraw';
 import { getBalance } from '../../../api/transfer';
 
 export interface WithdrawEntryFormProps {
-    initialData?: {
-        amount: string;
-        birthDate?: string;
-    };
+    initialData?: WithdrawData;
     onNext: (data: WithdrawData) => void;
 }
 
@@ -21,52 +19,49 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
         accountNumber: string;
         balance?: number;
     }>({
-        bankName: '우리은행',
-        accountNumber: '',
-        balance: undefined,
+        bankName: initialData?.sourceAccount.bankName || '',
+        accountNumber: initialData?.sourceAccount.accountNumber || '',
+        balance: initialData?.sourceAccount.balance,
     });
 
     const [birthDate, setBirthDate] = useState(initialData?.birthDate || '');
     const [amount, setAmount] = useState(initialData?.amount || '0');
     const [fee] = useState(0);
     const [isCheckingBalance, setIsCheckingBalance] = useState(false);
+    const [apiError, setApiError] = useState<string | null>(null);
 
-    // 2. 계좌 조회 Debounce 로직 (onBlur 활용)
-    // 포커스 탈출 시 API 호출을 위해 별도 핸들러 구현
+    const rrnBackRef = useRef<HTMLInputElement>(null);
+
+    // 2. 계좌 조회 로직 (onBlur 활용)
     const handleCheckBalance = async () => {
-        // 필수 정보 미입력 시 중단 (은행명, 계좌번호, 생년월일 7자리)
         if (!sourceAccount.bankName || !sourceAccount.accountNumber || birthDate.length !== 7) {
             return;
         }
 
-        // 이미 조회 중이면 중단
         if (isCheckingBalance) return;
 
         setIsCheckingBalance(true);
-        // 기존 잔액 초기화 (새로운 조회를 시각적으로 알림)
+        setApiError(null);
         setSourceAccount(prev => ({ ...prev, balance: undefined }));
 
-        console.log(`[onBlur] 출금 계좌 조회 시작: ${sourceAccount.bankName} ${sourceAccount.accountNumber} / ${birthDate}`);
-
         try {
-            // 은행명 -> 은행코드 매핑
             const bankCodeMap: Record<string, string> = {
-                '국민': '004',
-                'KB국민': '004',
-                '우리': '020',
-                '신한': '088',
-                '농협': '011',
-                'NH농협': '011'
+                '국민은행': '004',
+                'KB국민은행': '004',
+                '우리은행': '020',
+                '신한은행': '088',
+                '하나은행': '081',
+                '농협은행': '011',
+                'NH농협은행': '011'
             };
             const bankCode = bankCodeMap[sourceAccount.bankName] || '020';
 
-            // API 호출
             const response = await getBalance({
                 bankCode: bankCode,
                 accountNo: sourceAccount.accountNumber,
                 customerRrnPrefix: birthDate,
-                encryptedKey: 'DUMMY_ENCRYPTED_KEY', // 플랫폼 보안 정책에 따른 E2EE 암호화 키 (추후 구현)
-                jwsSignature: 'DUMMY_JWS_SIGNATURE', // 데이터 무결성을 위한 JWS 서명 (추후 구현)
+                encryptedKey: 'DUMMY_ENCRYPTED_KEY',
+                jwsSignature: 'DUMMY_JWS_SIGNATURE',
             });
 
             if (response.success && response.data) {
@@ -75,32 +70,19 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                     ...prev,
                     balance: fetchedBalance,
                 }));
-                console.log(`[onBlur] 출금 계좌 조회 완료: 잔액 ${fetchedBalance}`);
             } else {
-                console.error('잔액 조회 실패:', response.error?.message);
+                const errorMessage = response.error?.message || '사용자의 정보를 찾을 수 없습니다.';
+                setApiError(errorMessage);
             }
-        } catch (error) {
-            console.error('API 호출 중 오류 발생:', error);
+        } catch (error: any) {
+            const errorMessage = error.response?.data?.error?.message || '사용자의 정보를 찾을 수 없습니다.';
+            setApiError(errorMessage);
         } finally {
             setIsCheckingBalance(false);
         }
     };
 
     // 3. 핸들러
-    const handleSourceBankChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSourceAccount(prev => ({ ...prev, bankName: e.target.value, balance: undefined }));
-    };
-
-    const handleSourceAccountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSourceAccount(prev => ({ ...prev, accountNumber: e.target.value, balance: undefined }));
-    };
-
-    const handleBirthDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 7);
-        setBirthDate(val);
-        setSourceAccount(prev => ({ ...prev, balance: undefined }));
-    };
-
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value.replace(/[^0-9]/g, '');
         setAmount(val);
@@ -119,7 +101,7 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
 
     const handleSubmit = () => {
         if (birthDate.length !== 7) {
-            alert('생년월일 및 주민번호 뒷자리 첫글자(총 7자리)를 정확히 입력해주세요.');
+            alert('주민등록번호 앞 7자리를 정확히 입력해주세요.');
             return;
         }
 
@@ -133,6 +115,12 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
         });
     };
 
+    const isNextDisabled = 
+        sourceAccount.balance === undefined || 
+        isCheckingBalance || 
+        !amount || 
+        parseInt(amount, 10) === 0;
+
     return (
         <div className="w-full max-w-4xl mx-auto bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
             <div className="p-8 md:p-12 space-y-10">
@@ -141,17 +129,29 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                 </header>
 
                 <div className="space-y-10">
+                    {apiError && (
+                        <div className="mb-6 flex items-center gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                            <span className="text-sm font-bold">{apiError}</span>
+                        </div>
+                    )}
+
                     <WithdrawAccountSection 
                         bankName={sourceAccount.bankName}
                         accountNumber={sourceAccount.accountNumber}
-                        onBankChange={handleSourceBankChange}
-                        onAccountChange={handleSourceAccountChange}
-                        onBankBlur={handleCheckBalance}
-                        onAccountBlur={handleCheckBalance}
+                        onBankChange={(val) => {
+                            setSourceAccount(prev => ({ ...prev, bankName: val, balance: undefined }));
+                            setApiError(null);
+                        }}
+                        onAccountChange={(val) => {
+                            setSourceAccount(prev => ({ ...prev, accountNumber: val, balance: undefined }));
+                            setApiError(null);
+                        }}
+                        onBlur={handleCheckBalance}
                     />
 
                     <section className="space-y-4">
-                        <div className="flex justify-between items-end">
+                        <div className="flex justify-between items-center">
                             <h3 className="text-sm font-medium text-gray-500">본인 확인</h3>
                             {isCheckingBalance && (
                                 <span className="text-xs text-emerald-600 font-medium animate-pulse flex items-center gap-1">
@@ -161,18 +161,56 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                             )}
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-semibold text-gray-400">생년월일 + 뒷자리 첫글자 (7자리)</label>
-                            <input
-                                type="text"
-                                value={birthDate}
-                                onChange={handleBirthDateChange}
-                                onBlur={handleCheckBalance}
-                                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 transition-all text-lg tracking-[0.5em] ${
-                                    isCheckingBalance ? 'border-emerald-200 bg-emerald-50/30' : 'border-gray-200'
-                                }`}
-                                placeholder="YYMMDDG"
-                                maxLength={7}
-                            />
+                            <label className="text-xs font-semibold text-gray-400">주민등록번호</label>
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1">
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        placeholder="앞 6자리"
+                                        maxLength={6}
+                                        value={birthDate.slice(0, 6)}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/[^0-9]/g, '');
+                                            if (val.length <= 6) {
+                                                setBirthDate(val + birthDate.slice(6, 7));
+                                                setSourceAccount(prev => ({ ...prev, balance: undefined }));
+                                                setApiError(null);
+                                                if (val.length === 6) {
+                                                    rrnBackRef.current?.focus();
+                                                }
+                                            }
+                                        }}
+                                        onBlur={handleCheckBalance}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all tracking-[0.2em] font-mono text-lg"
+                                    />
+                                </div>
+                                <span className="text-gray-400 font-bold text-xl">-</span>
+                                <div className="flex-[1.2] flex items-center gap-2">
+                                    <input
+                                        ref={rrnBackRef}
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={1}
+                                        value={birthDate.slice(6, 7)}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/[^0-9]/g, '');
+                                            if (val.length <= 1) {
+                                                setBirthDate(birthDate.slice(0, 6) + val);
+                                                setSourceAccount(prev => ({ ...prev, balance: undefined }));
+                                                setApiError(null);
+                                            }
+                                        }}
+                                        onBlur={handleCheckBalance}
+                                        className="w-14 px-0 py-3 border border-gray-200 rounded-lg text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono text-lg"
+                                    />
+                                    <div className="flex gap-1.5 ml-1">
+                                        {[...Array(6)].map((_, i) => (
+                                            <div key={i} className="w-3 h-3 rounded-full bg-gray-200"></div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </section>
 
@@ -199,6 +237,7 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                         onAmountChange={handleAmountChange}
                         onQuickAmountAdd={handleQuickAmountAdd}
                         onAllIn={handleAllIn}
+                        disabled={sourceAccount.balance === undefined || isCheckingBalance}
                     />
 
                     <WithdrawFeeSection fee={fee} isWaived={true} />
@@ -208,7 +247,12 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                     <button
                         type="button"
                         onClick={handleSubmit}
-                        className="w-full py-5 bg-emerald-800 text-white text-xl font-black rounded-2xl hover:bg-emerald-900 active:scale-[0.98] transition-all shadow-lg shadow-emerald-800/20"
+                        disabled={isNextDisabled}
+                        className={`w-full py-5 text-white text-xl font-black rounded-2xl transition-all shadow-lg ${
+                            isNextDisabled
+                                ? 'bg-gray-300 cursor-not-allowed shadow-none'
+                                : 'bg-emerald-800 hover:bg-emerald-900 active:scale-[0.98] shadow-emerald-800/20'
+                        }`}
                     >
                         다음
                     </button>

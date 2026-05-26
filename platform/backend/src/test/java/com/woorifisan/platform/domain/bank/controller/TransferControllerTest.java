@@ -1,7 +1,13 @@
-package com.woorifisan.platform.bank.controller;
+package com.woorifisan.platform.domain.bank.controller;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.woorifisan.platform.domain.bank.controller.TransferController;
 import com.woorifisan.platform.domain.bank.dto.request.TransferRecipientRequest;
 import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
 import com.woorifisan.platform.domain.bank.service.TransferService;
@@ -15,13 +21,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(TransferController.class)
 @Import(GlobalExceptionHandler.class)

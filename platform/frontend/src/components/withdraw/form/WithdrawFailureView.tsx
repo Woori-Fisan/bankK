@@ -2,7 +2,7 @@ import React from 'react';
 import { AlertCircle, RefreshCcw, Home } from 'lucide-react';
 
 interface WithdrawFailureViewProps {
-    errorType: 'INVALID_PASSWORD' | 'SYSTEM_ERROR';
+    errorType: 'INVALID_PASSWORD' | 'SUSPENDED_ACCOUNT' | 'SYSTEM_ERROR';
     onRetry: () => void;
     onHome: () => void;
 }
@@ -16,6 +16,12 @@ const WithdrawFailureView: React.FC<WithdrawFailureViewProps> = ({
         INVALID_PASSWORD: {
             title: '비밀번호가 일치하지 않습니다',
             description: '입력하신 계좌 비밀번호가 틀렸습니다. 다시 확인 후 시도해주세요.',
+            iconColor: 'text-orange-500',
+            bgColor: 'bg-orange-50',
+        },
+        SUSPENDED_ACCOUNT: {
+            title: '정지된 계좌입니다',
+            description: '해당 계좌는 현재 거래가 정지된 상태입니다. 해당 은행에 문의해주세요.',
             iconColor: 'text-orange-500',
             bgColor: 'bg-orange-50',
         },

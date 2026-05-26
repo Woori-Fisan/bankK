@@ -46,6 +46,14 @@ public enum SwaggerResponseDescription {
             ErrorCode.WITHDRAW_AMOUNT_FAULT
     )),
 
+    BANK_BALANCE(List.of(
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.BANK_NOT_FOUND,
+            ErrorCode.BANK_API_ERROR,
+            ErrorCode.INQUIRY_ACCOUNT_NOTFOUND,
+            ErrorCode.INTERNAL_SERVER_ERROR
+    )),
+
     USER_MANAGEMENT(List.of(
             ErrorCode.USER_NOT_FOUND,
             ErrorCode.USER_ALREADY_EXISTS
