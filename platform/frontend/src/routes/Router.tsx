@@ -16,9 +16,10 @@ const Router = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route path="login" element={<LoginPage />} />
-        <Route element={<PrivateRoute />}>
+      <Route path="login" element={<LoginPage />} />
+      
+      <Route element={<PrivateRoute />}>
+        <Route element={<Layout />}>
           <Route index element={<MainPage />} />
           <Route path="main" element={<MainPage />} />
 
@@ -34,7 +35,9 @@ const Router = () => {
           )}
         </Route>
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+
+      <Route path="/" element={<Navigate to="/main" replace />} />
+      <Route path="*" element={<Navigate to="/main" replace />} />
     </Routes>
   );
 };

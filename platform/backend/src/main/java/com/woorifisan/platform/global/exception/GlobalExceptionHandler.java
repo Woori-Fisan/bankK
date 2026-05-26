@@ -8,12 +8,23 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    // 필수 파라미터 누락 (쿼리 파라미터, 헤더 등)
+    @ExceptionHandler({MissingServletRequestParameterException.class, MissingRequestHeaderException.class})
+    public ResponseEntity<ApiResponse<Void>> handleMissingParams(Exception e) {
+        log.warn("필수 파라미터 누락: {}", e.getMessage());
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.error(ErrorCode.MISSING_REQUIRED_PARAM));
+    }
 
     // 비즈니스 예외
     @ExceptionHandler(BusinessException.class)
@@ -22,7 +33,7 @@ public class GlobalExceptionHandler {
         ErrorCode errorCode = e.getErrorCode();
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
-                .body(ApiResponse.error(errorCode));
+                .body(ApiResponse.error(errorCode, e.getMessage()));
     }
 
     // @Valid 유효성 검사 실패
