@@ -17,6 +17,7 @@ import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -38,9 +39,6 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class LoanService {
 
-    // 1. URL 하드코딩
-    private static final String BANK_CORE_URL = "http://localhost:8081";
-
     private static final String LOAN_GUID_PREFIX = "LN-";
     private static final String REDIS_EVAL_GUID_KEY = "loan:eval:%s:guid";
     private static final String REDIS_APP_GUID_KEY = "loan:app:%s:guid";
@@ -60,14 +58,14 @@ public class LoanService {
                        ObjectMapper objectMapper,
                        @Qualifier("sseTaskExecutor") Executor sseTaskExecutor,
                        WebClient bankWebClient,
-                       BankMapper bankMapper) {
+                       BankMapper bankMapper,
+                       @Value("${bank.core.url}") String bankCoreUrl) {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
         this.sseTaskExecutor = sseTaskExecutor;
         this.bankMapper = bankMapper;
-        // 2. 주입받은 WebClient에 Base URL 설정
         this.bankWebClient = bankWebClient.mutate()
-                .baseUrl(BANK_CORE_URL)
+                .baseUrl(bankCoreUrl)
                 .build();
     }
 
@@ -324,9 +322,16 @@ public class LoanService {
         log.info("[{}] 대출 실행 요청 시작 - staffId: {}, loanNo: {}, executeAmount: {}", 
                 guid, staffId, request.getEvaluationId(), request.getExecuteAmount());
 
+        long productId;
+        try {
+            productId = Long.parseLong(request.getLoanProductCode());
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
         Map<String, Object> bankRequest = new HashMap<>();
         bankRequest.put("loanNo", request.getEvaluationId());
-        bankRequest.put("productId", Long.parseLong(request.getLoanProductCode()));
+        bankRequest.put("productId", productId);
         bankRequest.put("loanAmount", request.getExecuteAmount());
         bankRequest.put("repaymentPeriod", request.getRepaymentPeriod());
         bankRequest.put("repaymentType", "원리금균등");
