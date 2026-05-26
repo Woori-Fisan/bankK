@@ -1,9 +1,12 @@
 package com.woorifisan.platform.domain.bank.service;
 
 import com.woorifisan.platform.domain.bank.dto.request.BalanceInquiryRequest;
-import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.request.HistoryInquiryRequest;
+import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
+import com.woorifisan.platform.domain.bank.dto.response.TransactionHistoryDto;
+import com.woorifisan.platform.domain.bank.external.client.BankExternalClient;
+import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryRequest;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ApiResponse;
 import com.woorifisan.platform.global.response.ErrorCode;
@@ -13,14 +16,21 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.reactive.function.client.WebClient;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 /**
  * 계좌 조회 서비스
  */
 @Slf4j
 @Service
+//@RequiredArgsConstructor
 public class AccountInquiryService {
 
     // 날짜 포맷
@@ -28,8 +38,9 @@ public class AccountInquiryService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private static final String BANK_SERVER_URL = "http://localhost:8081/api/v1/baas/account";
-    
+
     private final WebClient bankWebClient;
+    //private final BankExternalClient bankExternalClient;
 
     public AccountInquiryService(@Qualifier("bankWebClient") WebClient bankWebClient) {
         this.bankWebClient = bankWebClient;

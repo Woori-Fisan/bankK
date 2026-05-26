@@ -1,13 +1,20 @@
-package com.woorifisan.platform.bank.controller;
+package com.woorifisan.platform.domain.bank.controller;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.woorifisan.platform.domain.bank.controller.AccountInquiryController;
 import com.woorifisan.platform.domain.bank.dto.request.BalanceInquiryRequest;
 import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
 import com.woorifisan.platform.domain.bank.service.AccountInquiryService;
 import com.woorifisan.platform.global.exception.BusinessException;
-import com.woorifisan.platform.global.response.ErrorCode;
 import com.woorifisan.platform.global.exception.GlobalExceptionHandler;
+import com.woorifisan.platform.global.response.ErrorCode;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,15 +24,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.math.BigDecimal;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AccountInquiryController.class)
 @Import(GlobalExceptionHandler.class)

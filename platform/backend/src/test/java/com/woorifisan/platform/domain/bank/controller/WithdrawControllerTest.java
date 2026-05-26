@@ -1,4 +1,4 @@
-package com.woorifisan.platform.bank.controller;
+package com.woorifisan.platform.domain.bank.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.woorifisan.platform.domain.bank.controller.WithdrawController;
 import com.woorifisan.platform.domain.bank.dto.request.WithdrawalRequest;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.service.WithdrawalService;
@@ -44,7 +43,6 @@ class WithdrawControllerTest {
         // given
         WithdrawalRequest request = new WithdrawalRequest();
         request.setEncryptedKey("encryptedKey");
-        request.setJwsSignature("jwsSignature");
         request.setWithdrawalBankCode("020");
         request.setWithdrawalAccountNo("1234567890");
         request.setWithdrawalPassword("password");
@@ -57,10 +55,11 @@ class WithdrawControllerTest {
                 .transactionDate("2023-05-20 10:00:00")
                 .build();
 
-        given(withdrawalService.executeWithdraw(any())).willReturn(response);
+        given(withdrawalService.executeWithdraw(any(WithdrawalRequest.class))).willReturn(response);
 
         // when & then
         mockMvc.perform(post("/api/v1/bank/withdrawals")
+                        .header("x-jws-signature", "jwsSignature")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -79,6 +78,7 @@ class WithdrawControllerTest {
 
         // when & then
         mockMvc.perform(post("/api/v1/bank/withdrawals")
+                        .header("x-jws-signature", "jwsSignature")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())

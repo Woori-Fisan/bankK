@@ -16,14 +16,15 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class BankTerms {
 
-    private Long id;                // 고유 ID
-    private String termsCode;       // 약관 고유 코드
-    private String version;         // 버전
-    private String title;           // 약관명
-    private String termsUrl;        // WebView CDN URL
-    private Boolean isMandatory;    // 필수 동의 여부
-    private Boolean isActive;       // 현재 서비스 버전 여부
-    private LocalDateTime createdAt; // 생성 일시
+    private Long id;
+    private String termsCode;
+    private String version;
+    private String title;
+    private String termsUrl;
+    private Boolean isMandatory;
+    private Boolean isActive;
+    private String termsType;       // EVALUATION | CONTRACT
+    private LocalDateTime createdAt;
 
     /**
      * 신규 약관 등록을 위한 정적 팩토리 메서드
