@@ -56,20 +56,33 @@ export const login = async (
     }
 };
 
+// 중복 리프레시 요청을 방지하기 위한 변수
+let refreshPromise: Promise<string | null> | null = null;
+
 export const refreshAccessToken = async (): Promise<string | null> => {
-    try {
-        // use basic axios to avoid interceptor loop if possible, 
-        // or ensure interceptor handles this path specifically
-        const response = await axios.post('/api/v1/auth/refresh', {}, {
-            withCredentials: true
-        });
-        
-        const responseData = response.data?.data || response.data;
-        return responseData.accessToken || null;
-    } catch (error) {
-        console.error('Token Refresh Error:', error);
-        return null;
+    // 이미 리프레시가 진행 중이라면 기존의 Promise를 반환하여 결과를 공유합니다.
+    if (refreshPromise) {
+        return refreshPromise;
     }
+
+    refreshPromise = (async () => {
+        try {
+            const response = await axios.post('/api/v1/auth/refresh', {}, {
+                withCredentials: true
+            });
+            
+            const responseData = response.data?.data || response.data;
+            return responseData.accessToken || null;
+        } catch (error) {
+            console.error('Token Refresh Error:', error);
+            return null;
+        } finally {
+            // 요청이 완료되면 변수를 초기화합니다.
+            refreshPromise = null;
+        }
+    })();
+
+    return refreshPromise;
 };
 
 export const logoutApi = async (): Promise<boolean> => {

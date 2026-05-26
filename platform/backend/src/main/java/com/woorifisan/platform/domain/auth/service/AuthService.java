@@ -127,8 +127,8 @@ public class AuthService {
         authMapper.resetFailedLoginCount(user.getId());
 
         // 8. 토큰 발급
-        String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getRole());
-        String refreshToken = jwtProvider.generateRefreshToken(user.getId(), user.getRole());
+        String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getLoginId(), user.getRole());
+        String refreshToken = jwtProvider.generateRefreshToken(user.getId(), user.getLoginId(), user.getRole());
 
         // 9. Redis에 staffId → refreshToken 저장 (8시간 TTL)
         redisTemplate.opsForValue().set(
@@ -165,6 +165,7 @@ public class AuthService {
 
         // 2. staffId 추출
         Long staffId = jwtProvider.extractStaffId(refreshToken);
+        String loginId = jwtProvider.extractLoginId(refreshToken);
         String role = jwtProvider.extractRole(refreshToken);
 
         // 3. Redis에서 저장된 Refresh Token 조회
@@ -184,8 +185,8 @@ public class AuthService {
         }
 
         // 6. 새 토큰 발급
-        String newAccessToken = jwtProvider.generateAccessToken(staffId, role);
-        String newRefreshToken = jwtProvider.generateRefreshToken(staffId, role);
+        String newAccessToken = jwtProvider.generateAccessToken(staffId, loginId, role);
+        String newRefreshToken = jwtProvider.generateRefreshToken(staffId, loginId, role);
 
         // 7. Redis 갱신
         redisTemplate.opsForValue().set(
