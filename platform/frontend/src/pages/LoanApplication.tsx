@@ -87,6 +87,7 @@ const LoanApplication: React.FC = () => {
                 return (
                     <LoanProductSelection
                         products={evaluationResult?.products || []}
+                        approvedLimit={evaluationResult?.limit}
                         onNext={(product) => {
                             setSelectedProduct(product);
                             setStep('CONTRACT');

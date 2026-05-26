@@ -33,7 +33,7 @@ public class GlobalExceptionHandler {
         ErrorCode errorCode = e.getErrorCode();
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
-                .body(ApiResponse.error(errorCode));
+                .body(ApiResponse.error(errorCode, e.getMessage()));
     }
 
     // @Valid 유효성 검사 실패
@@ -63,6 +63,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ErrorCode.UNAUTHORIZED.getHttpStatus())
                 .body(ApiResponse.error(ErrorCode.UNAUTHORIZED));
+    }
+
+    // SSE 클라이언트 연결 중단 및 비동기 요청 불가 예외
+    // ClientAbortException(IOException의 하위) 및 AsyncRequestNotUsableException 처리
+    @ExceptionHandler({java.io.IOException.class, org.springframework.web.context.request.async.AsyncRequestNotUsableException.class})
+    public void handleAsyncException(Exception e) {
+        log.debug("SSE/Async 클라이언트 연결 중단: {}", e.getMessage());
+        // 연결이 이미 끊어졌으므로 아무것도 반환하지 않음 (HttpMessageNotWritableException 방지)
     }
 
     // 그 외 예외

@@ -27,8 +27,10 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class LoanService {
+
+    @Value("${bank.code}")
+    private String bankCode;
 
     private static final BigDecimal MOCK_ANNUAL_INCOME = new BigDecimal("36000000");
     private static final BigDecimal DSR_LIMIT = new BigDecimal("40");
@@ -89,19 +94,27 @@ public class LoanService {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
+        // 입금 계좌의 은행 코드가 이 은행과 일치하는지 검증
+        if (!Objects.equals(bankCode, request.getDepositBankCode())) {
+            throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH);
+        }
+
         // BK-B21: 계좌 유효성 검증 (심사 단계에서 입금 계좌 사전 확인)
         Account account = accountMapper.findByAccountNoPlain(request.getDepositAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
 
-        if (!"NORMAL".equals(account.getStatus())) {
+        if ("LOCKED".equals(account.getStatus())) {
+            throw new BusinessException(ErrorCode.LOAN_ACCOUNT_LOCKED);
+        } else if (!"NORMAL".equals(account.getStatus())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_ABNORMAL);
         }
 
         Customer customer = customerMapper.findById(account.getCustomerId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_CUSTOMER_NOT_FOUND));
 
-        // BKC04: 주민번호 앞 7자리 본인 확인
-        if (!request.getCustomerRrnPrefix().equals(customer.getRrnPrefix())) {
+        // BKC04: 주민번호 앞 7자리 + 고객명 본인 확인
+        if (!customer.getRrnPrefix().equals(request.getCustomerRrnPrefix())
+                || !customer.getCustomerName().equals(request.getCustomerName())) {
             throw new BusinessException(ErrorCode.LOAN_CUSTOMER_IDENTITY_MISMATCH);
         }
 
@@ -132,21 +145,24 @@ public class LoanService {
 
         List<LoanLedger> activeLoans = loanLedgerMapper.findActiveByCustomerId(customer.getId());
 
-        // BK-B15: DSR 계산, 40% 초과 REJECTED
-        BigDecimal dsr = calculateDsr(activeLoans, request.getRequestedAmount(), appliedRate,
-                request.getRequestedPeriod());
-
-        if (dsr.compareTo(DSR_LIMIT) > 0) {
-            LoanLedger saved = saveLoanLedger(loanNo, customer.getId(), account.getId(), request,
-                    creditScore, dsr, BigDecimal.ZERO, appliedRate, "REJECTED",
-                    "DSR 초과 (" + dsr + "%)");
-            return LoanEvaluateResponse.rejected(saved.getId(), loanNo,
-                    creditScore, dsr, "DSR 초과 (" + dsr + "%)");
-        }
-
-        // BK-B16: 대출 한도 산출
+        // BK-B16: 대출 한도 산출 (신청 금액과 DSR 역산 한도 중 작은 값)
         BigDecimal approvedLimit = calculateApprovedLimit(activeLoans, appliedRate,
                 request.getRequestedPeriod()).min(request.getRequestedAmount());
+
+        // BK-B15: 승인 한도가 최소 대출 가능 금액(100만 원) 미만이면 REJECTED
+        if (approvedLimit.compareTo(new BigDecimal("1000000")) < 0) {
+            BigDecimal dsrForRejection = calculateDsr(activeLoans, request.getRequestedAmount(),
+                    appliedRate, request.getRequestedPeriod());
+            LoanLedger saved = saveLoanLedger(loanNo, customer.getId(), account.getId(), request,
+                    creditScore, dsrForRejection, BigDecimal.ZERO, appliedRate, "REJECTED",
+                    "DSR 초과 또는 한도 부족 (" + dsrForRejection + "%)");
+            return LoanEvaluateResponse.rejected(saved.getId(), loanNo,
+                    creditScore, dsrForRejection, "DSR 초과 또는 한도 부족 (" + dsrForRejection + "%)");
+        }
+
+        // 승인 한도 기준 DSR 산출 (저장·표시용)
+        BigDecimal dsr = calculateDsr(activeLoans, approvedLimit, appliedRate,
+                request.getRequestedPeriod());
 
         // BK-B18: 추천 상품 필터링 및 정렬
         List<AvailableProductDto> products = loanProductMapper
@@ -204,7 +220,9 @@ public class LoanService {
         Account account = accountMapper.findByIdForUpdate(loanLedger.getLinkedAccountId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
 
-        if (!"NORMAL".equals(account.getStatus())) {
+        if ("LOCKED".equals(account.getStatus())) {
+            throw new BusinessException(ErrorCode.LOAN_ACCOUNT_LOCKED);
+        } else if (!"NORMAL".equals(account.getStatus())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_ABNORMAL);
         }
 
@@ -242,8 +260,15 @@ public class LoanService {
         BigDecimal balanceAfter = account.getBalance().add(request.getLoanAmount());
         String txId = "LOAN-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
         transactionLedgerMapper.insert(TransactionLedger.of(
-                txId, account.getId(), "LOAN", request.getLoanAmount(),
-                balanceAfter, product.getProductName() + " 대출 실행", "SUCCESS"));
+                txId, 
+                account.getId(), 
+                "LOAN", 
+                request.getLoanAmount(),
+                balanceAfter, 
+                null, // targetBankCode
+                null, // targetAccount
+                product.getProductName() + " 대출 실행", 
+                "SUCCESS"));
 
         return LoanExecuteResponse.builder()
                 .loanNo(request.getLoanNo())

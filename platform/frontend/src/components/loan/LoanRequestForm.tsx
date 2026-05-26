@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
     User, Building2, Upload, FileText, X, ChevronLeft, ChevronRight,
-    FileType, CheckCircle2, Globe, Loader2,
+    FileType, CheckCircle2, Loader2,
 } from 'lucide-react';
 import type { LoanData } from '../../pages/LoanApplication';
 import { useReviewDocuments, useSubmitLoanEvaluation, useBankList, extractApiError } from '../../hooks/useLoan';
@@ -19,9 +19,11 @@ interface LoanRequestFormProps {
 
 const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const rrnBackRef = useRef<HTMLInputElement>(null);
+    const [rrnFront, setRrnFront] = useState('');
+    const [rrnBack, setRrnBack] = useState('');
     const [formData, setFormData] = useState<LoanData>({
         userName: '',
-        rrn: '',
         phone: '',
         bank: '',
         bankCode: '',
@@ -34,6 +36,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
     const [agreedDocs, setAgreedDocs] = useState<AgreedDoc[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeDoc, setActiveDoc] = useState<AgreedDoc | null>(null);
+    const [viewedDocs, setViewedDocs] = useState<Set<string>>(new Set());
 
     const { data: docsData, isLoading: isDocsLoading } = useReviewDocuments();
     const { data: bankList, isLoading: isBankListLoading } = useBankList();
@@ -52,6 +55,8 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
     };
 
     const handleAllAgreed = () => {
+        const allViewed = agreedDocs.every((d) => viewedDocs.has(d.documentType));
+        if (!allViewed) return;
         const allAgreed = agreedDocs.every((d) => d.agreed);
         setAgreedDocs((prev) => prev.map((d) => ({ ...d, agreed: !allAgreed })));
     };
@@ -73,22 +78,27 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
     };
 
     const openModal = (doc: AgreedDoc) => {
+        setViewedDocs(prev => new Set([...prev, doc.documentType]));
         setActiveDoc(doc);
         setIsModalOpen(true);
     };
 
     const handleModalAgree = () => {
-        if (activeDoc) handleTermToggle(activeDoc.documentType);
+        if (activeDoc) {
+            setAgreedDocs(prev =>
+                prev.map(d => d.documentType === activeDoc.documentType ? { ...d, agreed: true } : d)
+            );
+        }
         setIsModalOpen(false);
     };
 
     const validate = (): boolean => {
         const errors: typeof fieldErrors = {};
         if (!formData.userName?.trim()) errors.userName = '성명을 입력해주세요.';
-        if (!formData.rrn?.trim()) {
-            errors.rrn = '주민등록번호를 입력해주세요.';
-        } else if (!/^\d{6}-?\d{7}$/.test(formData.rrn.trim())) {
-            errors.rrn = '올바른 주민등록번호 형식을 입력해주세요. (예: 900101-1234567)';
+        if (rrnFront.length !== 6) {
+            errors.rrn = '주민등록번호 앞 6자리를 입력해주세요.';
+        } else if (!/^[1-4]$/.test(rrnBack)) {
+            errors.rrn = '주민등록번호 뒤 1자리(1~4)를 입력해주세요.';
         }
         if (!formData.bankCode) errors.bank = '은행을 선택해주세요.';
         if (!formData.accountNo?.trim()) {
@@ -108,8 +118,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
         if (!validate()) return;
 
         setFieldErrors({});
-        const rrnRaw = formData.rrn!.replace(/-/g, '');
-        const rrnPrefix = rrnRaw.slice(0, 7);
+        const rrnPrefix = rrnFront + rrnBack;
 
         try {
             const agreedAt = new Date().toISOString();
@@ -130,7 +139,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                 documents,
             });
 
-            onNext(formData, result.applicationId);
+            onNext({ ...formData, rrn: `${rrnFront}-${rrnBack}` }, result.applicationId);
         } catch (err) {
             setFieldErrors({ submit: extractApiError(err) });
         }
@@ -175,27 +184,48 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                 )}
                             </div>
                             <div>
-                                <label htmlFor="rrn" className="block text-[11px] text-gray-500 mb-1">
+                                <label className="block text-[11px] text-gray-500 mb-1">
                                     주민등록번호
                                 </label>
-                                <input
-                                    id="rrn"
-                                    type="text"
-                                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="900101-1234567"
-                                    value={formData.rrn}
-                                    onChange={(e) => setFormData({ ...formData, rrn: e.target.value })}
-                                    onBlur={() => {
-                                        if (!formData.rrn?.trim())
-                                            setFieldErrors((p) => ({ ...p, rrn: '주민등록번호를 입력해주세요.' }));
-                                        else if (!/^\d{6}-?\d{7}$/.test(formData.rrn.trim()))
-                                            setFieldErrors((p) => ({
-                                                ...p,
-                                                rrn: '올바른 형식을 입력해주세요. (예: 900101-1234567)',
-                                            }));
-                                        else setFieldErrors((p) => ({ ...p, rrn: undefined }));
-                                    }}
-                                />
+                                <div className="flex items-center gap-1.5">
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={6}
+                                        placeholder="000000"
+                                        value={rrnFront}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                            setRrnFront(val);
+                                            if (val.length === 6) rrnBackRef.current?.focus();
+                                        }}
+                                        onBlur={() => {
+                                            if (rrnFront.length > 0 && rrnFront.length < 6)
+                                                setFieldErrors((p) => ({ ...p, rrn: '앞 6자리를 모두 입력해주세요.' }));
+                                            else setFieldErrors((p) => ({ ...p, rrn: undefined }));
+                                        }}
+                                        className="w-28 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-center tracking-widest"
+                                    />
+                                    <span className="text-gray-500 font-bold">-</span>
+                                    <input
+                                        ref={rrnBackRef}
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={1}
+                                        value={rrnBack}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/[^1-4]/g, '').slice(0, 1);
+                                            setRrnBack(val);
+                                        }}
+                                        onBlur={() => {
+                                            if (rrnBack.length > 0 && !/^[1-4]$/.test(rrnBack))
+                                                setFieldErrors((p) => ({ ...p, rrn: '뒷자리는 1~4 사이 숫자입니다.' }));
+                                            else setFieldErrors((p) => ({ ...p, rrn: undefined }));
+                                        }}
+                                        className="w-8 px-1 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-center"
+                                    />
+                                    <span className="text-gray-400 text-sm tracking-widest select-none">●●●●●●</span>
+                                </div>
                                 {fieldErrors.rrn && (
                                     <p className="mt-1 text-xs text-red-500">{fieldErrors.rrn}</p>
                                 )}
@@ -263,7 +293,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none"
                                     placeholder="숫자만 입력"
                                     value={formData.accountNo}
-                                    onChange={(e) => setFormData({ ...formData, accountNo: e.target.value })}
+                                    onChange={(e) => setFormData({ ...formData, accountNo: e.target.value.replace(/[^0-9]/g, '') })}
                                     onBlur={() => {
                                         if (!formData.accountNo?.trim())
                                             setFieldErrors((p) => ({ ...p, accountNo: '계좌번호를 입력해주세요.' }));
@@ -275,6 +305,9 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                         else setFieldErrors((p) => ({ ...p, accountNo: undefined }));
                                     }}
                                 />
+                                <p className="mt-1 text-[10px] text-gray-400">
+                                    * 계좌번호는 '-' 없이 숫자만 입력해 주세요.
+                                </p>
                                 {fieldErrors.accountNo && (
                                     <p className="mt-1 text-xs text-red-500">{fieldErrors.accountNo}</p>
                                 )}
@@ -381,11 +414,21 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                             <button
                                 type="button"
                                 onClick={handleAllAgreed}
-                                className="w-full p-3 mb-4 bg-gray-900 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2"
+                                disabled={!agreedDocs.every((d) => viewedDocs.has(d.documentType))}
+                                className={`w-full p-3 mb-1 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors ${
+                                    agreedDocs.every((d) => viewedDocs.has(d.documentType))
+                                        ? 'bg-gray-900 text-white hover:bg-gray-800'
+                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                }`}
                             >
                                 <CheckCircle2 className="w-4 h-4" />
                                 전체 약관에 동의합니다
                             </button>
+                            {agreedDocs.some((d) => !viewedDocs.has(d.documentType)) ? (
+                                <p className="text-[10px] text-amber-600 mb-3 text-center">내용 보기를 먼저 클릭해주세요.</p>
+                            ) : (
+                                <div className="mb-3" />
+                            )}
 
                             <div className="space-y-2">
                                 {agreedDocs.map((doc) => (
@@ -399,11 +442,12 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                                 id={`doc-${doc.documentType}`}
                                                 checked={doc.agreed}
                                                 onChange={() => handleTermToggle(doc.documentType)}
-                                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                disabled={!viewedDocs.has(doc.documentType)}
+                                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
                                             />
                                             <label
                                                 htmlFor={`doc-${doc.documentType}`}
-                                                className="flex-1 text-xs text-gray-900 font-medium cursor-pointer"
+                                                className={`flex-1 text-xs text-gray-900 font-medium ${viewedDocs.has(doc.documentType) ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                                             >
                                                 {doc.documentName}
                                             </label>
@@ -488,20 +532,12 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
-                        <div className="h-[400px] bg-gray-50 flex flex-col items-center justify-center p-10 text-center">
-                            <div className="w-16 h-16 bg-white border border-gray-200 rounded-2xl flex items-center justify-center mb-4 text-gray-300">
-                                <Globe className="w-8 h-8" />
-                            </div>
-                            <h4 className="text-sm font-bold text-gray-900 mb-2">
-                                CDN에서 약관 내용을 불러옵니다
-                            </h4>
-                            <p className="text-[11px] text-gray-500 mb-6 break-all">
-                                {activeDoc.documentUrl}
-                            </p>
-                            <div className="p-4 bg-blue-50 text-blue-600 rounded-xl text-[11px] font-medium max-w-sm">
-                                실제 배포 시 이 영역은 iframe으로 약관 HTML이 렌더링됩니다.
-                            </div>
-                        </div>
+                        <iframe
+                            srcDoc={activeDoc.documentContent ?? '<p style="padding:16px;font-family:sans-serif;color:#555">내용을 불러올 수 없습니다.</p>'}
+                            className="w-full h-[400px] border-0 bg-white"
+                            sandbox="allow-scripts"
+                            title={activeDoc.documentName}
+                        />
                         <div className="p-5 border-t border-gray-100 flex justify-end gap-3">
                             <button
                                 type="button"

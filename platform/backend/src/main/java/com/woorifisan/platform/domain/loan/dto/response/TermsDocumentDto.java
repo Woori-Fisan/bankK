@@ -22,6 +22,9 @@ public class TermsDocumentDto {
     /** 서류 원문을 볼 수 있는 URL (PDF 또는 HTML) */
     private String documentUrl;
 
+    /** 약관 HTML 본문 (iframe srcDoc으로 렌더링) */
+    private String documentContent;
+
     /** 필수 동의 여부 — true이면 반드시 동의해야 심사 진행 가능 */
     private Boolean isMandatory;
 }

@@ -1,14 +1,43 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { LogOut } from 'lucide-react';
 import { useAuthCrypto } from '../../hooks/useAuthCrypto';
+import { useAuth } from '../../hooks/useAuth';
 
 interface HeaderProps {
     currentTime: string;
     sessionTime: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentTime, sessionTime }) => {
+const Header: React.FC<HeaderProps> = () => {
     const { performLogout, isLoading } = useAuthCrypto();
+    const { userId, loginTime, tokenExpiry } = useAuth();
+    const [timeLeft, setTimeLeft] = useState<string>('00:00');
+
+    useEffect(() => {
+        if (!tokenExpiry) return;
+
+        const updateTimer = () => {
+            const now = Date.now();
+            const diff = tokenExpiry - now;
+
+            if (diff <= 0) {
+                setTimeLeft('00:00');
+                return;
+            }
+
+            const minutes = Math.floor(diff / 1000 / 60);
+            const seconds = Math.floor((diff / 1000) % 60);
+            
+            setTimeLeft(
+                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+            );
+        };
+
+        updateTimer();
+        const timerId = setInterval(updateTimer, 1000);
+
+        return () => clearInterval(timerId);
+    }, [tokenExpiry]);
 
     const handleLogout = () => {
         if (window.confirm("로그아웃 하시겠습니까?")) {
@@ -22,9 +51,11 @@ const Header: React.FC<HeaderProps> = ({ currentTime, sessionTime }) => {
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 bg-emerald-700 rounded-full flex items-center justify-center">
-                            <span className="text-white text-sm font-medium">U</span>
+                            <span className="text-white text-sm font-medium">
+                                {userId ? userId.charAt(0).toUpperCase() : 'U'}
+                            </span>
                         </div>
-                        <span className="text-sm font-medium text-gray-900">사용자 명</span>
+                        <span className="text-sm font-medium text-gray-900">{userId || '사용자 명'}</span>
                     </div>
                     
                     {/* 로그아웃 버튼 추가 */}
@@ -40,10 +71,10 @@ const Header: React.FC<HeaderProps> = ({ currentTime, sessionTime }) => {
                 
                 <div className="text-right border-l border-gray-200 pl-6">
                     <div className="text-xs text-gray-500">
-                        접속 시간 <span className="text-gray-700">{currentTime}</span>
+                        접속 시간 <span className="text-gray-700">{loginTime || '알 수 없음'}</span>
                     </div>
                     <div className="text-xs text-gray-500">
-                        인증 만료 <span className="text-gray-700">{sessionTime}</span>
+                        인증 만료 <span className="text-red-600 font-medium">{timeLeft}</span>
                     </div>
                 </div>
             </div>

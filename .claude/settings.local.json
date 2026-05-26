@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python3 -c \"import bcrypt; h=bcrypt.hashpw\\(b'1234', bcrypt.gensalt\\(10\\)\\).decode\\(\\); print\\(h\\)\")",
-      "Bash(python -c \"import bcrypt; h=bcrypt.hashpw\\(b'1234', bcrypt.gensalt\\(10\\)\\).decode\\(\\); print\\(h\\)\")",
-      "Bash(node -e \"const bcrypt=require\\('bcrypt'\\); bcrypt.hash\\('1234',10\\).then\\(h=>console.log\\(h\\)\\);\")"
-    ]
-  }
-}

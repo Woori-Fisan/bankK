@@ -5,6 +5,7 @@ export interface ReviewDocument {
   documentType: string;
   documentName: string;
   documentUrl: string;
+  documentContent?: string;
   isMandatory: boolean;
 }
 
@@ -57,6 +58,7 @@ export interface ContractDocument {
   documentType: string;
   documentName: string;
   documentUrl: string;
+  documentContent?: string;
   isMandatory: boolean;
 }
 

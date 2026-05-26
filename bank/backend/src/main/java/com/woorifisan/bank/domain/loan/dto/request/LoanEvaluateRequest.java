@@ -19,6 +19,9 @@ public class LoanEvaluateRequest {
     private String customerRrnPrefix;
 
     @NotBlank
+    private String depositBankCode;
+
+    @NotBlank
     private String depositAccountNo;
 
     @NotNull
