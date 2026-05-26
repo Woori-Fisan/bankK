@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Receipt, Info, ChevronLeft, ChevronRight, X, Globe, Loader2 } from 'lucide-react';
+import { FileText, Receipt, Info, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
 import type { LoanProduct, LoanData } from '../../pages/LoanApplication';
 import { useContractDocuments, extractApiError } from '../../hooks/useLoan';
 import type { ContractDocument } from '../../api/loanApi';
@@ -28,6 +28,7 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
     const [agreedDocs, setAgreedDocs] = useState<AgreedContractDoc[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeDoc, setActiveDoc] = useState<AgreedContractDoc | null>(null);
+    const [viewedDocs, setViewedDocs] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (data?.documents) {
@@ -42,12 +43,17 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
     };
 
     const openModal = (doc: AgreedContractDoc) => {
+        setViewedDocs(prev => new Set([...prev, doc.documentType]));
         setActiveDoc(doc);
         setIsModalOpen(true);
     };
 
     const handleModalAgree = () => {
-        if (activeDoc) handleTermToggle(activeDoc.documentType);
+        if (activeDoc) {
+            setAgreedDocs(prev =>
+                prev.map(d => d.documentType === activeDoc.documentType ? { ...d, agreed: true } : d)
+            );
+        }
         setIsModalOpen(false);
     };
 
@@ -100,11 +106,12 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                                                     id={`contract-${doc.documentType}`}
                                                     checked={doc.agreed}
                                                     onChange={() => handleTermToggle(doc.documentType)}
-                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                    disabled={!viewedDocs.has(doc.documentType)}
+                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
                                                 />
                                                 <label
                                                     htmlFor={`contract-${doc.documentType}`}
-                                                    className="flex-1 text-xs font-medium text-gray-900 cursor-pointer"
+                                                    className={`flex-1 text-xs font-medium text-gray-900 ${viewedDocs.has(doc.documentType) ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                                                 >
                                                     {doc.documentName}
                                                 </label>
@@ -138,11 +145,12 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                                                     id={`contract-${doc.documentType}`}
                                                     checked={doc.agreed}
                                                     onChange={() => handleTermToggle(doc.documentType)}
-                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                    disabled={!viewedDocs.has(doc.documentType)}
+                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
                                                 />
                                                 <label
                                                     htmlFor={`contract-${doc.documentType}`}
-                                                    className="flex-1 text-xs font-medium text-gray-900 cursor-pointer"
+                                                    className={`flex-1 text-xs font-medium text-gray-900 ${viewedDocs.has(doc.documentType) ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                                                 >
                                                     {doc.documentName}
                                                 </label>
@@ -167,8 +175,8 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                     <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 flex gap-3">
                         <Info className="w-5 h-5 text-emerald-500 shrink-0" />
                         <p className="text-[11px] text-emerald-700 leading-relaxed">
-                            <strong>내용 보기</strong> 클릭 시 CDN(terms_url)에서 약관 내용을 iframe으로
-                            불러옵니다. 필수 항목을 모두 확인하고 동의해야 다음 단계로 진행할 수 있습니다.
+                            <strong>내용 보기</strong>를 클릭해 약관을 열람한 후 동의 체크가 활성화됩니다.
+                            필수 항목을 모두 확인하고 동의해야 다음 단계로 진행할 수 있습니다.
                         </p>
                     </div>
                 </div>
@@ -251,20 +259,12 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
-                        <div className="h-[400px] bg-gray-50 flex flex-col items-center justify-center p-10 text-center">
-                            <div className="w-16 h-16 bg-white border border-gray-200 rounded-2xl flex items-center justify-center mb-4 text-gray-300">
-                                <Globe className="w-8 h-8" />
-                            </div>
-                            <h4 className="text-sm font-bold text-gray-900 mb-2">
-                                CDN에서 약관 내용을 불러옵니다
-                            </h4>
-                            <p className="text-[11px] text-gray-500 mb-6 break-all">
-                                {activeDoc.documentUrl}
-                            </p>
-                            <div className="p-4 bg-blue-50 text-blue-600 rounded-xl text-[11px] font-medium max-w-sm">
-                                실제 배포 시 이 영역은 iframe으로 약관 HTML이 렌더링됩니다.
-                            </div>
-                        </div>
+                        <iframe
+                            srcDoc={activeDoc.documentContent ?? '<p style="padding:16px;font-family:sans-serif;color:#555">내용을 불러올 수 없습니다.</p>'}
+                            className="w-full h-[400px] border-0 bg-white"
+                            sandbox="allow-scripts"
+                            title={activeDoc.documentName}
+                        />
                         <div className="p-5 border-t border-gray-100 flex justify-end gap-3">
                             <button
                                 type="button"

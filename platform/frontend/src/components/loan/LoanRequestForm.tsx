@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
     User, Building2, Upload, FileText, X, ChevronLeft, ChevronRight,
-    FileType, CheckCircle2, Globe, Loader2,
+    FileType, CheckCircle2, Loader2,
 } from 'lucide-react';
 import type { LoanData } from '../../pages/LoanApplication';
 import { useReviewDocuments, useSubmitLoanEvaluation, useBankList, extractApiError } from '../../hooks/useLoan';
@@ -34,6 +34,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
     const [agreedDocs, setAgreedDocs] = useState<AgreedDoc[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeDoc, setActiveDoc] = useState<AgreedDoc | null>(null);
+    const [viewedDocs, setViewedDocs] = useState<Set<string>>(new Set());
 
     const { data: docsData, isLoading: isDocsLoading } = useReviewDocuments();
     const { data: bankList, isLoading: isBankListLoading } = useBankList();
@@ -52,6 +53,8 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
     };
 
     const handleAllAgreed = () => {
+        const allViewed = agreedDocs.every((d) => viewedDocs.has(d.documentType));
+        if (!allViewed) return;
         const allAgreed = agreedDocs.every((d) => d.agreed);
         setAgreedDocs((prev) => prev.map((d) => ({ ...d, agreed: !allAgreed })));
     };
@@ -73,12 +76,17 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
     };
 
     const openModal = (doc: AgreedDoc) => {
+        setViewedDocs(prev => new Set([...prev, doc.documentType]));
         setActiveDoc(doc);
         setIsModalOpen(true);
     };
 
     const handleModalAgree = () => {
-        if (activeDoc) handleTermToggle(activeDoc.documentType);
+        if (activeDoc) {
+            setAgreedDocs(prev =>
+                prev.map(d => d.documentType === activeDoc.documentType ? { ...d, agreed: true } : d)
+            );
+        }
         setIsModalOpen(false);
     };
 
@@ -276,6 +284,9 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                         else setFieldErrors((p) => ({ ...p, accountNo: undefined }));
                                     }}
                                 />
+                                <p className="mt-1 text-[10px] text-gray-400">
+                                    * 계좌번호는 '-' 없이 숫자만 입력해 주세요.
+                                </p>
                                 {fieldErrors.accountNo && (
                                     <p className="mt-1 text-xs text-red-500">{fieldErrors.accountNo}</p>
                                 )}
@@ -382,11 +393,21 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                             <button
                                 type="button"
                                 onClick={handleAllAgreed}
-                                className="w-full p-3 mb-4 bg-gray-900 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2"
+                                disabled={!agreedDocs.every((d) => viewedDocs.has(d.documentType))}
+                                className={`w-full p-3 mb-1 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors ${
+                                    agreedDocs.every((d) => viewedDocs.has(d.documentType))
+                                        ? 'bg-gray-900 text-white hover:bg-gray-800'
+                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                }`}
                             >
                                 <CheckCircle2 className="w-4 h-4" />
                                 전체 약관에 동의합니다
                             </button>
+                            {agreedDocs.some((d) => !viewedDocs.has(d.documentType)) ? (
+                                <p className="text-[10px] text-amber-600 mb-3 text-center">내용 보기를 먼저 클릭해주세요.</p>
+                            ) : (
+                                <div className="mb-3" />
+                            )}
 
                             <div className="space-y-2">
                                 {agreedDocs.map((doc) => (
@@ -400,11 +421,12 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                                 id={`doc-${doc.documentType}`}
                                                 checked={doc.agreed}
                                                 onChange={() => handleTermToggle(doc.documentType)}
-                                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                disabled={!viewedDocs.has(doc.documentType)}
+                                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
                                             />
                                             <label
                                                 htmlFor={`doc-${doc.documentType}`}
-                                                className="flex-1 text-xs text-gray-900 font-medium cursor-pointer"
+                                                className={`flex-1 text-xs text-gray-900 font-medium ${viewedDocs.has(doc.documentType) ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                                             >
                                                 {doc.documentName}
                                             </label>
@@ -489,20 +511,12 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
-                        <div className="h-[400px] bg-gray-50 flex flex-col items-center justify-center p-10 text-center">
-                            <div className="w-16 h-16 bg-white border border-gray-200 rounded-2xl flex items-center justify-center mb-4 text-gray-300">
-                                <Globe className="w-8 h-8" />
-                            </div>
-                            <h4 className="text-sm font-bold text-gray-900 mb-2">
-                                CDN에서 약관 내용을 불러옵니다
-                            </h4>
-                            <p className="text-[11px] text-gray-500 mb-6 break-all">
-                                {activeDoc.documentUrl}
-                            </p>
-                            <div className="p-4 bg-blue-50 text-blue-600 rounded-xl text-[11px] font-medium max-w-sm">
-                                실제 배포 시 이 영역은 iframe으로 약관 HTML이 렌더링됩니다.
-                            </div>
-                        </div>
+                        <iframe
+                            srcDoc={activeDoc.documentContent ?? '<p style="padding:16px;font-family:sans-serif;color:#555">내용을 불러올 수 없습니다.</p>'}
+                            className="w-full h-[400px] border-0 bg-white"
+                            sandbox="allow-scripts"
+                            title={activeDoc.documentName}
+                        />
                         <div className="p-5 border-t border-gray-100 flex justify-end gap-3">
                             <button
                                 type="button"
