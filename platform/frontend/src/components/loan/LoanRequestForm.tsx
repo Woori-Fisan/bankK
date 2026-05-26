@@ -19,9 +19,11 @@ interface LoanRequestFormProps {
 
 const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const rrnBackRef = useRef<HTMLInputElement>(null);
+    const [rrnFront, setRrnFront] = useState('');
+    const [rrnBack, setRrnBack] = useState('');
     const [formData, setFormData] = useState<LoanData>({
         userName: '',
-        rrn: '',
         phone: '',
         bank: '',
         bankCode: '',
@@ -93,10 +95,10 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
     const validate = (): boolean => {
         const errors: typeof fieldErrors = {};
         if (!formData.userName?.trim()) errors.userName = '성명을 입력해주세요.';
-        if (!formData.rrn?.trim()) {
-            errors.rrn = '주민등록번호를 입력해주세요.';
-        } else if (!/^\d{6}-[1-4]$/.test(formData.rrn.trim())) {
-            errors.rrn = '올바른 주민등록번호 형식을 입력해주세요. (예: 900101-1)';
+        if (rrnFront.length !== 6) {
+            errors.rrn = '주민등록번호 앞 6자리를 입력해주세요.';
+        } else if (!/^[1-4]$/.test(rrnBack)) {
+            errors.rrn = '주민등록번호 뒤 1자리(1~4)를 입력해주세요.';
         }
         if (!formData.bankCode) errors.bank = '은행을 선택해주세요.';
         if (!formData.accountNo?.trim()) {
@@ -116,8 +118,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
         if (!validate()) return;
 
         setFieldErrors({});
-        const rrnRaw = formData.rrn!.replace(/-/g, '');
-        const rrnPrefix = rrnRaw.slice(0, 7);
+        const rrnPrefix = rrnFront + rrnBack;
 
         try {
             const agreedAt = new Date().toISOString();
@@ -138,7 +139,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                 documents,
             });
 
-            onNext(formData, result.applicationId);
+            onNext({ ...formData, rrn: `${rrnFront}-${rrnBack}` }, result.applicationId);
         } catch (err) {
             setFieldErrors({ submit: extractApiError(err) });
         }
@@ -183,28 +184,48 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                 )}
                             </div>
                             <div>
-                                <label htmlFor="rrn" className="block text-[11px] text-gray-500 mb-1">
-                                    주민등록번호 앞 7자리
+                                <label className="block text-[11px] text-gray-500 mb-1">
+                                    주민등록번호
                                 </label>
-                                <input
-                                    id="rrn"
-                                    type="text"
-                                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="900101-1"
-                                    maxLength={8}
-                                    value={formData.rrn}
-                                    onChange={(e) => setFormData({ ...formData, rrn: e.target.value })}
-                                    onBlur={() => {
-                                        if (!formData.rrn?.trim())
-                                            setFieldErrors((p) => ({ ...p, rrn: '주민등록번호를 입력해주세요.' }));
-                                        else if (!/^\d{6}-[1-4]$/.test(formData.rrn.trim()))
-                                            setFieldErrors((p) => ({
-                                                ...p,
-                                                rrn: '올바른 형식을 입력해주세요. (예: 900101-1)',
-                                            }));
-                                        else setFieldErrors((p) => ({ ...p, rrn: undefined }));
-                                    }}
-                                />
+                                <div className="flex items-center gap-1.5">
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={6}
+                                        placeholder="000000"
+                                        value={rrnFront}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                            setRrnFront(val);
+                                            if (val.length === 6) rrnBackRef.current?.focus();
+                                        }}
+                                        onBlur={() => {
+                                            if (rrnFront.length > 0 && rrnFront.length < 6)
+                                                setFieldErrors((p) => ({ ...p, rrn: '앞 6자리를 모두 입력해주세요.' }));
+                                            else setFieldErrors((p) => ({ ...p, rrn: undefined }));
+                                        }}
+                                        className="w-28 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-center tracking-widest"
+                                    />
+                                    <span className="text-gray-500 font-bold">-</span>
+                                    <input
+                                        ref={rrnBackRef}
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={1}
+                                        value={rrnBack}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/[^1-4]/g, '').slice(0, 1);
+                                            setRrnBack(val);
+                                        }}
+                                        onBlur={() => {
+                                            if (rrnBack.length > 0 && !/^[1-4]$/.test(rrnBack))
+                                                setFieldErrors((p) => ({ ...p, rrn: '뒷자리는 1~4 사이 숫자입니다.' }));
+                                            else setFieldErrors((p) => ({ ...p, rrn: undefined }));
+                                        }}
+                                        className="w-8 px-1 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-center"
+                                    />
+                                    <span className="text-gray-400 text-sm tracking-widest select-none">●●●●●●</span>
+                                </div>
                                 {fieldErrors.rrn && (
                                     <p className="mt-1 text-xs text-red-500">{fieldErrors.rrn}</p>
                                 )}
