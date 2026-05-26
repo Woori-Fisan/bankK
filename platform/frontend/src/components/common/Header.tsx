@@ -8,7 +8,7 @@ interface HeaderProps {
     sessionTime: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentTime }) => {
+const Header: React.FC<HeaderProps> = () => {
     const { performLogout, isLoading } = useAuthCrypto();
     const { userId, loginTime, tokenExpiry } = useAuth();
     const [timeLeft, setTimeLeft] = useState<string>('00:00');

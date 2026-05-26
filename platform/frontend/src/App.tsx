@@ -53,7 +53,7 @@ function App() {
     };
 
     initializeAuth();
-  }, [setAccessToken, setUserId, setUserRole, setLoginTime, clearAuth]);
+  }, [setAccessToken, setUserId, setUserRole, setLoginTime, setTokenExpiry, clearAuth]);
 
   if (!isInitialized) {
     return <div>로딩 중...</div>; // 또는 스플래시 화면
