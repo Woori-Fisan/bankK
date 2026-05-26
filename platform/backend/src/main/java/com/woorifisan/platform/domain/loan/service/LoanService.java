@@ -2,6 +2,8 @@ package com.woorifisan.platform.domain.loan.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woorifisan.platform.domain.bank.mapper.BankMapper;
+import com.woorifisan.platform.domain.bank.model.Bank;
 import com.woorifisan.platform.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
 import com.woorifisan.platform.domain.loan.dto.response.AvailableProductDto;
@@ -52,14 +54,17 @@ public class LoanService {
     private final ObjectMapper objectMapper;
     private final Executor sseTaskExecutor;
     private final WebClient bankWebClient;
+    private final BankMapper bankMapper;
 
     public LoanService(StringRedisTemplate redisTemplate,
                        ObjectMapper objectMapper,
                        @Qualifier("sseTaskExecutor") Executor sseTaskExecutor,
-                       WebClient bankWebClient) {
+                       WebClient bankWebClient,
+                       BankMapper bankMapper) {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
         this.sseTaskExecutor = sseTaskExecutor;
+        this.bankMapper = bankMapper;
         // 2. 주입받은 WebClient에 Base URL 설정
         this.bankWebClient = bankWebClient.mutate()
                 .baseUrl(BANK_CORE_URL)
@@ -108,6 +113,15 @@ public class LoanService {
      * Step 2 — 서류 제출 및 심사 요청 (BK-B12~B19 연동)
      */
     public LoanEvaluateResponse evaluateLoan(LoanEvaluateRequest request, Long staffId) {
+        // 플랫폼 bank 테이블(DB)에서 은행 코드 검증
+        Bank bank = bankMapper.findByBankCode(request.getBankCode())
+                .filter(Bank::isActive)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+
+        if (!bank.getBankCode().equals(request.getDepositBankCode())) {
+            throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH);
+        }
+
         String guid = generateGuid();
         String applicationId = generateApplicationId();
         LocalDateTime receivedAt = LocalDateTime.now();
@@ -119,6 +133,7 @@ public class LoanService {
         Map<String, Object> bankRequest = new HashMap<>();
         bankRequest.put("customerName", request.getCustomerName());
         bankRequest.put("customerRrnPrefix", request.getCustomerRrnPrefix());
+        bankRequest.put("depositBankCode", request.getDepositBankCode());
         bankRequest.put("depositAccountNo", request.getDepositAccountNo());
         // 현재 화면에서 금액 입력을 안 받으므로 한도 조회를 위해 임의의 큰 금액 전달
         bankRequest.put("requestedAmount", new BigDecimal("100000000"));
