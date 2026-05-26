@@ -94,7 +94,7 @@ public class LoanService {
         }
 
         // 입금 계좌의 은행 코드가 이 은행과 일치하는지 검증
-        if (!bankCode.equals(request.getDepositBankCode())) {
+        if (!request.getDepositBankCode().equals(bankCode)) {
             throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH);
         }
 
@@ -148,15 +148,15 @@ public class LoanService {
         BigDecimal approvedLimit = calculateApprovedLimit(activeLoans, appliedRate,
                 request.getRequestedPeriod()).min(request.getRequestedAmount());
 
-        // BK-B15: 기존 대출로 인해 추가 한도가 0 이하면 REJECTED
-        if (approvedLimit.compareTo(BigDecimal.ZERO) <= 0) {
+        // BK-B15: 승인 한도가 최소 대출 가능 금액(100만 원) 미만이면 REJECTED
+        if (approvedLimit.compareTo(new BigDecimal("1000000")) < 0) {
             BigDecimal dsrForRejection = calculateDsr(activeLoans, request.getRequestedAmount(),
                     appliedRate, request.getRequestedPeriod());
             LoanLedger saved = saveLoanLedger(loanNo, customer.getId(), account.getId(), request,
                     creditScore, dsrForRejection, BigDecimal.ZERO, appliedRate, "REJECTED",
-                    "DSR 초과 (" + dsrForRejection + "%)");
+                    "DSR 초과 또는 한도 부족 (" + dsrForRejection + "%)");
             return LoanEvaluateResponse.rejected(saved.getId(), loanNo,
-                    creditScore, dsrForRejection, "DSR 초과 (" + dsrForRejection + "%)");
+                    creditScore, dsrForRejection, "DSR 초과 또는 한도 부족 (" + dsrForRejection + "%)");
         }
 
         // 승인 한도 기준 DSR 산출 (저장·표시용)
