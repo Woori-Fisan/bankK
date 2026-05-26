@@ -11,7 +11,6 @@ import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
-import com.woorifisan.bank.global.util.CryptoUtil;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.exception.BusinessException;
 import java.math.BigDecimal;
@@ -31,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class TransferService {
 
-    private final CryptoUtil cryptoUtil;
     private final AccountMapper accountMapper;
     private final CustomerMapper customerMapper;
     private final TransactionLedgerMapper transactionLedgerMapper;
@@ -54,16 +52,15 @@ public class TransferService {
 
         // --- 당행 이체 로직 시작 ---
 
-        // 2. 출금 계좌 조회 및 락 (Blind Index 활용)
-        String withdrawalHash = cryptoUtil.hash(request.getWithdrawalAccountNo());
-        Account sender = accountMapper.findByAccountNoHashWithLock(withdrawalHash)
+        // 2. 출금 계좌 조회
+        Account sender = accountMapper.findByAccountNoPlain(request.getWithdrawalAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
 
         // 3. 본인 인증 검증 (주민번호 앞자리)
         verifyCustomerIdentification(sender.getCustomerId(), request.getCustomerRrnPrefix());
 
         // 4. 비밀번호 검증 (bcrypt)
-        if (!passwordEncoder.matches(request.getWithdrawalPassword(), sender.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.getWithdrawalPassword(), sender.getPassword())) {
             throw new BusinessException(ErrorCode.BANK_PW_ERROR);
         }
 
@@ -72,50 +69,61 @@ public class TransferService {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
-        // 6. 입금 계좌 조회 및 락
-        String depositHash = cryptoUtil.hash(request.getDepositAccountNo());
-        Account receiver = accountMapper.findByAccountNoHashWithLock(depositHash)
+        // 6. 입금 계좌 조회
+        Account receiver = accountMapper.findByAccountNoPlain(request.getDepositAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
 
-        // 7. 잔액 업데이트 (출금/입금)
+        // 7. 계좌 락 (ID 순서대로 락을 걸어 데드락 방지)
+        if (sender.getId() < receiver.getId()) {
+            sender = accountMapper.findByIdForUpdate(sender.getId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+            receiver = accountMapper.findByIdForUpdate(receiver.getId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+        } else {
+            receiver = accountMapper.findByIdForUpdate(receiver.getId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+            sender = accountMapper.findByIdForUpdate(sender.getId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+        }
+
+        // 8. 잔액 업데이트 (출금/입금 - 매퍼의 가산 방식에 맞춰 차액만 전달)
         BigDecimal senderNewBalance = sender.getBalance().subtract(request.getAmount());
         BigDecimal receiverNewBalance = receiver.getBalance().add(request.getAmount());
 
-        accountMapper.updateBalance(sender.getId(), senderNewBalance);
-        accountMapper.updateBalance(receiver.getId(), receiverNewBalance);
+        // 매퍼가 balance = balance + #{amount} 형식이므로 출금은 음수를, 입금은 양수를 전달
+        accountMapper.updateBalance(sender.getId(), request.getAmount().negate());
+        accountMapper.updateBalance(receiver.getId(), request.getAmount());
 
-        // 8. 거래 원장 생성 및 저장 (출금/입금 양방향)
+        // 9. 거래 원장 생성 및 저장 (출금/입금 양방향)
         String txId = UUID.randomUUID().toString();
-        String encryptedWithdrawalNo = cryptoUtil.encrypt(request.getWithdrawalAccountNo());
-        String encryptedDepositNo = cryptoUtil.encrypt(request.getDepositAccountNo());
 
         // 출금 원장 (보내는 이)
-        transactionLedgerMapper.insertLedger(TransactionLedger.of(
+        transactionLedgerMapper.insert(TransactionLedger.of(
                 txId + "-W",
                 sender.getId(),
                 "TRANSFER",
                 request.getAmount().negate(),
                 senderNewBalance,
                 CURRENT_BANK_CODE,
-                encryptedDepositNo,
+                request.getDepositAccountNo(),
                 "이체출금(" + request.getDepositAccountNo() + ")",
                 "SUCCESS"
         ));
 
         // 입금 원장 (받는 이)
-        transactionLedgerMapper.insertLedger(TransactionLedger.of(
+        transactionLedgerMapper.insert(TransactionLedger.of(
                 txId + "-D",
                 receiver.getId(),
                 "TRANSFER",
                 request.getAmount(),
                 receiverNewBalance,
                 CURRENT_BANK_CODE,
-                encryptedWithdrawalNo,
+                request.getWithdrawalAccountNo(),
                 "이체입금(" + request.getWithdrawalAccountNo() + ")",
                 "SUCCESS"
         ));
 
-        // 9. 응답 반환
+        // 10. 응답 반환
         return TransferResponse.of(
                 txId,
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
@@ -129,19 +137,20 @@ public class TransferService {
      * @return 수취인 정보
      */
     public RecipientResponse verifyRecipient(RecipientRequest request) {
-        // 1. 계좌번호 해싱 (Blind Index)
-        String accountHash = cryptoUtil.hash(request.getDepositAccountNo());
+        // 1. 계좌 조회
+        Account account = accountMapper.findByAccountNoPlain(request.getDepositAccountNo())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
 
-        // 2. DB 조회
-        RecipientResponse response = accountMapper.findRecipientByHash(accountHash)
-                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND)); // 적절한 에러 코드가 없으면 BANK_NOT_FOUND 사용
+        // 2. 고객 조회
+        Customer customer = customerMapper.findById(account.getCustomerId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 3. 응답의 계좌번호를 암호문 대신 평문으로 교체 (선택 사항)
+        // 3. 응답 생성
         return RecipientResponse.of(
-                response.getDepositorName(),
-                response.getDepositBankName(),
-                request.getDepositAccountNo(), // 요청받은 평문 계좌번호 반환
-                response.getAccountStatus()
+                customer.getCustomerName(),
+                "우리은행",
+                account.getAccountNo(),
+                account.getStatus()
         );
     }
 
@@ -151,16 +160,15 @@ public class TransferService {
      */
     @Transactional
     public TransferResponse withdrawTransfer(TransferRequest request) {
-        // 1. 출금 계좌 조회 및 락
-        String withdrawalHash = cryptoUtil.hash(request.getWithdrawalAccountNo());
-        Account sender = accountMapper.findByAccountNoHashWithLock(withdrawalHash)
+        // 1. 출금 계좌 조회
+        Account sender = accountMapper.findByAccountNoPlain(request.getWithdrawalAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
 
         // 2. 본인 인증 검증 (주민번호 앞자리)
         verifyCustomerIdentification(sender.getCustomerId(), request.getCustomerRrnPrefix());
 
         // 3. 비밀번호 검증
-        if (!passwordEncoder.matches(request.getWithdrawalPassword(), sender.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.getWithdrawalPassword(), sender.getPassword())) {
             throw new BusinessException(ErrorCode.BANK_PW_ERROR);
         }
 
@@ -169,22 +177,25 @@ public class TransferService {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
-        // 5. 잔액 차감 및 업데이트
+        // 5. 계좌 락
+        sender = accountMapper.findByIdForUpdate(sender.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+
+        // 6. 잔액 차감 및 업데이트 (매퍼의 가산 방식에 맞춰 차액만 전달)
         BigDecimal newBalance = sender.getBalance().subtract(request.getAmount());
-        accountMapper.updateBalance(sender.getId(), newBalance);
+        accountMapper.updateBalance(sender.getId(), request.getAmount().negate());
 
-        // 6. 원장 기록 (출금 정보만 기록)
+        // 7. 원장 기록 (출금 정보만 기록)
         String txId = UUID.randomUUID().toString();
-        String encryptedTargetAccount = cryptoUtil.encrypt(request.getDepositAccountNo());
 
-        transactionLedgerMapper.insertLedger(TransactionLedger.of(
+        transactionLedgerMapper.insert(TransactionLedger.of(
                 txId,
                 sender.getId(),
                 "TRANSFER",
                 request.getAmount().negate(),
                 newBalance,
                 request.getDepositBankCode(),
-                encryptedTargetAccount,
+                request.getDepositAccountNo(),
                 "타행이체출금(" + request.getDepositBankCode() + "/" + request.getDepositAccountNo() + ")",
                 "SUCCESS"
         ));
@@ -198,27 +209,29 @@ public class TransferService {
      */
     @Transactional
     public TransferResponse depositTransfer(DepositRequest request) {
-        // 1. 입금 대상 계좌 조회 및 락
-        String depositHash = cryptoUtil.hash(request.getDepositAccountNo());
-        Account receiver = accountMapper.findByAccountNoHashWithLock(depositHash)
+        // 1. 입금 대상 계좌 조회
+        Account receiver = accountMapper.findByAccountNoPlain(request.getDepositAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
 
-        // 2. 잔액 증액 및 업데이트
+        // 2. 계좌 락
+        receiver = accountMapper.findByIdForUpdate(receiver.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+
+        // 3. 잔액 증액 및 업데이트 (매퍼의 가산 방식에 맞춰 차액만 전달)
         BigDecimal newBalance = receiver.getBalance().add(request.getAmount());
-        accountMapper.updateBalance(receiver.getId(), newBalance);
+        accountMapper.updateBalance(receiver.getId(), request.getAmount());
 
-        // 3. 원장 기록 (입금 정보만 기록)
+        // 4. 원장 기록 (입금 정보만 기록)
         String txId = UUID.randomUUID().toString();
-        String encryptedTargetAccount = cryptoUtil.encrypt(request.getWithdrawalAccountNo());
 
-        transactionLedgerMapper.insertLedger(TransactionLedger.of(
+        transactionLedgerMapper.insert(TransactionLedger.of(
                 txId,
                 receiver.getId(),
                 "TRANSFER",
                 request.getAmount(),
                 newBalance,
                 request.getWithdrawalBankCode(),
-                encryptedTargetAccount,
+                request.getWithdrawalAccountNo(),
                 "타행이체입금(" + request.getWithdrawalBankCode() + "/" + request.getWithdrawalAccountNo() + ")",
                 "SUCCESS"
         ));
@@ -233,9 +246,9 @@ public class TransferService {
         Customer customer = customerMapper.findById(customerId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        String decryptedRrnPrefix = cryptoUtil.decrypt(customer.getRrnPrefixEnc());
+        String rrnPrefix = customer.getRrnPrefix();
 
-        if (!decryptedRrnPrefix.startsWith(requestRrnPrefix)) {
+        if (!rrnPrefix.startsWith(requestRrnPrefix)) {
             throw new BusinessException(ErrorCode.IDENTIFICATION_ERROR);
         }
     }
