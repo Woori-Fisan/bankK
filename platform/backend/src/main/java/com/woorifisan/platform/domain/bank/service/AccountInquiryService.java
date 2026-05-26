@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.reactive.function.client.WebClient;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -23,8 +24,10 @@ import java.time.format.DateTimeFormatter;
 public class AccountInquiryService {
 
     // 날짜 포맷
+    // 날짜 검증용 포맷
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final String BANK_SERVER_URL = "http://localhost:8081/account/transactions";
+
+    private static final String BANK_SERVER_URL = "http://localhost:8081/api/v1/baas/account";
     
     private final WebClient bankWebClient;
 
@@ -47,6 +50,7 @@ public class AccountInquiryService {
     /**
      * 거래내역 조회 실행 (오케스트레이션)
      */
+    @PostMapping(BANK_SERVER_URL+"/transactions")
     public HistoryInquiryResponse getHistory(HistoryInquiryRequest request) {
         log.info("거래내역 조회 요청 수신 - 계좌: {}, 기간: {} ~ {}", 
                  request.getAccountNo(), request.getStartDate(), request.getEndDate());
@@ -95,7 +99,7 @@ public class AccountInquiryService {
                     .exchangeToMono(clientResponse -> 
                         clientResponse.bodyToMono(new ParameterizedTypeReference<ApiResponse<HistoryInquiryResponse>>() {})
                     )
-                    .block();
+                    .block(java.time.Duration.ofSeconds(10));
         } catch (Exception e) {
             log.error("은행 서버 통신 중 예외 발생: {}", e.getMessage());
             throw new BusinessException(ErrorCode.BANK_API_ERROR);
