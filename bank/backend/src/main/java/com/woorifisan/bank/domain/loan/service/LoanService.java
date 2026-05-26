@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class LoanService {
+
+    @Value("${bank.code}")
+    private String bankCode;
 
     private static final BigDecimal MOCK_ANNUAL_INCOME = new BigDecimal("36000000");
     private static final BigDecimal DSR_LIMIT = new BigDecimal("40");
@@ -87,6 +91,11 @@ public class LoanService {
                 || !Boolean.TRUE.equals(request.getIsProductTermsAgreed())
                 || !Boolean.TRUE.equals(request.getIsDocumentCollected())) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        // 입금 계좌의 은행 코드가 이 은행과 일치하는지 검증
+        if (!bankCode.equals(request.getDepositBankCode())) {
+            throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH);
         }
 
         // BK-B21: 계좌 유효성 검증 (심사 단계에서 입금 계좌 사전 확인)
