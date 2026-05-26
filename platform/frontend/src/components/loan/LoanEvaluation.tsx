@@ -20,24 +20,7 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
 
     useEffect(() => {
         if (!data) return;
-        if (data.evaluationStatus === 'APPROVED') {
-            const minRate = Math.min(...(data.availableProducts ?? []).map(x => x.interestRate));
-            const products: LoanProduct[] = (data.availableProducts ?? []).map((p, i) => ({
-                id: i + 1,
-                loanProductCode: p.loanProductCode,
-                name: p.loanProductName,
-                rate: p.interestRate,
-                limit: p.maxAmount,
-                tags: p.interestRate === minRate ? ['최저금리'] : [],
-                period: p.loanPeriodMonths,
-            }));
-            onApproved({
-                status: 'APPROVED',
-                limit: data.approvedLimit ?? undefined,
-                evaluationId: data.evaluationId ?? undefined,
-                products,
-            });
-        } else if (data.evaluationStatus === 'REJECTED' || data.evaluationStatus === 'FAILED') {
+        if (data.evaluationStatus === 'REJECTED' || data.evaluationStatus === 'FAILED') {
             onRejected(data.rejectionMessage ?? '심사 거절');
         }
     }, [data]);

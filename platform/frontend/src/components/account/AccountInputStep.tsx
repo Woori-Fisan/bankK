@@ -186,6 +186,9 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
                                     fieldErrors.accountNo ? 'border-rose-400 focus:border-rose-500' : 'border-slate-100 focus:border-emerald-500'
                                 }`}
                             />
+                            <p className="mt-1.5 text-[11px] text-slate-400 font-medium ml-1">
+                                * 계좌번호는 '-' 없이 숫자만 입력해 주세요.
+                            </p>
                             {fieldErrors.accountNo && (
                                 <p className="mt-2 text-sm text-rose-500 font-bold ml-1">{fieldErrors.accountNo}</p>
                             )}

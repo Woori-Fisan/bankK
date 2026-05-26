@@ -4,15 +4,20 @@ import type { LoanProduct } from '../../pages/LoanApplication';
 
 interface LoanProductSelectionProps {
     products: LoanProduct[];
+    approvedLimit?: number;
     onNext: (product: LoanProduct) => void;
     onBack: () => void;
 }
 
-const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, onNext, onBack }) => {
+const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, approvedLimit, onNext, onBack }) => {
     const [selectedId, setSelectedId] = useState(products[0]?.id);
     const [tab, setTab] = useState<'RATE' | 'LIMIT'>('RATE');
     const [period, setPeriod] = useState(24);
-    const [executeAmount, setExecuteAmount] = useState(products[0]?.limit ?? 0);
+    const [executeAmount, setExecuteAmount] = useState(() => {
+        const first = products[0];
+        if (!first) return 0;
+        return Math.min(first.limit, approvedLimit ?? first.limit);
+    });
     const [amountError, setAmountError] = useState<string | null>(null);
 
     // 정렬 로직 적용
@@ -26,26 +31,25 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
     }, [products, tab]);
 
     const selectedProduct = sortedProducts.find(p => p.id === selectedId) || sortedProducts[0];
+    const effectiveLimit = selectedProduct
+        ? Math.min(selectedProduct.limit, approvedLimit ?? selectedProduct.limit)
+        : 0;
 
     React.useEffect(() => {
         if (selectedProduct) {
-            setExecuteAmount(selectedProduct.limit);
+            setExecuteAmount(effectiveLimit);
             setAmountError(null);
         }
     }, [selectedProduct?.id]);
 
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const raw = e.target.value.replace(/,/g, '');
+        if (raw === '') { setExecuteAmount(0); setAmountError(null); return; }
         const val = Number(raw);
         if (isNaN(val)) return;
-        setExecuteAmount(val);
-        if (val < 1_000_000) {
-            setAmountError('최소 100만원 이상 입력해주세요.');
-        } else if (selectedProduct && val > selectedProduct.limit) {
-            setAmountError(`승인 한도(${formatAmount(selectedProduct.limit)}) 이내로 입력해주세요.`);
-        } else {
-            setAmountError(null);
-        }
+        const capped = Math.min(val, effectiveLimit);
+        setExecuteAmount(capped);
+        setAmountError(capped < 1_000_000 ? '최소 100만원 이상 입력해주세요.' : null);
     };
 
     const formatAmount = (amt: number) => {
@@ -140,7 +144,7 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
 
                         <div className="mb-8">
                             <p className="text-3xl font-bold text-gray-900">{selectedProduct?.rate}%</p>
-                            <p className="text-xs text-gray-500 mt-1">승인 한도 {formatAmount(selectedProduct?.limit)}</p>
+                            <p className="text-xs text-gray-500 mt-1">승인 한도 {formatAmount(effectiveLimit)}</p>
                         </div>
 
                         <div className="space-y-4">
@@ -148,15 +152,24 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
                                 <label className="block text-[11px] text-gray-500 font-bold mb-2">
                                     대출 신청 금액
                                 </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        value={executeAmount.toLocaleString()}
-                                        onChange={handleAmountChange}
-                                        className={`w-full px-3 py-2.5 pr-8 bg-gray-50 border rounded-xl text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none ${amountError ? 'border-red-400' : 'border-gray-200'}`}
-                                    />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 font-medium">원</span>
+                                <div className="flex items-center gap-2">
+                                    <div className="relative flex-1">
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={executeAmount.toLocaleString()}
+                                            onChange={handleAmountChange}
+                                            className={`w-full px-3 py-2.5 pr-8 bg-gray-50 border rounded-xl text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none ${amountError ? 'border-red-400' : 'border-gray-200'}`}
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 font-medium">원</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setExecuteAmount(effectiveLimit); setAmountError(null); }}
+                                        className="shrink-0 px-3 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold rounded-xl border border-emerald-200 transition-colors whitespace-nowrap"
+                                    >
+                                        최대 한도 적용
+                                    </button>
                                 </div>
                                 {amountError && (
                                     <p className="mt-1 text-[11px] text-red-500">{amountError}</p>
@@ -167,7 +180,7 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, o
                                             key={ratio}
                                             type="button"
                                             onClick={() => {
-                                                const amt = Math.floor((selectedProduct?.limit ?? 0) * ratio / 10000) * 10000;
+                                                const amt = Math.floor(effectiveLimit * ratio / 10000) * 10000;
                                                 setExecuteAmount(amt);
                                                 setAmountError(null);
                                             }}

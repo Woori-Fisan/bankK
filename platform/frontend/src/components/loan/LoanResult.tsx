@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, Printer } from 'lucide-react';
+import { CheckCircle2, XCircle, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { LoanData, LoanProduct, EvaluationResult } from '../../pages/LoanApplication';
 
@@ -10,8 +10,34 @@ interface LoanResultProps {
     onReset: () => void;
 }
 
-const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, onReset }) => {
+const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationResult, onReset }) => {
     const navigate = useNavigate();
+
+    if (!product || evaluationResult?.status === 'REJECTED') {
+        return (
+            <div className="flex flex-col items-center justify-center py-10 min-h-[600px]">
+                <div className="bg-white border border-gray-200 rounded-3xl shadow-2xl w-full max-w-lg p-10 text-center animate-in zoom-in duration-500">
+                    <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <XCircle className="w-10 h-10 text-red-500" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">대출 심사가 거절되었습니다</h2>
+                    <p className="text-sm text-gray-500 mb-8">
+                        {evaluationResult?.reason ?? '심사 조건을 충족하지 못했습니다.'}
+                    </p>
+                    <p className="text-xs text-gray-400 mb-10">
+                        신청인: {loanData.userName}
+                    </p>
+                    <button
+                        onClick={() => { onReset(); navigate('/main'); }}
+                        className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors"
+                    >
+                        처음으로 돌아가기
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     const maturityDate = new Date();
     maturityDate.setMonth(maturityDate.getMonth() + (product?.period || 0));
     const maturityDateString = maturityDate.toISOString().split('T')[0];

@@ -17,6 +17,7 @@ public class TermsResponse {
     private String version;
     private String title;
     private String termsUrl;
+    private String termsContent;
     private Boolean isMandatory;
 
     public static TermsResponse from(BankTerms terms) {
@@ -25,6 +26,7 @@ public class TermsResponse {
                 .version(terms.getVersion())
                 .title(terms.getTitle())
                 .termsUrl(terms.getTermsUrl())
+                .termsContent(terms.getTermsContent())
                 .isMandatory(terms.getIsMandatory())
                 .build();
     }

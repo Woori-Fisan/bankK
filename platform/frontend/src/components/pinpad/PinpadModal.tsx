@@ -17,7 +17,7 @@ const PinpadModal: React.FC<PinpadModalProps> = ({
     title = "비밀번호 입력"
 }) => {
     const [pin, setPin] = useState<string>('');
-    const MAX_LENGTH = 6;
+    const MAX_LENGTH = 4;
 
     if (!isOpen) return null;
 
