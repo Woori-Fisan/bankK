@@ -28,8 +28,8 @@ public class SecurityConfig {
             "/swagger-ui.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",
-            // mTLS 구현 전 임시 개방 — mTLS 적용 후 제거
             "/api/v1/loan/**",
+            "/account/**"
     };
 
     @Bean

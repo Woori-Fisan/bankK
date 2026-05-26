@@ -32,7 +32,7 @@ class AccountMapperTest {
         // then
         assertThat(result).isPresent();
         assertThat(result.get().getId()).isEqualTo(targetId);
-        System.out.println("조회된 계좌번호(암호화): " + result.get().getAccountNoEnc());
+        System.out.println("조회된 계좌번호(암호화): " + result.get().getAccountNo());
         System.out.println("현재 잔액: " + result.get().getBalance());
     }
 }

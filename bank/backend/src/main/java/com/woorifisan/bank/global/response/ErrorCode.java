@@ -37,7 +37,12 @@ public enum ErrorCode {
     LOAN_CUSTOMER_NOT_FOUND("LOAN_008", "고객 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     LOAN_INCOMPLETE_SALE_PREVENTION("LOAN_009", "동일 상품은 60일 이내 재실행이 불가합니다.", HttpStatus.CONFLICT),
     LOAN_EXCEED_APPROVED_LIMIT("LOAN_010", "실행 금액이 승인 한도를 초과했습니다.", HttpStatus.BAD_REQUEST),
-    LOAN_CUSTOMER_IDENTITY_MISMATCH("LOAN_011", "고객 본인 확인에 실패했습니다.", HttpStatus.FORBIDDEN);
+    LOAN_CUSTOMER_IDENTITY_MISMATCH("LOAN_011", "고객 본인 확인에 실패했습니다.", HttpStatus.FORBIDDEN),
+
+    //조회
+    INQUIRY_ACCOUNT_NOTFOUND("INQUIRY_001", "사용자의 정보를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
+    INQUIRY_INVALID_DATE_RANGE("INQUIRY_002", "조회 기간을 확인해주세요.", HttpStatus.BAD_REQUEST),
+    ;
 
     private final String code;
     private final String message;
