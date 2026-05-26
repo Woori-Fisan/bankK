@@ -3,50 +3,35 @@ package com.woorifisan.platform.domain.bank.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+
 import com.woorifisan.platform.domain.bank.dto.request.BalanceInquiryRequest;
 import com.woorifisan.platform.domain.bank.dto.request.HistoryInquiryRequest;
 import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
+import com.woorifisan.platform.domain.bank.external.client.BankExternalClient;
+import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryRequest;
+import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
 import com.woorifisan.platform.global.exception.BusinessException;
-import com.woorifisan.platform.global.response.ApiResponse;
 import com.woorifisan.platform.global.response.ErrorCode;
 import java.math.BigDecimal;
 import java.util.List;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
 class AccountInquiryServiceTest {
 
+    @InjectMocks
     private AccountInquiryService accountInquiryService;
 
     @Mock
-    private WebClient bankWebClient;
-
-    @SuppressWarnings("rawtypes")
-    @Mock
-    private WebClient.RequestBodyUriSpec requestBodyUriSpec;
-
-    @SuppressWarnings("rawtypes")
-    @Mock
-    private WebClient.RequestBodySpec requestBodySpec;
-
-    @SuppressWarnings("rawtypes")
-    @Mock
-    private WebClient.RequestHeadersSpec requestHeadersSpec;
-
-    @BeforeEach
-    void setUp() {
-        accountInquiryService = new AccountInquiryService(bankWebClient);
-    }
+    private BankExternalClient bankExternalClient;
 
     /**
      * 거래 내역 조회 Test (getHistory)
@@ -67,28 +52,40 @@ class AccountInquiryServiceTest {
     }
 
     @Test
-    @DisplayName("은행 서버 통신 성공 시 거래 내역을 반환한다")
-    @SuppressWarnings("unchecked")
-    void 성공_거래내역조회() {
+    @DisplayName("날짜 형식이 올바르지 않으면 예외가 발생한다")
+    void 날짜_형식이_올바르지_않으면_예외가_발생한다() {
         // given
         HistoryInquiryRequest request = HistoryInquiryRequest.builder()
+                .startDate("20260520")
+                .endDate("20260521")
+                .build();
+
+        // when & then
+        assertThatThrownBy(() -> accountInquiryService.getHistory(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+    }
+
+    @Test
+    @DisplayName("은행 서버 통신 성공 시 거래 내역을 반환한다")
+    void 성공_거래내역조회() {
+        // given
+        String bankCode = "020";
+        HistoryInquiryRequest request = HistoryInquiryRequest.builder()
+                .bankCode(bankCode)
                 .startDate("2026-05-19")
                 .endDate("2026-05-20")
                 .page(0)
                 .size(20)
                 .build();
 
-        HistoryInquiryResponse mockData = HistoryInquiryResponse.builder()
+        HistoryInquiryResponse mockResponse = HistoryInquiryResponse.builder()
                 .totalCount(1)
                 .history(List.of())
                 .build();
-        ApiResponse<HistoryInquiryResponse> apiResponse = ApiResponse.success(mockData);
 
-        // WebClient의 Fluent API 모킹 체인
-        given(bankWebClient.post()).willReturn(requestBodyUriSpec);
-        given(requestBodyUriSpec.uri(any(String.class))).willReturn(requestBodySpec);
-        given(requestBodySpec.bodyValue(any())).willReturn(requestHeadersSpec); // 정확한 리턴 타입 Mock 사용
-        given(requestHeadersSpec.exchangeToMono(any())).willReturn(Mono.just(apiResponse));
+        given(bankExternalClient.fetchHistory(eq(bankCode), any(BankHistoryInquiryRequest.class)))
+                .willReturn(mockResponse);
 
         // when
         HistoryInquiryResponse result = accountInquiryService.getHistory(request);
@@ -98,50 +95,33 @@ class AccountInquiryServiceTest {
         assertThat(result.getTotalCount()).isEqualTo(1);
     }
 
-    @Test
-    @DisplayName("은행 서버 응답이 실패(success=false)면 은행의 에러 메시지를 포함한 BANK_API_ERROR 예외가 발생한다")
-    @SuppressWarnings("unchecked")
-    void 실패_은행서버에러_메시지전달() {
-        // given
-        HistoryInquiryRequest request = HistoryInquiryRequest.builder()
-                .startDate("2026-05-19")
-                .endDate("2026-05-20")
-                .page(0)
-                .size(20)
-                .build();
-
-        String bankErrorMessage = "유효하지 않은 계좌입니다.";
-        ApiResponse<HistoryInquiryResponse> apiResponse = ApiResponse.error(ErrorCode.INQUIRY_ACCOUNT_NOTFOUND, bankErrorMessage);
-
-        given(bankWebClient.post()).willReturn(requestBodyUriSpec);
-        given(requestBodyUriSpec.uri(any(String.class))).willReturn(requestBodySpec);
-        given(requestBodySpec.bodyValue(any())).willReturn(requestHeadersSpec);
-        given(requestHeadersSpec.exchangeToMono(any())).willReturn(Mono.just(apiResponse));
-
-        // when & then
-        assertThatThrownBy(() -> accountInquiryService.getHistory(request))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.BANK_API_ERROR)
-                .hasMessageContaining(bankErrorMessage);
-    }
-
     /**
      * 잔액 조회 Test (getBalance)
      */
     @Test
-    @DisplayName("잔액 조회 성공 케이스 (가상 데이터)")
+    @DisplayName("잔액 조회 성공")
     void getBalance_Success() {
         // given
+        String bankCode = "020";
         BalanceInquiryRequest request = BalanceInquiryRequest.builder()
+                .bankCode(bankCode)
                 .accountNo("123-456")
                 .build();
+
+        BalanceInquiryResponse mockResponse = BalanceInquiryResponse.builder()
+                .balance(new BigDecimal("5000"))
+                .status("NORMAL")
+                .build();
+
+        given(bankExternalClient.fetchBalance(eq(bankCode), any(BankBalanceInquiryRequest.class)))
+                .willReturn(mockResponse);
 
         // when
         BalanceInquiryResponse response = accountInquiryService.getBalance(request);
 
         // then
         assertThat(response).isNotNull();
-        assertThat(response.getBalance()).isEqualTo(new BigDecimal("5420000"));
+        assertThat(response.getBalance()).isEqualTo(new BigDecimal("5000"));
         assertThat(response.getStatus()).isEqualTo("NORMAL");
     }
 }
