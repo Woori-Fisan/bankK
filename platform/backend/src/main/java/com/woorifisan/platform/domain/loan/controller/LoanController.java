@@ -9,6 +9,10 @@ import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
 import com.woorifisan.platform.domain.loan.dto.response.LoanExecuteResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanRequiredDocumentsResponse;
 import com.woorifisan.platform.domain.loan.service.LoanService;
+import com.woorifisan.platform.global.config.swagger.CustomExceptionDescription;
+import com.woorifisan.platform.global.config.swagger.SwaggerResponseDescription;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +50,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  *   [4] GET  /api/v1/loan/contract/documents/{productCode}/{evalId} → 계약 서류 조회
  *   [5] POST /api/v1/loan/contract/execution                        → 대출 실행
  */
+@Tag(name = "Bank Loan", description = "은행 대출 중개 API")
 @Validated  // 클래스 레벨에 선언 → @PathVariable 등 메서드 파라미터의 @NotBlank도 Bean Validation 대상이 됨
 @RestController
 @RequestMapping("/api/v1/loan")
@@ -62,6 +67,8 @@ public class LoanController {
      * 프론트엔드는 이 목록을 화면에 보여주고, 고객이 동의한 항목들을
      * Step 2 심사 요청 body(documents[])에 담아 전송한다.
      */
+    @Operation(summary = "심사 서류 조회", description = "대출 심사 신청 전 필요한 서류 목록을 조회합니다.")
+    @CustomExceptionDescription(SwaggerResponseDescription.BANK_LOAN)
     @GetMapping("/review/documents")
     public ApiResponse<LoanRequiredDocumentsResponse> getRequiredDocuments(
             @AuthenticationPrincipal Long staffId) {
@@ -81,6 +88,8 @@ public class LoanController {
      * @Valid — LoanEvaluateRequest 필드의 Bean Validation(@NotBlank 등)을 자동 실행.
      *          유효성 검사 실패 시 MethodArgumentNotValidException 발생 → GlobalExceptionHandler 처리.
      */
+    @Operation(summary = "심사 신청", description = "고객의 대출 심사를 신청합니다. 결과는 SSE를 통해 비동기로 전달됩니다.")
+    @CustomExceptionDescription(SwaggerResponseDescription.BANK_LOAN)
     @PostMapping("/evaluation")
     public ApiResponse<LoanEvaluateResponse> evaluateLoan(
             @Valid @RequestBody LoanEvaluateRequest request,
@@ -112,6 +121,7 @@ public class LoanController {
      *
      * @PathVariable applicationId — [2]에서 받은 심사 신청 번호
      */
+    @Operation(summary = "심사 결과 스트리밍", description = "SSE를 통해 대출 심사 결과를 실시간으로 수신합니다.")
     @GetMapping(value = "/evaluation/{applicationId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamEvaluationResult(
             @PathVariable @NotBlank(message = "신청 ID는 필수입니다.") String applicationId,
@@ -131,6 +141,8 @@ public class LoanController {
      * @PathVariable loanProductCode — [3] SSE 결과에서 고객이 선택한 상품 코드
      * @PathVariable evaluationId    — [3] SSE 결과의 심사 고유 ID
      */
+    @Operation(summary = "계약 서류 조회", description = "대출 승인 후 계약 체결에 필요한 서류 목록을 조회합니다.")
+    @CustomExceptionDescription(SwaggerResponseDescription.BANK_LOAN)
     @GetMapping("/contract/documents/{loanProductCode}/{evaluationId}")
     public ApiResponse<LoanContractDocumentsResponse> getContractDocuments(
             @PathVariable @NotBlank(message = "상품 코드는 필수입니다.") String loanProductCode,
@@ -149,6 +161,8 @@ public class LoanController {
      * (플랫폼이 복호화할 수 없도록 Zero-Knowledge 원칙 준수).
      * 성공 시 loanId, 월 상환금, 만기일 등 대출 확정 정보를 반환한다.
      */
+    @Operation(summary = "대출 실행", description = "최종 계약 동의 후 대출을 실행합니다.")
+    @CustomExceptionDescription(SwaggerResponseDescription.BANK_LOAN)
     @PostMapping("/contract/execution")
     public ApiResponse<LoanExecuteResponse> executeLoan(
             @Valid @RequestBody LoanExecuteRequest request,
