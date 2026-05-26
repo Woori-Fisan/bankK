@@ -9,7 +9,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 const LoginForm: React.FC = () => {
     const navigate = useNavigate();
-    const { setUserRole, clearAuth } = useAuth();
+    const { setUserRole, setAccessToken, clearAuth } = useAuth();
 
     const [employeeId, setEmployeeId] = useState('');
     const [password, setPassword] = useState('');
@@ -46,9 +46,17 @@ const LoginForm: React.FC = () => {
             if (response.success) {
                 setLoginMessage(response.message || '로그인 성공!');
                 setLoginSuccess(true);
+                
+                // 액세스 토큰 저장
+                if (response.accessToken) {
+                    setAccessToken(response.accessToken);
+                }
+
                 // role 정보가 있다면 Zustand 스토어에 저장 (권한 기반 UI 노출용)
-                if ((response as any).role) {
-                    setUserRole((response as any).role);
+                // login API의 responseData (response.data?.data) 에 role이 포함되어 있다고 가정
+                const role = (response as any).role || (response as any).userRole;
+                if (role) {
+                    setUserRole(role);
                 }
                 navigate('/main');
             } else {

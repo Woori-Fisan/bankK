@@ -2,11 +2,9 @@ package com.woorifisan.platform.domain.auth.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woorifisan.platform.domain.auth.dto.AuthTokenDto;
 import com.woorifisan.platform.domain.auth.dto.request.LoginRequest;
-import com.woorifisan.platform.domain.auth.dto.response.LoginResponse;
-import com.woorifisan.platform.domain.auth.dto.request.TokenRefreshRequest;
 import com.woorifisan.platform.domain.auth.dto.response.PublicAuthKeyResponse;
-import com.woorifisan.platform.domain.auth.dto.response.TokenRefreshResponse;
 import com.woorifisan.platform.domain.auth.mapper.AuthMapper;
 import com.woorifisan.platform.domain.auth.model.PlatformUser;
 import com.woorifisan.platform.global.config.JwtProvider;
@@ -54,7 +52,7 @@ public class AuthService {
     }
 
     // 로그인
-    public LoginResponse login(LoginRequest request, String jwsSignature) {
+    public AuthTokenDto login(LoginRequest request, String jwsSignature) {
 
         // 1. 단말기 JWS 서명 검증 및 페이로드 추출
         String formattedTerminalPublicKey = terminalPublicKey.replace("\\n", "\n");
@@ -142,10 +140,12 @@ public class AuthService {
 
         log.info("로그인 성공 - staffId: {}, role: {}", user.getId(), user.getRole());
 
-        return LoginResponse.builder()
+        return AuthTokenDto.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .role(user.getRole())
+                .accessTokenExpiresIn(jwtProvider.getAccessTokenExpiration() / 1000)
+                .refreshTokenExpiresIn(jwtProvider.getRefreshTokenExpiration() / 1000)
                 .build();
     }
 
@@ -159,9 +159,7 @@ public class AuthService {
     }
 
     // Access Token 재발급 (RTR)
-    public TokenRefreshResponse refresh(TokenRefreshRequest request) {
-        String refreshToken = request.getRefreshToken();
-
+    public AuthTokenDto refresh(String refreshToken) {
         // 1. Refresh Token 유효성 검증
         jwtProvider.validateToken(refreshToken);
 
@@ -197,11 +195,12 @@ public class AuthService {
                 TimeUnit.SECONDS
         );
 
-        return TokenRefreshResponse.builder()
+        return AuthTokenDto.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
-                .accessTokenExpiresIn((int) (jwtProvider.getAccessTokenExpiration() / 1000))
-                .refreshTokenExpiresIn((int) (jwtProvider.getRefreshTokenExpiration() / 1000))
+                .role(role)
+                .accessTokenExpiresIn(jwtProvider.getAccessTokenExpiration() / 1000)
+                .refreshTokenExpiresIn(jwtProvider.getRefreshTokenExpiration() / 1000)
                 .build();
     }
 

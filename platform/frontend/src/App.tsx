@@ -1,23 +1,43 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import Router from './routes/Router';
-import { useAuth } from './hooks/useAuth';
+import { useAuthStore } from './store/useAuthStore';
 import { decodeJwt } from './utils/jwt';
+import { refreshAccessToken } from './api/auth';
 
 function App() {
-  const { setUserRole, clearAuth } = useAuth();
+  const { setAccessToken, setUserRole, clearAuth } = useAuthStore();
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      const decoded = decodeJwt(token);
-      if (decoded && decoded.role) {
-        setUserRole(decoded.role);
-      } else {
+    const initializeAuth = async () => {
+      try {
+        const token = await refreshAccessToken();
+        if (token) {
+          setAccessToken(token);
+          const decoded = decodeJwt(token);
+          if (decoded && decoded.role) {
+            setUserRole(decoded.role);
+          } else {
+            clearAuth();
+          }
+        } else {
+          clearAuth();
+        }
+      } catch (error) {
+        console.error('Auth initialization failed:', error);
         clearAuth();
+      } finally {
+        setIsInitialized(true);
       }
-    }
-  }, [setUserRole, clearAuth]);
+    };
+
+    initializeAuth();
+  }, [setAccessToken, setUserRole, clearAuth]);
+
+  if (!isInitialized) {
+    return <div>로딩 중...</div>; // 또는 스플래시 화면
+  }
 
   return (
     <BrowserRouter>
