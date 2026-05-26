@@ -64,15 +64,6 @@ public class TransferService {
             throw new BusinessException(ErrorCode.BANK_PW_ERROR);
         }
 
-        // 5. 잔액 검증
-        if (sender.getBalance().compareTo(request.getAmount()) < 0) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
-
-        // 6. 입금 계좌 조회
-        Account receiver = accountMapper.findByAccountNoPlain(request.getDepositAccountNo())
-                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-
         // 7. 계좌 락 (ID 순서대로 락을 걸어 데드락 방지)
         if (sender.getId() < receiver.getId()) {
             sender = accountMapper.findByIdForUpdate(sender.getId())
@@ -86,7 +77,12 @@ public class TransferService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         }
 
-        // 8. 잔액 업데이트 (출금/입금 - 매퍼의 가산 방식에 맞춰 차액만 전달)
+        // 8. 잔액 재검증 (락 획득 후 최신 상태에서 다시 확인)
+        if (sender.getBalance().compareTo(request.getAmount()) < 0) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+
+        // 9. 잔액 업데이트 (출금/입금 - 매퍼의 가산 방식에 맞춰 차액만 전달)
         BigDecimal senderNewBalance = sender.getBalance().subtract(request.getAmount());
         BigDecimal receiverNewBalance = receiver.getBalance().add(request.getAmount());
 
@@ -181,7 +177,12 @@ public class TransferService {
         sender = accountMapper.findByIdForUpdate(sender.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
 
-        // 6. 잔액 차감 및 업데이트 (매퍼의 가산 방식에 맞춰 차액만 전달)
+        // 6. 잔액 재검증 (락 획득 후 최신 상태에서 다시 확인)
+        if (sender.getBalance().compareTo(request.getAmount()) < 0) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+
+        // 7. 잔액 차감 및 업데이트 (매퍼의 가산 방식에 맞춰 차액만 전달)
         BigDecimal newBalance = sender.getBalance().subtract(request.getAmount());
         accountMapper.updateBalance(sender.getId(), request.getAmount().negate());
 
