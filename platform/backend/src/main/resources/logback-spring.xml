@@ -2,7 +2,7 @@
 <configuration>
 
     <!-- ── 프로퍼티 ──────────────────────────────────── -->
-    <property name="LOG_PATH" value="/var/log/app"/>
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="./logs"/>
     <property name="LOG_FILE" value="${LOG_PATH}/application.log"/>
 
     <!-- ── 콘솔 (개발용) ─────────────────────────────── -->
@@ -43,10 +43,11 @@
     </appender>
 
     <!-- ── 프로파일별 설정 ────────────────────────────── -->
-    <!-- 로컬 개발: 콘솔만 -->
+    <!-- 로컬 개발: 콘솔 + JSON 파일(임시 테스트) -->
     <springProfile name="local">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_JSON_FILE"/>
         </root>
         <logger name="com.woorifisan.platform" level="DEBUG"/>
     </springProfile>
