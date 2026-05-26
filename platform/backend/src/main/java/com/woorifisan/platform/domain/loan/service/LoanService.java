@@ -91,6 +91,7 @@ public class LoanService {
                             .documentType(String.valueOf(terms.get("termsCode")))
                             .documentName(String.valueOf(terms.get("title")))
                             .documentUrl(String.valueOf(terms.get("termsUrl")))
+                            .documentContent(terms.get("termsContent") != null ? String.valueOf(terms.get("termsContent")) : null)
                             .isMandatory(Boolean.TRUE.equals(terms.get("isMandatory")))
                             .build())
                     .toList();
@@ -158,6 +159,10 @@ public class LoanService {
                     .receivedAt(receivedAt.toString())
                     .build();
 
+        } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
+            log.warn("[{}] 은행 API 오류 응답 (심사 신청) - status: {}, body: {}", guid, e.getStatusCode(), e.getResponseBodyAsString());
+            String bankMsg = extractBankErrorMessage(e);
+            throw new BusinessException(ErrorCode.LOAN_BANK_ROUTING_ERROR, bankMsg);
         } catch (Exception e) {
             log.error("[{}] 은행 API 연동 중 오류 발생 (심사 신청)", guid, e);
             throw new BusinessException(ErrorCode.LOAN_BANK_ROUTING_ERROR);
@@ -277,6 +282,7 @@ public class LoanService {
                             .documentType(String.valueOf(terms.get("termsCode")))
                             .documentName(String.valueOf(terms.get("title")))
                             .documentUrl(String.valueOf(terms.get("termsUrl")))
+                            .documentContent(terms.get("termsContent") != null ? String.valueOf(terms.get("termsContent")) : null)
                             .isMandatory(Boolean.TRUE.equals(terms.get("isMandatory"))).build()).toList();
 
             log.info("[{}] 계약 서류 조회 완료 - count: {}", guid, documents.size());
@@ -331,6 +337,10 @@ public class LoanService {
                     .repaymentStartDate(String.valueOf(execData.get("startDate")))
                     .maturityDate(String.valueOf(execData.get("endDate"))).build();
 
+        } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
+            log.warn("[{}] 은행 API 오류 응답 (대출 실행) - status: {}, body: {}", guid, e.getStatusCode(), e.getResponseBodyAsString());
+            String bankMsg = extractBankErrorMessage(e);
+            throw new BusinessException(ErrorCode.LOAN_BANK_ROUTING_ERROR, bankMsg);
         } catch (Exception e) {
             log.error("[{}] 은행 API 연동 중 오류 발생 (대출 실행)", guid, e);
             throw new BusinessException(ErrorCode.LOAN_BANK_ROUTING_ERROR);
@@ -338,6 +348,18 @@ public class LoanService {
     }
 
     // --- Private helpers ---
+    private String extractBankErrorMessage(org.springframework.web.reactive.function.client.WebClientResponseException e) {
+        try {
+            Map<String, Object> body = objectMapper.readValue(e.getResponseBodyAsString(), new TypeReference<>() {});
+            @SuppressWarnings("unchecked")
+            Map<String, Object> err = (Map<String, Object>) body.get("error");
+            if (err != null && err.get("message") != null) {
+                return String.valueOf(err.get("message"));
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     private String generateGuid() { return LOAN_GUID_PREFIX + UUID.randomUUID().toString().toUpperCase(); }
     private String generateApplicationId() { return "APP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase(); }
     
