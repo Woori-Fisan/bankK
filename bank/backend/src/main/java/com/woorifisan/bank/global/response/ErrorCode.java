@@ -48,7 +48,7 @@ public enum ErrorCode {
     LOAN_CUSTOMER_IDENTITY_MISMATCH("LOAN_011", "고객 본인 확인에 실패했습니다.", HttpStatus.FORBIDDEN),
 
     //조회
-    INQUIRY_ACCOUNT_NOTFOUND("INQUIRY_001", "사용자의 정보를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
+    INQUIRY_ACCOUNT_NOTFOUND("INQUIRY_001", "계좌 정보를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
     INQUIRY_INVALID_DATE_RANGE("INQUIRY_002", "조회 기간을 확인해주세요.", HttpStatus.BAD_REQUEST),
     ;
 

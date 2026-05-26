@@ -31,6 +31,14 @@ public enum SwaggerResponseDescription {
             ErrorCode.CONCURRENT_MODIFICATION,
             ErrorCode.INVALID_INPUT,
             ErrorCode.INTERNAL_SERVER_ERROR
+    )),
+
+    TRANSACTION_HISTORY(List.of(
+            ErrorCode.INQUIRY_ACCOUNT_NOTFOUND,
+            ErrorCode.INQUIRY_INVALID_DATE_RANGE,
+            ErrorCode.USER_NOT_FOUND,
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.INTERNAL_SERVER_ERROR
     ));
 
     private final List<ErrorCode> errorCodes;

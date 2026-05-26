@@ -39,6 +39,7 @@ public class AccountController {
      * 거래 내역 조회
      */
     @Operation(summary = "거래 내역 조회", description = "특정 계좌의 기간별 거래 내역을 조회합니다.")
+    @CustomExceptionDescription(SwaggerResponseDescription.TRANSACTION_HISTORY)
     @PostMapping("/transactions")
     public ApiResponse<TransactionHistoryResponse> getTransactionHistoryList(
             @Valid @RequestBody TransactionHistoryRequest request) {

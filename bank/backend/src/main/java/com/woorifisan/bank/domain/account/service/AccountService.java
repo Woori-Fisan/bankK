@@ -31,7 +31,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class AccountService {
 
     // 날짜 포맷
+    // 날짜 비교용 포맷
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    // 출력용 포맷
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final AccountMapper accountMapper;
     private final TransactionLedgerMapper transactionLedgerMapper;
@@ -122,7 +125,7 @@ public class AccountService {
         List<TransactionHistoryDto> historyItems = ledgerList.stream()
                 .map(ledger -> TransactionHistoryDto.builder()
                         .txId(ledger.getTxId())
-                        .txDate(ledger.getTransactedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                        .txDate(ledger.getTransactedAt().format(DATE_TIME_FORMATTER))
                         .txType(ledger.getTxType())
                         .amount(ledger.getAmount())
                         .balance(ledger.getBalanceAfter())

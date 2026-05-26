@@ -24,7 +24,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.context.jdbc.Sql;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional // 각 테스트 후 롤백되어 데이터 정합성 유지
+@Sql("/sql/account-service-tetatst.sql") // 테스트 데이터 삽입
 @ExtendWith(MockitoExtension.class)
 class AccountServiceTest {
 
