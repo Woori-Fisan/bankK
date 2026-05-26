@@ -29,7 +29,7 @@ public class ApiResponse<T> {
         return new ApiResponse<>(false, null, ErrorResponse.of(errorCode));
     }
 
-    public static <T> ApiResponse<T> error(ErrorCode errorCode, String customMessage) {
-        return new ApiResponse<>(false, null, ErrorResponse.of(errorCode, customMessage));
+    public static <T> ApiResponse<T> error(ErrorCode errorCode, String message) {
+        return new ApiResponse<>(false, null, ErrorResponse.of(errorCode, message));
     }
 }

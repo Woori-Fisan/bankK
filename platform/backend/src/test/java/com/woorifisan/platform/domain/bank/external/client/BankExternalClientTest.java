@@ -8,8 +8,10 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
+import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryRequest;
+import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankWithdrawalRequest;
 import com.woorifisan.platform.global.config.BankNetworkConfig;
 import com.woorifisan.platform.global.config.BankNetworkConfig.BankProperty;
@@ -199,5 +201,40 @@ class BankExternalClientTest {
         assertThatThrownBy(() -> bankExternalClient.withdraw(bankCode, request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.BANK_API_ERROR);
+    }
+
+    @Test
+    @DisplayName("거래 내역 조회 성공 케이스")
+    void fetchHistory_Success() {
+        // given
+        BankProperty bankProperty = new BankProperty();
+        bankProperty.setBaseUrl("http://bank-core");
+        bankProperty.getEndpoints().put("transaction", "/api/v1/accounts/history");
+
+        when(bankNetworkConfig.getBankProperty(bankCode)).thenReturn(bankProperty);
+
+        BankHistoryInquiryRequest request = BankHistoryInquiryRequest.builder()
+                .accountNo("123-456")
+                .startDate("2026-05-01")
+                .endDate("2026-05-31")
+                .page(0)
+                .size(10)
+                .build();
+
+        HistoryInquiryResponse expectedData = HistoryInquiryResponse.builder()
+                .totalCount(0)
+                .history(java.util.Collections.emptyList())
+                .build();
+        ApiResponse<HistoryInquiryResponse> apiResponse = ApiResponse.success(expectedData);
+
+        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(any(ParameterizedTypeReference.class))).thenReturn(Mono.just(apiResponse));
+
+        // when
+        HistoryInquiryResponse actualResponse = bankExternalClient.fetchHistory(bankCode, request);
+
+        // then
+        assertThat(actualResponse).isNotNull();
+        assertThat(actualResponse.getTotalCount()).isEqualTo(0);
     }
 }

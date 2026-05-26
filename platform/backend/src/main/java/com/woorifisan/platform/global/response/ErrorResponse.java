@@ -15,7 +15,7 @@ public class ErrorResponse {
         return new ErrorResponse(errorCode.getCode(), errorCode.getMessage());
     }
 
-    public static ErrorResponse of(ErrorCode errorCode, String customMessage) {
-        return new ErrorResponse(errorCode.getCode(), customMessage);
+    public static ErrorResponse of(ErrorCode errorCode, String message) {
+        return new ErrorResponse(errorCode.getCode(), message);
     }
 }

@@ -1,8 +1,10 @@
 package com.woorifisan.platform.domain.bank.external.client;
 
 import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
+import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryRequest;
+import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankWithdrawalRequest;
 import com.woorifisan.platform.global.config.BankNetworkConfig;
 import com.woorifisan.platform.global.config.BankNetworkConfig.BankProperty;
@@ -118,6 +120,63 @@ public class BankExternalClient {
             }
 
             return response.getData();
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("외부 은행 API 통신 중 오류 발생", e);
+            throw new BusinessException(ErrorCode.BANK_API_ERROR);
+        }
+    }
+
+    /**
+     * 특정 은행의 거래 내역 조회 API를 호출합니다.
+     *
+     * @param bankCode 은행 코드
+     * @param request  은행 전용 거래 내역 조회 요청 DTO
+     * @return 거래 내역 조회 결과 응답
+     */
+    public HistoryInquiryResponse fetchHistory(String bankCode, BankHistoryInquiryRequest request) {
+        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
+
+        if (bankProperty == null) {
+            log.error("지원하지 않는 은행 코드입니다: {}", bankCode);
+            throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+        }
+
+        String url = bankProperty.getUrl("history");
+        log.info("외부 은행 API 호출 [거래내역] - URL: {}, 은행코드: {}", url, bankCode);
+
+        // [GEMINI.md 2.4] 블랙박스 로깅
+        log.info("[TX_PAYLOAD_LOG] 은행 서버 요청 송신 - Account: {}, JWS: {}, EncryptedKey: {}",
+                request.getAccountNo(), request.getJwsSignature(), request.getEncryptedKey());
+
+        try {
+            ApiResponse<HistoryInquiryResponse> response = webClient.post()
+                    .uri(url)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, clientResponse ->
+                            clientResponse.bodyToMono(new ParameterizedTypeReference<ApiResponse<HistoryInquiryResponse>>() {})
+                                    .flatMap(errorBody -> {
+                                        String bankErrorCode = (errorBody.getError() != null) ? errorBody.getError().getCode() : "UNKNOWN";
+                                        return Mono.error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
+                                    })
+                    )
+                    .bodyToMono(new ParameterizedTypeReference<ApiResponse<HistoryInquiryResponse>>() {})
+                    .block();
+
+            if (response == null || response.getData() == null) {
+                log.error("외부 은행 API 응답 바디 또는 데이터가 null입니다. 은행코드: {}", bankCode);
+                throw new BusinessException(ErrorCode.BANK_API_ERROR);
+            }
+
+            HistoryInquiryResponse data = response.getData();
+            log.info("은행 서버 응답 수신 성공 - TotalCount: {}, TotalPages: {}, CurrentPage: {}, HasNext: {}, HistorySize: {}",
+                    data.getTotalCount(), data.getTotalPages(), data.getCurrentPage(), data.getHasNext(),
+                    data.getHistory() != null ? data.getHistory().size() : 0);
+
+            return data;
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {

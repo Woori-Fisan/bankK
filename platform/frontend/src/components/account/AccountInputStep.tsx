@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, CreditCard, User, Landmark, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
-import { isValidAccountNumber } from '../utils/validator';
+import { isValidAccountNumber } from '../../utils/validator';
+import { fetchBankList, type BankOption } from '../../api/loanApi';
 
 interface AccountInputStepProps {
     onNext: (data: { 
@@ -24,6 +25,9 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
         jwsSignature: 'JWS_SIGNATURE_STRING',
     });
     
+    // 동적 은행 리스트 상태
+    const [banks, setBanks] = useState<BankOption[]>([]);
+    
     // 각 필드별 에러 상태
     const [fieldErrors, setFieldErrors] = useState({
         bankCode: '',
@@ -31,23 +35,35 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
         customerRrnPrefix: ''
     });
 
-    const banks = [
-        { code: '020', name: '우리은행' },
-        { code: '081', name: '하나은행' },
-        { code: '088', name: '신한은행' },
-        { code: '004', name: 'KB국민은행' },
-    ];
+    // 컴포넌트 마운트 시 은행 리스트 조회
+    useEffect(() => {
+        const getBanks = async () => {
+            try {
+                const bankList = await fetchBankList();
+                setBanks(bankList);
+            } catch (error) {
+                console.error('은행 리스트 조회 실패:', error);
+            }
+        };
+        getBanks();
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         
-        const numericValue = value.replace(/[^0-9]/g, '');
-        const numericWithHyphenValue = value.replace(/[^0-9-]/g, '');
+        let newValue = value;
 
-        const newValue = 
-            name === 'accountNo' ? numericValue : 
-            name === 'customerRrnPrefix' ? numericWithHyphenValue : 
-            value;
+        if (name === 'accountNo') {
+            newValue = value.replace(/[^0-9]/g, '');
+        } else if (name === 'customerRrnPrefix') {
+            // 숫자만 추출 후 자동 하이픈 추가 (######-#)
+            const numeric = value.replace(/[^0-9]/g, '');
+            if (numeric.length <= 6) {
+                newValue = numeric;
+            } else {
+                newValue = `${numeric.slice(0, 6)}-${numeric.slice(6, 7)}`;
+            }
+        }
 
         setFormData(prev => ({ ...prev, [name]: newValue }));
         
@@ -91,7 +107,10 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
         }
 
         // 2. 백엔드 DTO 규격에 맞는 완성된 객체 전달
-        onNext(formData);
+        onNext({
+            ...formData,
+            customerRrnPrefix: formData.customerRrnPrefix.replace(/-/g, '')
+        });
     };
 
     return (
@@ -134,8 +153,8 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
                                 >
                                     <option value="" className="text-slate-400">은행을 선택하세요</option>
                                     {banks.map(bank => (
-                                        <option key={bank.code} value={bank.code}>
-                                            {bank.name}
+                                        <option key={bank.bankCode} value={bank.bankCode}>
+                                            {bank.bankName}
                                         </option>
                                     ))}
                                 </select>

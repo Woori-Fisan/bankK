@@ -13,8 +13,8 @@ public class BusinessException extends RuntimeException {
         this.errorCode = errorCode;
     }
 
-    public BusinessException(ErrorCode errorCode, String customMessage) {
-        super(customMessage != null ? customMessage : errorCode.getMessage());
+    public BusinessException(ErrorCode errorCode, String message) {
+        super(message != null ? message : errorCode.getMessage());
         this.errorCode = errorCode;
     }
 }
