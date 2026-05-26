@@ -293,7 +293,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                     className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none"
                                     placeholder="숫자만 입력"
                                     value={formData.accountNo}
-                                    onChange={(e) => setFormData({ ...formData, accountNo: e.target.value })}
+                                    onChange={(e) => setFormData({ ...formData, accountNo: e.target.value.replace(/[^0-9]/g, '') })}
                                     onBlur={() => {
                                         if (!formData.accountNo?.trim())
                                             setFieldErrors((p) => ({ ...p, accountNo: '계좌번호를 입력해주세요.' }));
