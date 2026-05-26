@@ -11,7 +11,7 @@ const WithdrawPage: React.FC = () => {
     const [step, setStep] = useState<'entry' | 'confirm' | 'success' | 'failure'>('entry');
     const [withdrawData, setWithdrawData] = useState<WithdrawData | null>(null);
     const [withdrawResult, setWithdrawResult] = useState<WithdrawResult | null>(null);
-    const [errorType, setErrorType] = useState<'INVALID_PASSWORD' | 'SYSTEM_ERROR'>('SYSTEM_ERROR');
+    const [errorType, setErrorType] = useState<'INVALID_PASSWORD' | 'SUSPENDED_ACCOUNT' | 'SYSTEM_ERROR'>('SYSTEM_ERROR');
     const [isPinpadOpen, setIsPinpadOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -38,10 +38,11 @@ const WithdrawPage: React.FC = () => {
         try {
             // 은행명 -> 은행코드 매핑
             const bankCodeMap: Record<string, string> = {
-                '국민': '004', 'KB국민': '004',
-                '우리': '020', '우리은행': '020',
-                '신한': '088', '신한은행': '088',
-                '농협': '011', 'NH농협': '011'
+                '국민은행': '004', 'KB국민은행': '004',
+                '우리은행': '020',
+                '신한은행': '088',
+                '하나은행': '081',
+                '농협은행': '011', 'NH농협은행': '011'
             };
             const bankCode = bankCodeMap[withdrawData.sourceAccount.bankName] || '020';
 
@@ -69,16 +70,28 @@ const WithdrawPage: React.FC = () => {
                 setStep('success');
             } else {
                 // 실패 처리
-                if (response.error?.code === 'AUTH_004') {
+                const code = response.error?.code;
+                if (code === 'BANK_003') {
                     setErrorType('INVALID_PASSWORD');
+                } else if (code === 'TRANSFER_005') {
+                    setErrorType('SUSPENDED_ACCOUNT');
                 } else {
                     setErrorType('SYSTEM_ERROR');
                 }
                 setStep('failure');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('출금 처리 중 오류 발생:', error);
-            setErrorType('SYSTEM_ERROR');
+            
+            // Axios 에러인 경우 응답 바디의 에러 코드 확인
+            const errorCode = error.response?.data?.error?.code;
+            if (errorCode === 'BANK_003') {
+                setErrorType('INVALID_PASSWORD');
+            } else if (errorCode === 'TRANSFER_005') {
+                setErrorType('SUSPENDED_ACCOUNT');
+            } else {
+                setErrorType('SYSTEM_ERROR');
+            }
             setStep('failure');
         } finally {
             setIsProcessing(false);
@@ -122,10 +135,7 @@ const WithdrawPage: React.FC = () => {
             <main className="w-full flex-1 flex justify-center items-start pt-4">
                 {step === 'entry' ? (
                     <WithdrawEntryForm 
-                        initialData={withdrawData ? {
-                            birthDate: withdrawData.birthDate,
-                            amount: withdrawData.amount
-                        } : undefined}
+                        initialData={withdrawData || undefined}
                         onNext={handleNext} 
                     />
                 ) : step === 'confirm' && withdrawData ? (
