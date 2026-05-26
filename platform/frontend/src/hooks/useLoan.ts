@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
+import { useAuthStore } from '../store/useAuthStore';
 import {
   fetchReviewDocuments,
   submitLoanEvaluation,
@@ -42,13 +43,12 @@ export const useEvaluationSSE = (applicationId: string | null) => {
 
     // 네이티브 EventSource는 커스텀 헤더를 지원하지 않아 JWT 인증이 불가능하므로
     // fetch 기반의 fetchEventSource를 사용해 Authorization 헤더를 직접 추가한다.
-    const token =
-      sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+    const { accessToken } = useAuthStore.getState();
     const controller = new AbortController();
 
     fetchEventSource(`/api/v1/loan/evaluation/${applicationId}/stream`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       signal: controller.signal,
       onmessage(event) {

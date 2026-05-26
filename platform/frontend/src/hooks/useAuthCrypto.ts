@@ -59,6 +59,7 @@ export const useAuthCrypto = (): AuthCryptoResult => {
             // 2. 로컬 토큰 데이터 삭제 (서버 통신 실패 여부와 무관하게 로컬은 삭제)
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
+            localStorage.removeItem('loginTime'); // 접속 시간 정보 삭제 추가
             clearAuth(); // 권한 정보 삭제 추가
             sessionStorage.removeItem('accessToken');
             
