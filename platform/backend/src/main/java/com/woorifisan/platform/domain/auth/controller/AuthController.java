@@ -109,7 +109,7 @@ public class AuthController {
         // 새로운 Refresh Token을 HttpOnly 쿠키로 설정 (RTR)
         ResponseCookie cookie = ResponseCookie.from("refreshToken", tokenDto.getRefreshToken())
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .sameSite("Strict")
                 .path("/")
                 .maxAge(tokenDto.getRefreshTokenExpiresIn())
