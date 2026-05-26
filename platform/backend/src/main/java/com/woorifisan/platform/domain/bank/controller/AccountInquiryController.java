@@ -26,7 +26,7 @@ public class AccountInquiryController {
     private final AccountInquiryService accountInquiryService;
 
     @Operation(summary = "잔액 조회", description = "특정 계좌의 현재 잔액을 조회합니다.")
-    @CustomExceptionDescription(SwaggerResponseDescription.BANK_INQUIRY)
+    @CustomExceptionDescription(SwaggerResponseDescription.BANK_BALANCE)
     @PostMapping("/balance")
     public ApiResponse<BalanceInquiryResponse> getBalance(@Valid @RequestBody BalanceInquiryRequest request) {
         BalanceInquiryResponse response = accountInquiryService.getBalance(request);

@@ -20,9 +20,6 @@ public class WithdrawalRequest {
     @NotBlank(message = "암호화된 AES 키는 필수입니다.")
     private String encryptedKey;
 
-    @NotBlank(message = "JWS 전자서명은 필수입니다.")
-    private String jwsSignature;
-
     @NotBlank(message = "출금 은행 코드는 필수입니다.")
     private String withdrawalBankCode;
 

@@ -1,7 +1,6 @@
 package com.woorifisan.platform.global.config;
 
 import com.woorifisan.platform.global.filter.JwtAuthFilter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,7 +45,6 @@ public class SecurityConfig {
             // 테스트 용 임시 통과 URL -> 플랫폼 개발 완료 시 삭제
             "/api/v1/bank/inquiry/**",
             "/api/v1/bank/transfer/**",
-            "/api/v1/bank/withdrawals/**",
             "/api/v1/loan/**",
             "/api/v1/banks",
             "/api/v1/crypto/public-key",
