@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 이체 서비스
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -35,7 +37,7 @@ public class TransferService {
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final PasswordEncoder passwordEncoder;
 
-    private static final String CURRENT_BANK_CODE = "040"; // 우리은행 코드 임시 정의
+    private static final String CURRENT_BANK_CODE = "020"; // 우리은행 코드 임시 정의
 
     /**
      * 이체 실행

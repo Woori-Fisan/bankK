@@ -2,6 +2,7 @@ export interface TransferState {
     // State
     step: number;
     fromBank: string;
+    fromBankName: string;
     fromAccountNumber: string;
     customerRrnPrefix: string;
     balance: string;
