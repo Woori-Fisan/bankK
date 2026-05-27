@@ -44,8 +44,9 @@ const AccountInquiry: React.FC = () => {
                     id: h.txId,
                     date: h.txDate,
                     description: h.description,
-                    withdrawal: h.txType === 'WITHDRAW' ? h.amount : null,
-                    deposit: h.txType === 'DEPOSIT' ? h.amount : null,
+                    target: h.counterpartName || null, // 백엔드 DTO(counterpartName) 필드로 매핑 수정
+                    type: h.txType,
+                    amount: h.amount,
                     balance: h.balance,
                     status: '완료'
                 }));
@@ -163,7 +164,7 @@ const AccountInquiry: React.FC = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">거래 내역 및 잔액 조회</h1>
                     <p className="text-slate-500 text-sm mt-1">
-                        [{accountInfo?.accountNo}] 계좌의 실시간 거래 내역입니다.
+                        [{accountInfo?.accountNo}] 계좌의 거래 내역입니다.
                     </p>
                 </div>
                 <button 
@@ -191,7 +192,6 @@ const AccountInquiry: React.FC = () => {
                     currentPage={currentPage}
                     totalEntries={totalItems} // 백엔드에서 받은 전체 개수 전달
                     totalPages={totalPages}   // 백엔드에서 받은 전체 페이지 수 전달
-                    pageSize={pageSize}
                     onPageChange={handlePageChange}
                 />
             </section>
