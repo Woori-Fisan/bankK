@@ -3,6 +3,7 @@ package com.woorifisan.platform.global.aop.aspect;
 import static net.logstash.logback.argument.StructuredArguments.entries;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woorifisan.platform.global.exception.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
@@ -18,6 +19,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.slf4j.MDC;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -122,11 +124,27 @@ public class ControllerLoggingAspect {
                         className, methodName, executionTime, serialize(result));
             }
             return result;
+        } catch (BusinessException e) {
+            // 예상된 비즈니스 예외 — errorCode에서 status 직접 추출, WARN 레벨로 기록
+            long executionTime = System.currentTimeMillis() - start;
+            int httpStatus = e.getErrorCode().getHttpStatus().value();
+
+            if (request != null) {
+                applyElapsedAndStatus(httpContext, executionTime, httpStatus);
+                httpContext.put("exception", e.getClass().getSimpleName());
+                log.warn("[Error] Exception: {} | Message: {}",
+                        e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
+            } else {
+                log.warn("[Error] Non-HTTP | Controller: {}.{} | Time: {}ms | Exception: {} | Message: {}",
+                        className, methodName, executionTime, e.getClass().getSimpleName(), e.getMessage());
+            }
+            throw e;
         } catch (Throwable e) {
+            // 예상치 못한 시스템 예외 — status 500, ERROR 레벨로 기록
             long executionTime = System.currentTimeMillis() - start;
 
             if (request != null) {
-                applyElapsedAndStatus(httpContext, executionTime, response);
+                applyElapsedAndStatus(httpContext, executionTime, HttpStatus.INTERNAL_SERVER_ERROR.value());
                 httpContext.put("exception", e.getClass().getSimpleName());
                 log.error("[Error] Exception: {} | Message: {}",
                         e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
@@ -140,12 +158,18 @@ public class ControllerLoggingAspect {
         }
     }
 
-    /** 응답 · 에러 로그 공통으로 httpContext에 소요 시간과 HTTP 상태 코드를 추가한다. */
+    /** 정상 응답 로그용 — HttpServletResponse에서 status를 읽어 httpContext에 추가한다. */
     private void applyElapsedAndStatus(Map<String, Object> httpContext, long executionTime, HttpServletResponse response) {
         httpContext.put("elapsedMs", executionTime);
         if (response != null) {
             httpContext.put("status", response.getStatus());
         }
+    }
+
+    /** 예외 로그용 — status를 호출자가 직접 결정해 httpContext에 추가한다. (response 미작성 시점 대응) */
+    private void applyElapsedAndStatus(Map<String, Object> httpContext, long executionTime, int status) {
+        httpContext.put("elapsedMs", executionTime);
+        httpContext.put("status", status);
     }
 
     /** 프록시 환경을 고려해 {@link #IP_HEADER_CANDIDATES} 우선순위대로 실제 클라이언트 IP를 추출한다. */

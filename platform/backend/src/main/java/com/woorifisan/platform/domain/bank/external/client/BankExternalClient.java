@@ -55,10 +55,13 @@ public class BankExternalClient {
                     .bodyValue(request)
                     .retrieve()
                     // 4xx, 5xx 에러 발생 시 바디를 읽어서 BusinessException으로 변환
-                    .onStatus(HttpStatusCode::isError, clientResponse -> 
+                    .onStatus(HttpStatusCode::isError, clientResponse ->
                         clientResponse.bodyToMono(new ParameterizedTypeReference<ApiResponse<BalanceInquiryResponse>>() {})
                             .flatMap(errorBody -> {
-                                String bankErrorCode = (errorBody.getError() != null) ? errorBody.getError().getCode() : "UNKNOWN";
+                                String bankErrorCode    = (errorBody.getError() != null) ? errorBody.getError().getCode()    : "UNKNOWN";
+                                String bankErrorMessage = (errorBody.getError() != null) ? errorBody.getError().getMessage() : "UNKNOWN";
+                                log.warn("[BankAPI][ErrorResponse] bankCode: {}, bankErrorCode: {}, bankErrorMessage: {}",
+                                        bankCode, bankErrorCode, bankErrorMessage);
                                 return Mono.error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
                             })
                     )
@@ -95,7 +98,6 @@ public class BankExternalClient {
         }
 
         String url = bankProperty.getUrl("withdraw");
-        log.info("외부 은행 API 호출 [출금] - URL: {}, 은행코드: {}", url, bankCode);
 
         try {
             ApiResponse<TransferResponse> response = webClient.post()
@@ -103,10 +105,13 @@ public class BankExternalClient {
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(request)
                     .retrieve()
-                    .onStatus(HttpStatusCode::isError, clientResponse -> 
+                    .onStatus(HttpStatusCode::isError, clientResponse ->
                         clientResponse.bodyToMono(new ParameterizedTypeReference<ApiResponse<TransferResponse>>() {})
                             .flatMap(errorBody -> {
-                                String bankErrorCode = (errorBody.getError() != null) ? errorBody.getError().getCode() : "UNKNOWN";
+                                String bankErrorCode    = (errorBody.getError() != null) ? errorBody.getError().getCode()    : "UNKNOWN";
+                                String bankErrorMessage = (errorBody.getError() != null) ? errorBody.getError().getMessage() : "UNKNOWN";
+                                log.warn("[BankAPI][ErrorResponse] bankCode: {}, bankErrorCode: {}, bankErrorMessage: {}",
+                                        bankCode, bankErrorCode, bankErrorMessage);
                                 return Mono.error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
                             })
                     )
@@ -143,11 +148,6 @@ public class BankExternalClient {
         }
 
         String url = bankProperty.getUrl("history");
-        log.info("외부 은행 API 호출 [거래내역] - URL: {}, 은행코드: {}", url, bankCode);
-
-        // [GEMINI.md 2.4] 블랙박스 로깅
-        log.info("[TX_PAYLOAD_LOG] 은행 서버 요청 송신 - Account: {}, JWS: {}, EncryptedKey: {}",
-                request.getAccountNo(), request.getJwsSignature(), request.getEncryptedKey());
 
         try {
             ApiResponse<HistoryInquiryResponse> response = webClient.post()
@@ -158,7 +158,10 @@ public class BankExternalClient {
                     .onStatus(HttpStatusCode::isError, clientResponse ->
                             clientResponse.bodyToMono(new ParameterizedTypeReference<ApiResponse<HistoryInquiryResponse>>() {})
                                     .flatMap(errorBody -> {
-                                        String bankErrorCode = (errorBody.getError() != null) ? errorBody.getError().getCode() : "UNKNOWN";
+                                        String bankErrorCode    = (errorBody.getError() != null) ? errorBody.getError().getCode()    : "UNKNOWN";
+                                        String bankErrorMessage = (errorBody.getError() != null) ? errorBody.getError().getMessage() : "UNKNOWN";
+                                        log.warn("[BankAPI][ErrorResponse] bankCode: {}, bankErrorCode: {}, bankErrorMessage: {}",
+                                                bankCode, bankErrorCode, bankErrorMessage);
                                         return Mono.error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
                                     })
                     )
@@ -170,12 +173,7 @@ public class BankExternalClient {
                 throw new BusinessException(ErrorCode.BANK_API_ERROR);
             }
 
-            HistoryInquiryResponse data = response.getData();
-            log.info("은행 서버 응답 수신 성공 - TotalCount: {}, TotalPages: {}, CurrentPage: {}, HasNext: {}, HistorySize: {}",
-                    data.getTotalCount(), data.getTotalPages(), data.getCurrentPage(), data.getHasNext(),
-                    data.getHistory() != null ? data.getHistory().size() : 0);
-
-            return data;
+            return response.getData();
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
