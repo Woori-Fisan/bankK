@@ -33,8 +33,7 @@ public enum ErrorCode {
     BANK_PW_ERROR("BANK_002", "계좌 비밀번호가 틀렸습니다.", HttpStatus.FORBIDDEN),
 
     // 이체
-    INSUFFICIENT_BALANCE("TRANSFER_001", "잔액이 부족합니다.", HttpStatus.BAD_REQUEST),
-    IDENTIFICATION_ERROR("TRANSFER_002", "본인 인증 정보가 일치하지 않습니다.", HttpStatus.FORBIDDEN),
+    IDENTIFICATION_ERROR("TRANSFER_001", "본인 인증 정보가 일치하지 않습니다.", HttpStatus.FORBIDDEN),
 
     // 멱등성
     DUPLICATE_REQUEST("IDEM_001", "중복 요청입니다.", HttpStatus.CONFLICT),
