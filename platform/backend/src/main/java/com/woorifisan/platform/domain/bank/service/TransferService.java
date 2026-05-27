@@ -29,8 +29,6 @@ public class TransferService {
      */
     @Transactional(readOnly = true)
     public TransferRecipientResponse getRecipient(TransferRecipientRequest request) {
-        log.info("수취인 조회 요청 수신 - 은행코드: {}, 계좌번호: {}", 
-                request.getDepositBankCode(), request.getDepositAccountNo());
 
         if ("0000".equals(request.getDepositAccountNo())) {
             throw new BusinessException(ErrorCode.TRANSFER_DEPOSIT_ACCOUNT_FAULT);
@@ -52,8 +50,6 @@ public class TransferService {
      */
     @Transactional
     public TransferResponse executeTransfer(TransferRequest request) {
-        log.info("이체 실행 요청 수신 - 출금계좌: {}, 입금계좌: {}, 금액: {}", 
-                request.getWithdrawalAccountNo(), request.getDepositAccountNo(), request.getAmount());
 
         // 임시 더미 데이터 생성 및 반환
         return TransferResponse.builder()

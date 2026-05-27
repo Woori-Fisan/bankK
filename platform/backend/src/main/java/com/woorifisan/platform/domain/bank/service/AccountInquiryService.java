@@ -47,8 +47,6 @@ public class AccountInquiryService {
      * 거래내역 조회 실행 (오케스트레이션)
      */
     public HistoryInquiryResponse getHistory(HistoryInquiryRequest request) {
-        log.info("거래내역 조회 요청 수신 - 계좌: {}, 기간: {} ~ {}", 
-                 request.getAccountNo(), request.getStartDate(), request.getEndDate());
 
         // 1. 날짜 검증
         validateInquiryPeriod(request.getStartDate(), request.getEndDate());
@@ -69,7 +67,6 @@ public class AccountInquiryService {
             endDate = LocalDate.parse(end, DATE_FORMATTER);
 
         } catch (Exception e) {
-            log.error("날짜 파싱 중 오류 발생: {}", e.getMessage());
             throw new BusinessException(ErrorCode.INVALID_INPUT, "날짜 형식이 올바르지 않습니다. (yyyy-MM-dd)");
         }
 

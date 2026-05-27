@@ -43,7 +43,6 @@ public class BankExternalClient {
         BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
 
         if (bankProperty == null) {
-            log.error("지원하지 않는 은행 코드입니다: {}", bankCode);
             throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
         }
 
@@ -68,7 +67,6 @@ public class BankExternalClient {
                     .block();
 
             if (response == null || response.getData() == null) {
-                log.error("외부 은행 API 응답 바디 또는 데이터가 null입니다. 은행코드: {}", bankCode);
                 throw new BusinessException(ErrorCode.BANK_API_ERROR);
             }
 
@@ -76,7 +74,6 @@ public class BankExternalClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("외부 은행 API 통신 중 오류 발생", e);
             throw new BusinessException(ErrorCode.BANK_API_ERROR);
         }
     }
@@ -92,7 +89,6 @@ public class BankExternalClient {
         BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
 
         if (bankProperty == null) {
-            log.error("지원하지 않는 은행 코드입니다: {}", bankCode);
             throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
         }
 
@@ -116,7 +112,6 @@ public class BankExternalClient {
                     .block();
 
             if (response == null || response.getData() == null) {
-                log.error("외부 은행 API 응답 바디 또는 데이터가 null입니다. 은행코드: {}", bankCode);
                 throw new BusinessException(ErrorCode.BANK_API_ERROR);
             }
 
@@ -124,7 +119,6 @@ public class BankExternalClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("외부 은행 API 통신 중 오류 발생", e);
             throw new BusinessException(ErrorCode.BANK_API_ERROR);
         }
     }
@@ -140,7 +134,6 @@ public class BankExternalClient {
         BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
 
         if (bankProperty == null) {
-            log.error("지원하지 않는 은행 코드입니다: {}", bankCode);
             throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
         }
 
@@ -164,7 +157,6 @@ public class BankExternalClient {
                     .block();
 
             if (response == null || response.getData() == null) {
-                log.error("외부 은행 API 응답 바디 또는 데이터가 null입니다. 은행코드: {}", bankCode);
                 throw new BusinessException(ErrorCode.BANK_API_ERROR);
             }
 
@@ -172,7 +164,6 @@ public class BankExternalClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("외부 은행 API 통신 중 오류 발생", e);
             throw new BusinessException(ErrorCode.BANK_API_ERROR);
         }
     }
