@@ -48,12 +48,28 @@
         <maxFlushTime>1000</maxFlushTime>
     </appender>
 
+    <!-- ── DB 로그 Appender (system_logs 테이블) ─────── -->
+    <!-- Aspect 로그(ControllerLoggingAspect · BankExternalApiAspect)를 DB에 삽입 -->
+    <!-- Spring 미준비 시 자동 스킵, 준비 후 Bean 캐싱하여 사용 -->
+    <appender name="DB_LOG"
+              class="com.woorifisan.platform.global.logging.appender.SystemLogAppender"/>
+
+    <!-- 비동기 래퍼: DB INSERT가 요청 스레드를 블로킹하지 않도록 -->
+    <appender name="ASYNC_DB_LOG" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="DB_LOG"/>
+        <queueSize>256</queueSize>
+        <!-- 0 = 레벨과 무관하게 로그 드롭 금지 (로그 유실 방지) -->
+        <discardingThreshold>0</discardingThreshold>
+        <maxFlushTime>2000</maxFlushTime>
+    </appender>
+
     <!-- ── 프로파일별 설정 ────────────────────────────── -->
     <!-- 로컬 개발: 콘솔 + JSON 파일(임시 테스트) -->
     <springProfile name="local">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_JSON_FILE"/>
+            <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
         <logger name="com.woorifisan.platform" level="DEBUG"/>
     </springProfile>
@@ -63,6 +79,7 @@
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_JSON_FILE"/>
+            <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
         <logger name="com.woorifisan.platform" level="DEBUG"/>
     </springProfile>
@@ -71,6 +88,7 @@
     <springProfile name="prod">
         <root level="INFO">
             <appender-ref ref="ASYNC_JSON_FILE"/>
+            <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
     </springProfile>
 
