@@ -9,6 +9,8 @@ import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankRecipientResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
+import com.woorifisan.platform.domain.bank.external.dto.BankTransferWithdrawRequest;
+import com.woorifisan.platform.domain.bank.external.dto.BankDepositRequest;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import java.math.BigDecimal;
@@ -132,14 +134,41 @@ public class TransferService {
         log.info("타행 이체 프로세스 시작 - 출금은행: {}, 입금은행: {}", 
                 request.getWithdrawalBankCode(), request.getDepositBankCode());
 
-        // TODO: 타행 이체 오케스트레이션 로직 구현 예정
         // 1. 출금 은행 API 호출 (/transfer/withdraw)
-        // 2. 입금 은행 API 호출 (/transfer/deposit)
-        // 3. 실패 시 보상 트랜잭션(Rollback) 처리 고려
+        BankTransferWithdrawRequest withdrawRequest = BankTransferWithdrawRequest.of(
+                request.getEncryptedKey(),
+                request.getJwsSignature(),
+                request.getWithdrawalAccountNo(),
+                request.getWithdrawalPassword(),
+                request.getCustomerRrnPrefix(),
+                request.getDepositBankCode(),
+                request.getDepositAccountNo(),
+                request.getAmount()
+        );
         
+        BankTransferResponse withdrawResponse = bankExternalClient.fetchTransferWithdraw(
+                request.getWithdrawalBankCode(), 
+                withdrawRequest
+        );
+
+        // 2. 입금 은행 API 호출 (/transfer/deposit)
+        BankDepositRequest depositRequest = BankDepositRequest.of(
+                request.getDepositAccountNo(),
+                request.getAmount(),
+                request.getWithdrawalBankCode(),
+                request.getWithdrawalAccountNo()
+        );
+
+        BankTransferResponse depositResponse = bankExternalClient.fetchDeposit(
+                request.getDepositBankCode(),
+                depositRequest
+        );
+
+        // 3. 응답 DTO 변환 및 반환
         return TransferResponse.builder()
-                .transactionId("TR-EXT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .transactionId(depositResponse.getTransactionId())
                 .transactionDate(LocalDateTime.now().format(DATE_FORMATTER))
+                .balanceAfter(withdrawResponse.getBalanceAfter())
                 .build();
     }
 }
