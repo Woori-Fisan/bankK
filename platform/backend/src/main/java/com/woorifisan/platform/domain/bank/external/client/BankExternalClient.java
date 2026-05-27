@@ -47,7 +47,6 @@ public class BankExternalClient {
         }
 
         String url = bankProperty.getUrl("balance");
-        log.info("외부 은행 API 호출 [잔액조회] - URL: {}, 은행코드: {}", url, bankCode);
 
         try {
             ApiResponse<BalanceInquiryResponse> response = webClient.post()

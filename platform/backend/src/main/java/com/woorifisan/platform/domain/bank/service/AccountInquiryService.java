@@ -9,12 +9,11 @@ import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryReques
 import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 
 /**
  * 계좌 조회 서비스
@@ -33,7 +32,6 @@ public class AccountInquiryService {
      * 잔액 조회 실행
      */
     public BalanceInquiryResponse getBalance(BalanceInquiryRequest request) {
-        log.info("잔액 조회 요청 수신 - 계좌번호: {}", request.getAccountNo());
 
         BankBalanceInquiryRequest bankRequest = BankBalanceInquiryRequest.of(
                 request.getEncryptedKey(),

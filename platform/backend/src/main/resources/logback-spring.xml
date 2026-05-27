@@ -22,10 +22,16 @@
         </rollingPolicy>
         <!-- Fluent Bit이 파싱할 수 있도록 JSON 형식으로 출력 -->
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeContext>false</includeContext>
+            <fieldNames>
+                <version>[ignore]</version>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
             <!-- 서비스 식별용 필드 -->
             <customFields>{"service":"agency-platform"}</customFields>
-            <!-- MDC 전체 자동 포함 (traceId, spanId 포함) -->
-            <!-- excludeMdcKeyNames만 사용 (include와 동시 사용 불가) -->
+            
+            <!-- MDC 설정을 통해 구조화된 데이터 지원 -->
+            <includeMdc>true</includeMdc>
             <excludeMdcKeyName>password</excludeMdcKeyName>
             <excludeMdcKeyName>token</excludeMdcKeyName>
         </encoder>
