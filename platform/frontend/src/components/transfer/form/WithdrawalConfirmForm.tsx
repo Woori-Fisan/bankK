@@ -6,7 +6,7 @@ import { useTransferStore } from '../../../store/useTransferStore';
 import { formatAmount } from '../../../utils/formatter';
 
 const WithdrawalConfirmForm: React.FC = () => {
-    const { fromBank, fromAccountNumber, balance, prevStep, nextStep } = useTransferStore();
+    const { fromBankName, fromAccountNumber, balance, prevStep, nextStep } = useTransferStore();
 
     return (
         <div className="w-full">
@@ -19,7 +19,7 @@ const WithdrawalConfirmForm: React.FC = () => {
                     label1="출금 계좌번호"
                     value1={fromAccountNumber}
                     label2="출금 은행"
-                    value2={fromBank}
+                    value2={fromBankName}
                     label3="현재 잔액"
                     value3={`₩ ${formatAmount(balance)}`}
                 />
