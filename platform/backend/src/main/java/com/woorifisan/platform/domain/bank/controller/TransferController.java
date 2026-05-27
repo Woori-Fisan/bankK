@@ -8,6 +8,7 @@ import com.woorifisan.platform.domain.bank.service.TransferService;
 import com.woorifisan.platform.global.config.swagger.CustomExceptionDescription;
 import com.woorifisan.platform.global.config.swagger.SwaggerResponseDescription;
 import com.woorifisan.platform.global.response.ApiResponse;
+import com.woorifisan.platform.global.security.annotation.VerifyTerminalSignature;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -28,12 +29,13 @@ public class TransferController {
 
     @Operation(summary = "수취인 조회", description = "이체 전 수취인의 계좌 정보 및 성명을 확인합니다.")
     @CustomExceptionDescription(SwaggerResponseDescription.BANK_TRANSFER)
+    @VerifyTerminalSignature
     @PostMapping("/recipient")
     public ApiResponse<TransferRecipientResponse> getRecipient(
             @RequestHeader("x-jws-signature") String jwsSignature,
             @RequestHeader("x-bank-key-id") String bankKeyId,
             @RequestBody @Valid TransferRecipientRequest request) {
-        TransferRecipientResponse response = transferService.getRecipient(request, jwsSignature, bankKeyId);
+        TransferRecipientResponse response = transferService.getRecipient(request, bankKeyId);
         return ApiResponse.success(response);
     }
 
