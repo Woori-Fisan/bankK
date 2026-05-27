@@ -142,8 +142,9 @@ public class BankExternalClient {
                             clientResponse.bodyToMono(responseType)
                                     .flatMap(errorBody -> {
                                         String bankErrorCode = (errorBody.getError() != null) ? errorBody.getError().getCode() : "UNKNOWN";
-                                        return Mono.error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
+                                        return Mono.<Throwable>error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
                                     })
+                                    .switchIfEmpty(Mono.<Throwable>error(new BusinessException(ErrorCode.BANK_API_ERROR)))
                     )
                     .bodyToMono(responseType)
                     .block();
