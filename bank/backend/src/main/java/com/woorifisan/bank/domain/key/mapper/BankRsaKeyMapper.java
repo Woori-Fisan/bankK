@@ -7,4 +7,14 @@ import org.apache.ibatis.annotations.Mapper;
 @Mapper
 public interface BankRsaKeyMapper {
     Optional<BankRsaKey> findById(Long id);
+
+    /**
+     * 가장 최근의 활성화된 RSA 키를 조회합니다.
+     */
+    Optional<BankRsaKey> findLatestActiveKey();
+
+    /**
+     * RSA 키를 저장합니다.
+     */
+    void insert(BankRsaKey bankRsaKey);
 }

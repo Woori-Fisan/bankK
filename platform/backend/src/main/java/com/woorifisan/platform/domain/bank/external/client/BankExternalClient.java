@@ -1,5 +1,6 @@
 package com.woorifisan.platform.domain.bank.external.client;
 
+import com.woorifisan.platform.crypto.dto.response.BankRsaKeyResponse;
 import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
@@ -36,6 +37,19 @@ public class BankExternalClient {
 
     private final WebClient webClient;
     private final BankNetworkConfig bankNetworkConfig;
+
+    /**
+     * 특정 은행의 RSA 공개키를 조회합니다.
+     */
+    public BankRsaKeyResponse fetchPublicKey(String bankCode) {
+        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
+        if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+
+        String url = bankProperty.getUrl("public-key");
+        log.info("외부 은행 API 호출 [RSA공개키조회] - URL: {}, 은행코드: {}", url, bankCode);
+
+        return getRequest(url, new ParameterizedTypeReference<ApiResponse<BankRsaKeyResponse>>() {}, bankCode);
+    }
 
     /**
      * 특정 은행의 수취인 조회 API를 호출합니다.
@@ -126,6 +140,39 @@ public class BankExternalClient {
         log.info("외부 은행 API 호출 [거래내역] - URL: {}, 은행코드: {}", url, bankCode);
 
         return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<HistoryInquiryResponse>>() {}, bankCode);
+    }
+
+    /**
+     * 공통 GET 요청 처리 메서드
+     */
+    private <T> T getRequest(String url, ParameterizedTypeReference<ApiResponse<T>> responseType, String bankCode) {
+        try {
+            ApiResponse<T> response = webClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, clientResponse ->
+                            clientResponse.bodyToMono(responseType)
+                                    .flatMap(errorBody -> {
+                                        String bankErrorCode = (errorBody.getError() != null) ? errorBody.getError().getCode() : "UNKNOWN";
+                                        return Mono.<Throwable>error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
+                                    })
+                                    .switchIfEmpty(Mono.<Throwable>error(new BusinessException(ErrorCode.BANK_API_ERROR)))
+                    )
+                    .bodyToMono(responseType)
+                    .block();
+
+            if (response == null || response.getData() == null) {
+                log.error("외부 은행 API 응답 바디 또는 데이터가 null입니다. 은행코드: {}", bankCode);
+                throw new BusinessException(ErrorCode.BANK_API_ERROR);
+            }
+
+            return response.getData();
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("외부 은행 API 통신 중 오류 발생", e);
+            throw new BusinessException(ErrorCode.BANK_API_ERROR);
+        }
     }
 
     /**

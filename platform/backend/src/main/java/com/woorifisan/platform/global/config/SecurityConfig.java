@@ -47,7 +47,7 @@ public class SecurityConfig {
             "/api/v1/bank/transfer/**",
             "/api/v1/loan/**",
             "/api/v1/banks",
-            "/api/v1/crypto/public-key",
+            "/api/v1/keys/public",
     };
 
     @Bean
