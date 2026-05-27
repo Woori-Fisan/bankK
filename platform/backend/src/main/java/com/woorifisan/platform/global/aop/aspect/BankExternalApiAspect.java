@@ -72,7 +72,7 @@ public class BankExternalApiAspect {
             stopWatch.stop();
 
             bankContext.put("elapsedMs", stopWatch.getTotalTimeMillis());
-            bankContext.put("result", serialize(result));
+            bankContext.put("response", serialize(result));
             log.info("[BankAPI][Response] {}", apiType, entries(Map.of("bank", bankContext)));
 
             return result;

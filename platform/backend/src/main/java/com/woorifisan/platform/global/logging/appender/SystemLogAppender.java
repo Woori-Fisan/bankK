@@ -2,6 +2,7 @@ package com.woorifisan.platform.global.logging.appender;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woorifisan.platform.global.logging.SpringContextHolder;
 import com.woorifisan.platform.global.logging.mapper.SystemLogMapper;
 import com.woorifisan.platform.global.logging.model.SystemLog;
@@ -53,10 +54,13 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
     private static final String MSG_BANK_REQ        = "[BankAPI][Request]";
     private static final String MSG_BANK_RES        = "[BankAPI][Response]";
     private static final String MSG_BANK_BIZ_ERR    = "[BankAPI][BusinessError]";
-    private static final String MSG_BANK_SYS_ERR    = "[BankAPI][SystemError]";
+    // [BankAPI][SystemError] → 파일 로그에만 기록, DB(system_logs) 저장 대상 제외
 
     // ── bank_code NOT NULL 기본값 (controller 레벨에서는 bankCode 없음) ────
     private static final String UNKNOWN_BANK = "UNKNOWN";
+
+    // ── body JSON 파싱용 — Appender는 Spring Bean이 아니므로 자체 인스턴스 사용 ──
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
      * MapEntriesAppendingMarker.map 필드 — 리플렉션 비용 절감을 위해 클래스 로드 시 1회만 추출.
@@ -112,6 +116,11 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
      * ControllerLoggingAspect 로그 이벤트를 SystemLog로 변환한다.
      *
      * <p>메시지 접두어가 알 수 없는 형식이면 null을 반환하여 삽입을 스킵한다.</p>
+     *
+     * <ul>
+     *   <li>REQ / RES : body_data = args[0] (요청 파라미터 / 응답 JSON), error 컬럼 null</li>
+     *   <li>ERR       : body_data = null, error_code / error_message = 응답 바디 내 error 객체 파싱</li>
+     * </ul>
      */
     private SystemLog buildControllerLog(ILoggingEvent event) {
         String logType = resolveControllerLogType(event.getMessage());
@@ -121,9 +130,16 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
         Map<String, Object> httpContext = extractNestedContext(event, "http");
         Object[]            args        = event.getArgumentArray();
 
-        // 첫 번째 positional 인자 = argsJson(REQ) / resultJson(RES/ERR)
-        String bodyData = (args != null && args.length > 0)
-                ? String.valueOf(args[0]) : null;
+        // args[0] = argsJson(REQ) / resultJson(RES) / ApiResponse.error JSON(ERR)
+        String rawBody = (args != null && args.length > 0) ? String.valueOf(args[0]) : null;
+        boolean isError = "CONTROLLER_ERR".equals(logType);
+
+        // REQ: Aspect가 파라미터를 [elem1, elem2, ...] 배열로 직렬화 → 단일 원소면 벗겨냄
+        String bodyData     = isError ? null
+                            : "CONTROLLER_REQ".equals(logType) ? unwrapSingleElementArray(rawBody)
+                            : rawBody;
+        String errorCode    = isError ? parseApiErrorField(rawBody, "code")    : null;
+        String errorMessage = isError ? parseApiErrorField(rawBody, "message") : null;
 
         return SystemLog.builder()
                 .createdAt(toLocalDateTime(event.getTimeStamp()))
@@ -138,7 +154,8 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
                 .elapsedMs(getInt(httpContext, "elapsedMs"))
                 .clientIp(getStr(httpContext, "clientIp"))
                 .bodyData(bodyData)
-                .errorCode(getStr(httpContext, "exception"))  // 예외 클래스명
+                .errorCode(errorCode)
+                .errorMessage(errorMessage)
                 .build();
     }
 
@@ -186,17 +203,68 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
                 .staffId(mdc.get("staffId"))
                 .bankCode(bankCode != null ? bankCode : UNKNOWN_BANK)
                 .elapsedMs(getInt(bankContext, "elapsedMs"))
-                .bodyData(getStr(bankContext, "request"))  // REQ: 요청 JSON, RES/ERR: null
+                .bodyData(resolveBankBodyData(logType, bankContext))
                 .errorCode(errorCode)
                 .errorMessage(errorMessage)
                 .build();
+    }
+
+    /**
+     * log_type에 따라 body_data에 저장할 값을 결정한다.
+     * <ul>
+     *   <li>BANK_REQ → bankContext["request"]  : 은행으로 보낸 요청 JSON</li>
+     *   <li>BANK_RES → bankContext["response"] : 은행에서 받은 응답 JSON</li>
+     *   <li>BANK_ERR → null : 에러 정보는 error_code / error_message 컬럼에 별도 저장</li>
+     * </ul>
+     */
+    private String resolveBankBodyData(String logType, Map<String, Object> bankContext) {
+        return switch (logType) {
+            case "BANK_REQ" -> getStr(bankContext, "request");
+            case "BANK_RES" -> getStr(bankContext, "response");
+            default         -> null;
+        };
+    }
+
+    /**
+     * 응답 바디 JSON에서 {@code error} 객체의 특정 필드를 추출한다.
+     *
+     * <p>대상 구조: {@code {"success":false,"error":{"code":"...","message":"..."}}}</p>
+     *
+     * @param bodyJson  ApiResponse.error(...) 직렬화 결과
+     * @param fieldName {@code "code"} 또는 {@code "message"}
+     * @return 추출된 문자열, 파싱 실패 시 null
+     */
+    private String parseApiErrorField(String bodyJson, String fieldName) {
+        if (bodyJson == null) return null;
+        try {
+            return OBJECT_MAPPER.readTree(bodyJson).path("error").path(fieldName).asText(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Aspect가 컨트롤러 파라미터를 {@code [elem1, elem2, ...]} 배열로 직렬화하므로,
+     * 단일 원소 배열이면 원소 자체를 반환하고, 복수 원소이면 배열 그대로 반환한다.
+     *
+     * <p>예: {@code [{"accountNumber":"123"}]} → {@code {"accountNumber":"123"}}</p>
+     */
+    private String unwrapSingleElementArray(String json) {
+        if (json == null) return null;
+        try {
+            var node = OBJECT_MAPPER.readTree(json);
+            if (node.isArray() && node.size() == 1) {
+                return OBJECT_MAPPER.writeValueAsString(node.get(0));
+            }
+        } catch (Exception ignored) {}
+        return json;
     }
 
     private String resolveBankLogType(String message) {
         if (message.startsWith(MSG_BANK_REQ))     return "BANK_REQ";
         if (message.startsWith(MSG_BANK_RES))     return "BANK_RES";
         if (message.startsWith(MSG_BANK_BIZ_ERR)) return "BANK_ERR";
-        if (message.startsWith(MSG_BANK_SYS_ERR)) return "BANK_COMM_ERR";
+        // [BankAPI][SystemError] → null 반환으로 DB 저장 스킵, 파일 로그에만 기록
         return null;
     }
 
