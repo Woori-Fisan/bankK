@@ -106,4 +106,16 @@ bank:
       endpoints:
         balance: "/account/balance"
         history: "/account/transactions"
-        withdraw: "/withdrawals"
+        withdraw: "/transfer/withdraw"
+        deposit: "/transfer/deposit"
+        recipient: "/transfer/recipient"
+        transfer: "/transfer"
+    "004":
+      base-url: ${KB_BASE_URL:http://localhost:8082/api/v1/baas}
+      endpoints:
+        balance: "/account/balance"
+        history: "/account/transactions"
+        withdraw: "/transfer/withdraw"
+        deposit: "/transfer/deposit"
+        recipient: "/transfer/recipient"
+        transfer: "/transfer"
