@@ -129,12 +129,13 @@ public class TransferService {
 
     /**
      * 타행 이체 처리 (출금은행 != 입금은행)
+     * Saga 패턴의 오케스트레이션 방식을 적용하여 원자성을 보장합니다.
      */
     private TransferResponse processExternalTransfer(TransferRequest request) {
         log.info("타행 이체 프로세스 시작 - 출금은행: {}, 입금은행: {}", 
                 request.getWithdrawalBankCode(), request.getDepositBankCode());
 
-        // 1. 출금 은행 API 호출 (/transfer/withdraw)
+        // 1. [Step 1: 출금] 출금 은행 API 호출
         BankTransferWithdrawRequest withdrawRequest = BankTransferWithdrawRequest.of(
                 request.getEncryptedKey(),
                 request.getJwsSignature(),
@@ -150,25 +151,53 @@ public class TransferService {
                 request.getWithdrawalBankCode(), 
                 withdrawRequest
         );
+        log.info("타행 이체 Step 1 성공 [출금 완료] - 거래ID: {}", withdrawResponse.getTransactionId());
 
-        // 2. 입금 은행 API 호출 (/transfer/deposit)
-        BankDepositRequest depositRequest = BankDepositRequest.of(
-                request.getDepositAccountNo(),
-                request.getAmount(),
-                request.getWithdrawalBankCode(),
-                request.getWithdrawalAccountNo()
-        );
+        try {
+            // 2. [Step 2: 입금] 입금 은행 API 호출
+            BankDepositRequest depositRequest = BankDepositRequest.of(
+                    request.getDepositAccountNo(),
+                    request.getAmount(),
+                    request.getWithdrawalBankCode(),
+                    request.getWithdrawalAccountNo()
+            );
 
-        BankTransferResponse depositResponse = bankExternalClient.fetchDeposit(
-                request.getDepositBankCode(),
-                depositRequest
-        );
+            BankTransferResponse depositResponse = bankExternalClient.fetchDeposit(
+                    request.getDepositBankCode(),
+                    depositRequest
+            );
+            log.info("타행 이체 Step 2 성공 [입금 완료] - 거래ID: {}", depositResponse.getTransactionId());
 
-        // 3. 응답 DTO 변환 및 반환
-        return TransferResponse.builder()
-                .transactionId(depositResponse.getTransactionId())
-                .transactionDate(LocalDateTime.now().format(DATE_FORMATTER))
-                .balanceAfter(withdrawResponse.getBalanceAfter())
-                .build();
+            // 3. 최종 응답 반환
+            return TransferResponse.builder()
+                    .transactionId(depositResponse.getTransactionId())
+                    .transactionDate(LocalDateTime.now().format(DATE_FORMATTER))
+                    .balanceAfter(withdrawResponse.getBalanceAfter())
+                    .build();
+
+        } catch (Exception e) {
+            // 4. [Step 3: 보상 트랜잭션] 입금 실패 시 출금 은행으로 자금 복구(환불) 호출
+            log.error("타행 이체 Step 2 실패 [입금 에러]. 보상 트랜잭션(환불)을 시작합니다. 에러: {}", e.getMessage());
+            
+            try {
+                // 출금 은행에 다시 입금(환불) 요청 전송
+                BankDepositRequest refundRequest = BankDepositRequest.of(
+                        request.getWithdrawalAccountNo(), // 출금했던 계좌로
+                        request.getAmount(),
+                        request.getDepositBankCode(),    // 원래 입금하려던 은행 정보 기재
+                        request.getDepositAccountNo()
+                );
+
+                bankExternalClient.fetchDeposit(request.getWithdrawalBankCode(), refundRequest);
+                log.info("보상 트랜잭션 성공 [자금 복구 완료] - 출금 계좌로 금액이 환불되었습니다.");
+            } catch (Exception refundError) {
+                // 보상 트랜잭션까지 실패한 경우 (매우 위험한 상태 - 수동 개입 필요)
+                log.error("!!! [심각] 보상 트랜잭션 실패 !!! 자금 불일치 발생 가능성. 수동 확인이 필요합니다. 에러: {}", refundError.getMessage());
+            }
+
+            // 원래 발생했던 예외를 다시 던져서 사용자에게 에러 알림
+            if (e instanceof BusinessException) throw (BusinessException) e;
+            throw new BusinessException(ErrorCode.BANK_API_ERROR, "타행 이체 중 입금에 실패하여 환불 처리를 시도했습니다.");
+        }
     }
 }
