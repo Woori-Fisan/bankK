@@ -1,17 +1,9 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
-import { formatAmount } from '../../utils/formatter';
+import TransactionRow, { type Transaction } from './TransactionRow';
 
-export interface Transaction {
-    id: string;
-    date: string;
-    description: string;
-    target: string | null;
-    type: string;        // tx_type (DEPOSIT, WITHDRAW, TRANSFER, LOAN 등)
-    amount: string | number; // 출금은 음수, 입금은 양수
-    balance: string | number;
-    status: '완료' | '대기';
-}
+// Transaction 인터페이스는 TransactionRow.tsx에서 export된 것을 사용합니다.
+export type { Transaction };
 
 interface TransactionTableProps {
     transactions: Transaction[];
@@ -44,11 +36,6 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
         return pages;
     };
 
-    const formatCurrency = (val: string | number | null) => {
-        if (val === null || val === undefined) return '-';
-        return formatAmount(val);
-    };
-
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-xl shadow-gray-200/40 overflow-hidden flex flex-col h-[750px]">
             <div className="flex-1 overflow-auto">
@@ -66,82 +53,9 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                     </thead>
                     <tbody className="divide-y divide-gray-50 text-gray-700">
                         {transactions.length > 0 ? (
-                            transactions.map((tx) => {
-                                const amountNum = Number(tx.amount);
-                                const isWithdrawal = amountNum < 0;
-                                const isDeposit = amountNum > 0;
-
-                                return (
-                                    <tr key={tx.id} className="hover:bg-emerald-50/30 transition-all duration-200 group">
-                                        <td className="px-6 py-5 whitespace-nowrap">
-                                            <div className="flex flex-col">
-                                                <span className="text-gray-900 font-semibold">{tx.date.split(' ')[0]}</span>
-                                                <span className="text-gray-400 text-xs">{tx.date.split(' ')[1]}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            {(() => {
-                                                const typeMap: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-                                                    'DEPOSIT': { label: '입금', color: 'text-emerald-600' },
-                                                    'WITHDRAW': { label: '출금', color: 'text-rose-500' },
-                                                    'TRANSFER': { label: '이체', color: 'text-blue-600' },
-                                                    'LOAN': { label: '대출', color: 'text-indigo-600' },
-                                                };
-                                                const currentType = typeMap[tx.type] || { label: tx.type, color: 'text-gray-500', icon: null };
-                                                
-                                                return (
-                                                    <div className={`flex items-center gap-2 font-bold ${currentType.color}`}>
-                                                        {currentType.icon}
-                                                        <span>{currentType.label}</span>
-                                                    </div>
-                                                );
-                                            })()}
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex flex-col">
-                                                <span className="text-gray-900 font-black text-base group-hover:text-emerald-900 transition-colors">
-                                                    {tx.target || tx.description || '-'}
-                                                </span>
-                                                {tx.target && tx.description && (
-                                                    <span className="text-gray-400 text-xs mt-0.5">
-                                                        {tx.description}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-5 text-right">
-                                            {isWithdrawal ? (
-                                                <span className="text-rose-500 font-black text-lg">
-                                                    {formatCurrency(tx.amount)}
-                                                </span>
-                                            ) : (
-                                                <span className="text-gray-300">-</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-5 text-right">
-                                            {isDeposit ? (
-                                                <span className="text-emerald-600 font-black text-lg">
-                                                    {formatCurrency(tx.amount)}
-                                                </span>
-                                            ) : (
-                                                <span className="text-gray-300">-</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-5 text-right font-bold text-gray-900 bg-gray-50/30">
-                                            {formatCurrency(tx.balance)}
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <span className={`px-3 py-1.5 rounded-full text-xs font-black shadow-sm ${
-                                                tx.status === '완료' 
-                                                    ? 'bg-emerald-100 text-emerald-700' 
-                                                    : 'bg-amber-100 text-amber-700'
-                                            }`}>
-                                                {tx.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                );
-                            })
+                            transactions.map((tx) => (
+                                <TransactionRow key={tx.id} tx={tx} />
+                            ))
                         ) : (
                             <tr>
                                 <td colSpan={7} className="px-6 py-32 text-center">
