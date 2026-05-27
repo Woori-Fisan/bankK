@@ -1,5 +1,7 @@
 import axios from 'axios';
 import axiosInstance from './axiosInstance';
+import { useAuthStore } from '../store/useAuthStore';
+import { refreshBankPublicKeys } from '../utils/bankCrypto';
 
 interface LoginResponse {
     success: boolean;
@@ -35,6 +37,15 @@ export const login = async (
         const responseData = response.data?.data || response.data;
 
         if (responseData && responseData.accessToken) {
+            // 저장소에 토큰 정보를 먼저 반영 (refreshBankPublicKeys에서 axiosInstance 사용 시 필요)
+            const { setUserId, setUserRole, setAccessToken } = useAuthStore.getState();
+            setUserId(employeeId); // 또는 responseData에서 제공하는 실제 ID
+            setAccessToken(responseData.accessToken);
+            // userRole 등 추가 정보가 있다면 여기서 설정
+            
+            // 로그인 성공 시 은행 공개키 동기화
+            await refreshBankPublicKeys();
+            
             // Note: refreshToken is now expected to be handled via HttpOnly cookie
             return { success: true, message: '로그인 성공', ...responseData };
         } else {
@@ -72,7 +83,17 @@ export const refreshAccessToken = async (): Promise<string | null> => {
             });
             
             const responseData = response.data?.data || response.data;
-            return responseData.accessToken || null;
+            const accessToken = responseData.accessToken || null;
+
+            if (accessToken) {
+                // 저장소에 토큰 정보를 먼저 반영
+                useAuthStore.getState().setAccessToken(accessToken);
+                
+                // 토큰 리프레시 성공 시 은행 공개키 동기화
+                await refreshBankPublicKeys();
+            }
+
+            return accessToken;
         } catch (error) {
             console.error('Token Refresh Error:', error);
             return null;
@@ -93,12 +114,4 @@ export const logoutApi = async (): Promise<boolean> => {
         console.error('Logout API Error:', error);
         return false;
     }
-};
-
-// 기존 fetchBankPublicKey는 STACK_PLATFORM_FE.md에 따라 유지될 수 있으나,
-// LOGIN.md는 플랫폼 로그인에 대한 명세이므로 이 Task에서는 직접적인 관련은 없습니다.
-// 필요하다면 bankKeyStore 캐싱 로직은 별도 Task에서 다룰 수 있습니다.
-export const fetchBankPublicKey = async (): Promise<string> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...actual_bank_public_key_from_server...';
 };
