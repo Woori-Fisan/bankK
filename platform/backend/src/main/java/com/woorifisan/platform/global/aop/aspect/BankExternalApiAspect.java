@@ -3,6 +3,7 @@ package com.woorifisan.platform.global.aop.aspect;
 import static net.logstash.logback.argument.StructuredArguments.entries;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woorifisan.platform.global.exception.BankCoreException;
 import com.woorifisan.platform.global.exception.BusinessException;
 import java.util.HashMap;
 import java.util.Map;
@@ -57,6 +58,7 @@ public class BankExternalApiAspect {
         MDC.put(MDC_API_TYPE, apiType);
 
         Map<String, Object> bankContext = new HashMap<>();
+        bankContext.put("bankKeyId", null); // 추후 구현 예정
         bankContext.put("bankCode", bankCode);
         bankContext.put("apiType", apiType);
         bankContext.put("request", requestJson);
@@ -74,7 +76,18 @@ public class BankExternalApiAspect {
             log.info("[BankAPI][Response] {}", apiType, entries(Map.of("bank", bankContext)));
 
             return result;
+        } catch (BankCoreException e) {
+            // 은행 코어 에러 — 우리 플랫폼 코드 + 은행 원본 코드/메시지 함께 기록
+            stopWatch.stop();
+
+            bankContext.put("elapsedMs", stopWatch.getTotalTimeMillis());
+            bankContext.put("bankErrorCode", e.getBankErrorCode());
+            bankContext.put("bankErrorMessage", e.getBankErrorMessage());
+            log.warn("[BankAPI][BusinessError] {}", apiType, entries(Map.of("bank", bankContext)));
+
+            throw e;
         } catch (BusinessException e) {
+            // 그 외 비즈니스 예외 (은행 코어 이외 경로에서 발생한 BusinessException)
             stopWatch.stop();
 
             bankContext.put("elapsedMs", stopWatch.getTotalTimeMillis());

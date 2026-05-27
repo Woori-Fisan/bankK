@@ -8,6 +8,7 @@ import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryReques
 import com.woorifisan.platform.domain.bank.external.dto.BankWithdrawalRequest;
 import com.woorifisan.platform.global.config.BankNetworkConfig;
 import com.woorifisan.platform.global.config.BankNetworkConfig.BankProperty;
+import com.woorifisan.platform.global.exception.BankCoreException;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ApiResponse;
 import com.woorifisan.platform.global.response.ErrorCode;
@@ -54,15 +55,13 @@ public class BankExternalClient {
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(request)
                     .retrieve()
-                    // 4xx, 5xx 에러 발생 시 바디를 읽어서 BusinessException으로 변환
+                    // 4xx, 5xx 에러 발생 시 바디를 읽어서 BankCoreException으로 변환
                     .onStatus(HttpStatusCode::isError, clientResponse ->
                         clientResponse.bodyToMono(new ParameterizedTypeReference<ApiResponse<BalanceInquiryResponse>>() {})
                             .flatMap(errorBody -> {
                                 String bankErrorCode    = (errorBody.getError() != null) ? errorBody.getError().getCode()    : "UNKNOWN";
                                 String bankErrorMessage = (errorBody.getError() != null) ? errorBody.getError().getMessage() : "UNKNOWN";
-                                log.warn("[BankAPI][ErrorResponse] bankCode: {}, bankErrorCode: {}, bankErrorMessage: {}",
-                                        bankCode, bankErrorCode, bankErrorMessage);
-                                return Mono.error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
+                                return Mono.error(new BankCoreException(mapToInternalErrorCode(bankErrorCode), bankErrorCode, bankErrorMessage));
                             })
                     )
                     .bodyToMono(new ParameterizedTypeReference<ApiResponse<BalanceInquiryResponse>>() {})
@@ -110,9 +109,7 @@ public class BankExternalClient {
                             .flatMap(errorBody -> {
                                 String bankErrorCode    = (errorBody.getError() != null) ? errorBody.getError().getCode()    : "UNKNOWN";
                                 String bankErrorMessage = (errorBody.getError() != null) ? errorBody.getError().getMessage() : "UNKNOWN";
-                                log.warn("[BankAPI][ErrorResponse] bankCode: {}, bankErrorCode: {}, bankErrorMessage: {}",
-                                        bankCode, bankErrorCode, bankErrorMessage);
-                                return Mono.error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
+                                return Mono.error(new BankCoreException(mapToInternalErrorCode(bankErrorCode), bankErrorCode, bankErrorMessage));
                             })
                     )
                     .bodyToMono(new ParameterizedTypeReference<ApiResponse<TransferResponse>>() {})
@@ -160,9 +157,7 @@ public class BankExternalClient {
                                     .flatMap(errorBody -> {
                                         String bankErrorCode    = (errorBody.getError() != null) ? errorBody.getError().getCode()    : "UNKNOWN";
                                         String bankErrorMessage = (errorBody.getError() != null) ? errorBody.getError().getMessage() : "UNKNOWN";
-                                        log.warn("[BankAPI][ErrorResponse] bankCode: {}, bankErrorCode: {}, bankErrorMessage: {}",
-                                                bankCode, bankErrorCode, bankErrorMessage);
-                                        return Mono.error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
+                                        return Mono.error(new BankCoreException(mapToInternalErrorCode(bankErrorCode), bankErrorCode, bankErrorMessage));
                                     })
                     )
                     .bodyToMono(new ParameterizedTypeReference<ApiResponse<HistoryInquiryResponse>>() {})

@@ -4,6 +4,8 @@ import static net.logstash.logback.argument.StructuredArguments.entries;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woorifisan.platform.global.exception.BusinessException;
+import com.woorifisan.platform.global.response.ApiResponse;
+import com.woorifisan.platform.global.response.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
@@ -132,8 +134,10 @@ public class ControllerLoggingAspect {
             if (request != null) {
                 applyElapsedAndStatus(httpContext, executionTime, httpStatus);
                 httpContext.put("exception", e.getClass().getSimpleName());
-                log.warn("[Error] Exception: {} | Message: {}",
-                        e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
+                // GlobalExceptionHandler가 반환할 응답 바디를 재현하여 result로 기록
+                String resultJson = serialize(ApiResponse.error(e.getErrorCode(), e.getMessage()));
+                log.warn("[Error] Result: {} | Exception: {} | Message: {}",
+                        resultJson, e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
             } else {
                 log.warn("[Error] Non-HTTP | Controller: {}.{} | Time: {}ms | Exception: {} | Message: {}",
                         className, methodName, executionTime, e.getClass().getSimpleName(), e.getMessage());
@@ -146,8 +150,10 @@ public class ControllerLoggingAspect {
             if (request != null) {
                 applyElapsedAndStatus(httpContext, executionTime, HttpStatus.INTERNAL_SERVER_ERROR.value());
                 httpContext.put("exception", e.getClass().getSimpleName());
-                log.error("[Error] Exception: {} | Message: {}",
-                        e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
+                // 시스템 예외는 GlobalExceptionHandler가 INTERNAL_SERVER_ERROR로 응답
+                String resultJson = serialize(ApiResponse.error(ErrorCode.INTERNAL_SERVER_ERROR));
+                log.error("[Error] Result: {} | Exception: {} | Message: {}",
+                        resultJson, e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
             } else {
                 log.error("[Error] Non-HTTP | Controller: {}.{} | Time: {}ms | Exception: {} | Message: {}",
                         className, methodName, executionTime, e.getClass().getSimpleName(), e.getMessage());
