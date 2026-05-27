@@ -4,6 +4,7 @@ import type { TransferState } from '../types/transfer';
 const initialState = {
     step: 1,
     fromBank: '',
+    fromBankName: '',
     fromAccountNumber: '',
     customerRrnPrefix: '',
     balance: '0',

@@ -30,7 +30,11 @@ const RecipientInputFieldsSection: React.FC<Props> = ({ setError }) => {
                     <select
                         value={toBank}
                         onChange={(e) => {
-                            updateData({ toBank: e.target.value });
+                            const selectedBank = banks.find(b => b.bankCode === e.target.value);
+                            updateData({ 
+                                toBank: e.target.value,
+                                toBankName: selectedBank ? selectedBank.bankName : ''
+                            });
                             setError(null);
                         }}
                         className="w-full px-5 py-4 bg-white border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 appearance-none transition-all cursor-pointer"
