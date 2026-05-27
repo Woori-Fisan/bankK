@@ -20,9 +20,13 @@ public class BankCoreException extends BusinessException {
     /** 은행 코어 서버가 응답한 원본 에러 메시지 */
     private final String bankErrorMessage;
 
-    public BankCoreException(ErrorCode errorCode, String bankErrorCode, String bankErrorMessage) {
+    /** 은행 코어 서버의 HTTP 응답 상태 코드 (예: 400, 404, 500) */
+    private final int bankHttpStatus;
+
+    public BankCoreException(ErrorCode errorCode, String bankErrorCode, String bankErrorMessage, int bankHttpStatus) {
         super(errorCode);
         this.bankErrorCode    = bankErrorCode;
         this.bankErrorMessage = bankErrorMessage;
+        this.bankHttpStatus   = bankHttpStatus;
     }
 }

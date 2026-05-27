@@ -139,9 +139,10 @@ public class BankExternalClient {
                     .onStatus(HttpStatusCode::isError, clientResponse ->
                             clientResponse.bodyToMono(responseType)
                                     .flatMap(errorBody -> {
-                                        String bankErrorCode = (errorBody.getError() != null) ? errorBody.getError().getCode() : "UNKNOWN";
+                                        String bankErrorCode    = (errorBody.getError() != null) ? errorBody.getError().getCode()    : "UNKNOWN";
                                         String bankErrorMessage = (errorBody.getError() != null) ? errorBody.getError().getMessage() : "UNKNOWN";
-                                        return Mono.error(new BankCoreException(mapToInternalErrorCode(bankErrorCode), bankErrorCode, bankErrorMessage));
+                                        int    bankHttpStatus   = clientResponse.statusCode().value();
+                                        return Mono.error(new BankCoreException(mapToInternalErrorCode(bankErrorCode), bankErrorCode, bankErrorMessage, bankHttpStatus));
                                     })
                     )
                     .bodyToMono(responseType)

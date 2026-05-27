@@ -133,13 +133,16 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
         // args[0] = argsJson(REQ) / resultJson(RES) / ApiResponse.error JSON(ERR)
         String rawBody = (args != null && args.length > 0) ? String.valueOf(args[0]) : null;
         boolean isError = "CONTROLLER_ERR".equals(logType);
+        boolean isReq   = "CONTROLLER_REQ".equals(logType);
 
         // REQ: Aspect가 파라미터를 [elem1, elem2, ...] 배열로 직렬화 → 단일 원소면 벗겨냄
-        String bodyData     = isError ? null
-                            : "CONTROLLER_REQ".equals(logType) ? unwrapSingleElementArray(rawBody)
-                            : rawBody;
-        String errorCode    = isError ? parseApiErrorField(rawBody, "code")    : null;
-        String errorMessage = isError ? parseApiErrorField(rawBody, "message") : null;
+        String processedBody = isReq ? unwrapSingleElementArray(rawBody) : rawBody;
+        String bodyData      = isError ? null : processedBody;
+        String errorCode     = isError ? parseApiErrorField(rawBody, "code")    : null;
+        String errorMessage  = isError ? parseApiErrorField(rawBody, "message") : null;
+
+        // bankCode: REQ 시점에 ControllerLoggingAspect가 httpContext에 저장 → RES/ERR도 동일 맵 재사용
+        String bankCode = firstNonNull(getStr(httpContext, "bankCode"), UNKNOWN_BANK);
 
         return SystemLog.builder()
                 .createdAt(toLocalDateTime(event.getTimeStamp()))
@@ -147,7 +150,7 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
                 .logType(logType)
                 .traceId(mdc.get("traceId"))
                 .staffId(mdc.get("staffId"))
-                .bankCode(UNKNOWN_BANK)  // controller 단계에서 bank 정보 없음
+                .bankCode(bankCode)
                 .httpMethod(getStr(httpContext, "method"))
                 .httpUri(getStr(httpContext, "uri"))
                 .httpStatus(getInt(httpContext, "status"))
@@ -202,6 +205,9 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
                 .traceId(mdc.get("traceId"))
                 .staffId(mdc.get("staffId"))
                 .bankCode(bankCode != null ? bankCode : UNKNOWN_BANK)
+                .httpMethod(getStr(bankContext, "httpMethod"))
+                .httpUri(getStr(bankContext, "httpUri"))
+                .httpStatus(getInt(bankContext, "httpStatus"))
                 .elapsedMs(getInt(bankContext, "elapsedMs"))
                 .bodyData(resolveBankBodyData(logType, bankContext))
                 .errorCode(errorCode)
@@ -245,16 +251,32 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
 
     /**
      * Aspect가 컨트롤러 파라미터를 {@code [elem1, elem2, ...]} 배열로 직렬화하므로,
-     * 단일 원소 배열이면 원소 자체를 반환하고, 복수 원소이면 배열 그대로 반환한다.
+     * JSON 오브젝트인 원소를 추출하여 반환한다.
      *
-     * <p>예: {@code [{"accountNumber":"123"}]} → {@code {"accountNumber":"123"}}</p>
+     * <ul>
+     *   <li>오브젝트가 1개 : 그 오브젝트를 반환 (staffId 등 스칼라 값은 제거)</li>
+     *   <li>오브젝트가 여러 개 : 오브젝트만 모은 배열을 반환</li>
+     *   <li>오브젝트가 0개 : 원본 그대로 반환</li>
+     * </ul>
+     *
+     * <p>예: {@code [1, {"bankCode":"020","amount":10}]} → {@code {"bankCode":"020","amount":10}}</p>
      */
     private String unwrapSingleElementArray(String json) {
         if (json == null) return null;
         try {
             var node = OBJECT_MAPPER.readTree(json);
-            if (node.isArray() && node.size() == 1) {
-                return OBJECT_MAPPER.writeValueAsString(node.get(0));
+            if (!node.isArray()) return json;
+
+            var objectNodes = new java.util.ArrayList<com.fasterxml.jackson.databind.JsonNode>();
+            for (var elem : node) {
+                if (elem.isObject()) objectNodes.add(elem);
+            }
+
+            if (objectNodes.size() == 1) {
+                return OBJECT_MAPPER.writeValueAsString(objectNodes.get(0));
+            }
+            if (objectNodes.size() > 1) {
+                return OBJECT_MAPPER.writeValueAsString(objectNodes);
             }
         } catch (Exception ignored) {}
         return json;

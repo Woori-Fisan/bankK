@@ -105,6 +105,9 @@ public class ControllerLoggingAspect {
             httpContext.put("uri", request.getRequestURI());
             httpContext.put("clientIp", getClientIp(request));
             httpContext.put("controller", className + "." + methodName);
+            // 요청 시점에 bankCode를 한 번만 파싱해 httpContext에 저장
+            // → 이후 RES / ERR 로그에서도 동일한 맵을 재사용하므로 자동으로 포함됨
+            extractBankCode(args).ifPresent(code -> httpContext.put("bankCode", code));
 
             log.info("[Request] Args: {}", argsJson, entries(Map.of("http", httpContext)));
         } else {
@@ -194,6 +197,29 @@ public class ControllerLoggingAspect {
             return LOCALHOST;
         }
         return ip;
+    }
+
+    /**
+     * 컨트롤러 파라미터 배열에서 {@code bankCode} 필드를 찾아 반환한다.
+     *
+     * <p>직렬화 없이 원본 객체에서 직접 읽으므로 JSON 파싱 비용이 없다.
+     * {@code getBankCode()} 메서드가 있는 첫 번째 파라미터에서 추출한다.</p>
+     */
+    private java.util.Optional<String> extractBankCode(Object[] args) {
+        for (Object arg : args) {
+            if (arg == null) continue;
+            if (NON_SERIALIZABLE_TYPES.stream().anyMatch(t -> t.isInstance(arg))) continue;
+            try {
+                java.lang.reflect.Method getter = arg.getClass().getMethod("getBankCode");
+                Object value = getter.invoke(arg);
+                if (value instanceof String s && !s.isBlank()) {
+                    return java.util.Optional.of(s);
+                }
+            } catch (NoSuchMethodException ignored) {
+                // 해당 파라미터에 getBankCode() 없음 — 다음 파라미터로
+            } catch (Exception ignored) {}
+        }
+        return java.util.Optional.empty();
     }
 
     /** 서블릿 · 멀티파트 객체를 제외하고 파라미터를 JSON 문자열로 직렬화한다. 직렬화 실패 시 {@code toString()}으로 폴백한다. */
