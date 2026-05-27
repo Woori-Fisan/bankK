@@ -38,7 +38,7 @@ export const login = async (
 
         if (responseData && responseData.accessToken) {
             // 저장소에 토큰 정보를 먼저 반영 (refreshBankPublicKeys에서 axiosInstance 사용 시 필요)
-            const { setUserId, setUserRole, setAccessToken } = useAuthStore.getState();
+            const { setUserId, setAccessToken } = useAuthStore.getState();
             setUserId(employeeId); // 또는 responseData에서 제공하는 실제 ID
             setAccessToken(responseData.accessToken);
             // userRole 등 추가 정보가 있다면 여기서 설정
