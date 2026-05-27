@@ -35,18 +35,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Fluent Bit ──────────────────────────────────
-  fluent-bit:
-    image: fluent/fluent-bit:3.0
-    container_name: platform-fluent-bit
-    volumes:
-      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
-      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf
-      - ./logs:/var/log/app
-    depends_on:
-      - mysql
-      - redis
-
 volumes:
   mysql-data:
   redis-data:
