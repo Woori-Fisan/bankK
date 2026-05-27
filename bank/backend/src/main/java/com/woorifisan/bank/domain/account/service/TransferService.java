@@ -1,5 +1,7 @@
 package com.woorifisan.bank.domain.account.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woorifisan.bank.domain.account.dto.request.DepositRequest;
 import com.woorifisan.bank.domain.account.dto.request.RecipientRequest;
 import com.woorifisan.bank.domain.account.dto.request.TransferRequest;
@@ -11,8 +13,10 @@ import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.domain.key.service.BankRsaKeyService;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.exception.BusinessException;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -36,6 +40,8 @@ public class TransferService {
     private final CustomerMapper customerMapper;
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final PasswordEncoder passwordEncoder;
+    private final CryptoUtil cryptoUtil;
+    private final BankRsaKeyService bankRsaKeyService;
 
     private static final String CURRENT_BANK_CODE = "020"; // 우리은행 코드 임시 정의
 
@@ -138,15 +144,32 @@ public class TransferService {
      * @return 수취인 정보
      */
     public RecipientResponse verifyRecipient(RecipientRequest request) {
-        // 1. 계좌 조회
-        Account account = accountMapper.findByAccountNoPlain(request.getDepositAccountNo())
+        log.info("수취인 확인 요청 수신 - 은행코드: {}, 키ID: {}", request.getDepositBankCode(), request.getBankKeyId());
+
+        // 1. JWE 복호화 (RSA-OAEP-256)
+        // DTO에 포함된 bankKeyId를 사용하여 해당 버전의 개인키를 조회
+        String privateKeyPem = bankRsaKeyService.getRawPrivateKeyByKeyId(request.getBankKeyId());
+        String decryptedJson = cryptoUtil.decryptJwe(request.getReqPayload(), privateKeyPem);
+
+        // 2. 복호화된 페이로드에서 계좌번호 추출
+        String accountNo;
+        try {
+            JsonNode payloadNode = new ObjectMapper().readTree(decryptedJson);
+            accountNo = payloadNode.path("depositAccountNo").asText();
+        } catch (Exception e) {
+            log.error("복호화된 페이로드 파싱 실패", e);
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        // 3. 계좌 조회
+        Account account = accountMapper.findByAccountNoPlain(accountNo)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
 
-        // 2. 고객 조회
+        // 4. 고객 조회
         Customer customer = customerMapper.findById(account.getCustomerId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 3. 응답 생성
+        // 5. 응답 생성
         return RecipientResponse.of(
                 customer.getCustomerName(),
                 "우리은행",

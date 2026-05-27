@@ -1,3 +1,4 @@
+import { importSPKI, CompactEncrypt } from 'jose';
 import axiosInstance from '../api/axiosInstance';
 import { useBankKeyStore } from '../store/useBankKeyStore';
 
@@ -17,5 +18,49 @@ export const refreshBankPublicKeys = async (): Promise<void> => {
         }
     } catch (error) {
         console.error('은행 공개키 갱신 실패:', error);
+    }
+};
+
+/**
+ * 하이브리드 암호화 (디지털 봉투) 수행
+ * 1. 일회용 AES 대칭키 생성 및 민감 데이터 암호화 (A256GCM)
+ * 2. 해당 AES 대칭키를 은행의 RSA 공개키로 암호화 (RSA-OAEP-256)
+ * 
+ * @param sensitiveData 암호화할 민감 정보 객체
+ * @param bankCode 대상 은행 코드
+ * @returns { reqPayload: string } | null (전체 JWE 문자열)
+ */
+export const hybridEncrypt = async (
+    sensitiveData: object,
+    bankCode: string
+): Promise<{ reqPayload: string } | null> => {
+    try {
+        // 1. 저장소에서 해당 은행의 공개키 가져오기
+        const publicKeyPem = useBankKeyStore.getState().getBankPublicKey(bankCode);
+
+        if (!publicKeyPem) {
+            console.error(`은행[${bankCode}]의 공개키를 찾을 수 없습니다. 키 갱신이 필요합니다.`);
+            return null;
+        }
+
+        // 2. PEM 문자열을 CryptoKey 객체로 변환
+        const publicKey = await importSPKI(publicKeyPem, 'RSA-OAEP-256');
+
+        // 3. 민감 데이터를 바이트 배열로 변환
+        const dataBytes = new TextEncoder().encode(JSON.stringify(sensitiveData));
+
+        // 4. jose의 CompactEncrypt를 사용하여 하이브리드 암호화 수행
+        // Compact JWE 형식: header.encryptedKey.iv.ciphertext.tag
+        const jwe = await new CompactEncrypt(dataBytes)
+            .setProtectedHeader({ alg: 'RSA-OAEP-256', enc: 'A256GCM' })
+            .encrypt(publicKey);
+
+        // 5. 암호문 덩어리 전체(JWE)를 reqPayload로 반환 (Zero-Knowledge Pass-through)
+        return {
+            reqPayload: jwe
+        };
+    } catch (error) {
+        console.error('하이브리드 암호화 과정 중 오류 발생:', error);
+        return null;
     }
 };

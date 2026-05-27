@@ -1,5 +1,7 @@
 package com.woorifisan.platform.domain.bank.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woorifisan.platform.domain.bank.dto.request.TransferRecipientRequest;
 import com.woorifisan.platform.domain.bank.dto.request.TransferRequest;
 import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
@@ -13,12 +15,14 @@ import com.woorifisan.platform.domain.bank.external.dto.BankTransferWithdrawRequ
 import com.woorifisan.platform.domain.bank.external.dto.BankDepositRequest;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
+import com.woorifisan.platform.global.util.CryptoUtil;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,25 +37,70 @@ public class TransferService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
+    @Value("${TERMINAL_SECURITY_PUBLIC_KEY}")
+    private String terminalPublicKey;
+
     private final BankExternalClient bankExternalClient;
 
     /**
      * 수취인 조회 (실제 연동)
      * @param request 수취인 조회 요청 정보
+     * @param jwsSignature 헤더로 전달된 JWS 전자서명
+     * @param bankKeyId 헤더로 전달된 은행 키 ID
      * @return 조회된 수취인 정보
      */
     @Transactional(readOnly = true)
-    public TransferRecipientResponse getRecipient(TransferRecipientRequest request) {
-        log.info("수취인 조회 요청 수신 - 은행코드: {}, 계좌번호: {}", 
-                request.getDepositBankCode(), request.getDepositAccountNo());
+    public TransferRecipientResponse getRecipient(TransferRecipientRequest request, String jwsSignature, String bankKeyId) {
+        log.info("수취인 조회 요청 중계 - 은행코드: {}, 키ID: {}", request.getDepositBankCode(), bankKeyId);
 
-        // 1. 은행 코어에 전달할 요청 DTO 생성
+        // 1. 단말기 JWS 서명 검증 및 페이로드 추출
+        String formattedTerminalPublicKey = terminalPublicKey.replace("\\n", "\n");
+        String payloadJson = CryptoUtil.verifyJwsAndGetPayload(jwsSignature, formattedTerminalPublicKey);
+        
+        if (payloadJson == null) {
+            log.warn("JWS 서명 검증 실패 - 수취인 조회 차단 (BankCode: {})", request.getDepositBankCode());
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        // 2. JWS 페이로드 무결성 및 Replay Attack 방지 (Timestamp 검증)
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode payloadNode = objectMapper.readTree(payloadJson);
+            
+            String payloadReqPayload = payloadNode.path("reqPayload").asText();
+            String payloadDepositBankCode = payloadNode.path("depositBankCode").asText();
+            long timestamp = payloadNode.path("timestamp").asLong();
+
+            // A. 데이터 위변조 확인 (요청 본문 데이터와 서명된 데이터가 일치하는지)
+            if (!request.getReqPayload().equals(payloadReqPayload) || 
+                !request.getDepositBankCode().equals(payloadDepositBankCode)) {
+                log.warn("JWS 페이로드 데이터 불일치 (위변조 의심) - BankCode: {}", request.getDepositBankCode());
+                throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            }
+
+            // B. Replay Attack 방지 (Timestamp가 현재 시간 기준 5분 이내인지 검증)
+            long currentTime = System.currentTimeMillis();
+            long allowedTimeWindow = 5 * 60 * 1000; // 5분 허용
+            if (currentTime - timestamp > allowedTimeWindow || timestamp > currentTime + 60000) {
+                log.warn("JWS Timestamp 만료 (Replay Attack 의심) - BankCode: {}", request.getDepositBankCode());
+                throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            }
+
+        } catch (BusinessException be) {
+            throw be;
+        } catch (Exception e) {
+            log.error("JWS 페이로드 검증 중 오류 발생", e);
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        // 3. 은행 코어에 전달할 요청 DTO 생성 (Zero-Knowledge Pass-through)
         BankRecipientRequest bankRequest = BankRecipientRequest.of(
                 request.getDepositBankCode(),
-                request.getDepositAccountNo()
+                request.getReqPayload(),
+                bankKeyId
         );
 
-        // 2. 외부 클라이언트를 통해 은행 코어 API 호출
+        // 4. 외부 클라이언트를 통해 은행 코어 API 호출
         BankRecipientResponse bankResponse = bankExternalClient.fetchRecipient(
                 request.getDepositBankCode(),
                 bankRequest

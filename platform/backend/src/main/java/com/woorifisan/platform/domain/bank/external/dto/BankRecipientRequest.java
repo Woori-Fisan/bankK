@@ -16,12 +16,14 @@ import lombok.NoArgsConstructor;
 public class BankRecipientRequest {
 
     private String depositBankCode;
-    private String depositAccountNo;
+    private String reqPayload;      // 암호화된 전체 페이로드 (JWE)
+    private String bankKeyId;       // 은행 측 개인키 식별용 ID
 
-    public static BankRecipientRequest of(String depositBankCode, String depositAccountNo) {
+    public static BankRecipientRequest of(String depositBankCode, String reqPayload, String bankKeyId) {
         return BankRecipientRequest.builder()
                 .depositBankCode(depositBankCode)
-                .depositAccountNo(depositAccountNo)
+                .reqPayload(reqPayload)
+                .bankKeyId(bankKeyId)
                 .build();
     }
 }

@@ -12,14 +12,17 @@ import lombok.NoArgsConstructor;
  */
 @Getter
 @Builder
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class RecipientRequest {
 
     @NotBlank(message = "입금 은행 코드는 필수입니다.")
     private String depositBankCode;
 
-    @NotBlank(message = "입금 계좌 번호는 필수입니다.")
-    private String depositAccountNo;
+    @NotBlank(message = "암호화된 전체 페이로드(JWE)는 필수입니다.")
+    private String reqPayload;
+
+    @NotBlank(message = "은행 암호화 키 ID는 필수입니다.")
+    private String bankKeyId;
 
 }

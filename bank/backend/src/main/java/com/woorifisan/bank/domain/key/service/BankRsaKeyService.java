@@ -36,6 +36,26 @@ public class BankRsaKeyService {
     }
 
     /**
+     * 가장 최근의 활성화된 RSA 개인키를 평문으로 조회합니다. (서버 내부용)
+     */
+    public String getRawLatestPrivateKey() {
+        BankRsaKey bankRsaKey = bankRsaKeyMapper.findLatestActiveKey()
+                .orElseThrow(() -> new BusinessException(ErrorCode.RSA_KEY_NOT_FOUND));
+
+        return bankRsaKey.getPrivateKeyEnc();
+    }
+
+    /**
+     * 특정 Key ID를 가진 RSA 개인키를 평문으로 조회합니다. (서버 내부용)
+     */
+    public String getRawPrivateKeyByKeyId(String keyId) {
+        BankRsaKey bankRsaKey = bankRsaKeyMapper.findByKeyId(keyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RSA_KEY_NOT_FOUND));
+
+        return bankRsaKey.getPrivateKeyEnc();
+    }
+
+    /**
      * 새로운 RSA 키를 등록합니다.
      *
      * @param request 공개키와 비밀키 정보

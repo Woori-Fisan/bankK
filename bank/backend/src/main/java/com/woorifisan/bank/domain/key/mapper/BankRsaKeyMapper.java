@@ -14,6 +14,11 @@ public interface BankRsaKeyMapper {
     Optional<BankRsaKey> findLatestActiveKey();
 
     /**
+     * 특정 Key ID를 가진 RSA 키를 조회합니다.
+     */
+    Optional<BankRsaKey> findByKeyId(String keyId);
+
+    /**
      * RSA 키를 저장합니다.
      */
     void insert(BankRsaKey bankRsaKey);

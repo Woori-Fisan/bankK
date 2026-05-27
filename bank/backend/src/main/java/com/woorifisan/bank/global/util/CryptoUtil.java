@@ -1,13 +1,21 @@
 package com.woorifisan.bank.global.util;
 
+import com.nimbusds.jose.JWEObject;
+import com.nimbusds.jose.crypto.RSADecrypter;
 import java.nio.ByteBuffer;
+import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +23,7 @@ import org.springframework.stereotype.Component;
  * 보안 및 암호화 유틸리티
  * AES-256-GCM (DB 저장용) 및 SHA-256 (Blind Index용) 처리
  */
+@Slf4j
 @Component
 public class CryptoUtil {
 
@@ -112,5 +121,40 @@ public class CryptoUtil {
             // Base64가 아니면 평문 바이트로 처리
             return key.getBytes();
         }
+    }
+
+    /**
+     * JWE(민감데이터) 복호화 (RSA-OAEP-256)
+     * @param jweString 암호화된 JWE 문자열
+     * @param privateKeyPem RSA 개인키 (PEM 포맷)
+     * @return 복호화된 페이로드 (JSON 문자열)
+     */
+    public String decryptJwe(String jweString, String privateKeyPem) {
+        try {
+            RSAPrivateKey privateKey = parsePrivateKey(privateKeyPem);
+            JWEObject jweObject = JWEObject.parse(jweString);
+            jweObject.decrypt(new RSADecrypter(privateKey));
+            return jweObject.getPayload().toString();
+        } catch (Exception e) {
+            log.error("JWE 복호화 실패", e);
+            throw new RuntimeException("데이터 복호화에 실패했습니다.", e);
+        }
+    }
+
+    /**
+     * PEM 형식의 개인키 문자열을 RSAPrivateKey 객체로 변환
+     */
+    private RSAPrivateKey parsePrivateKey(String pem) throws Exception {
+        String privateKeyPEM = pem
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .replace("-----BEGIN RSA PRIVATE KEY-----", "")
+                .replace("-----END RSA PRIVATE KEY-----", "")
+                .replaceAll("\\s", "");
+
+        byte[] encoded = Base64.getDecoder().decode(privateKeyPEM);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
+        return (RSAPrivateKey) keyFactory.generatePrivate(keySpec);
     }
 }

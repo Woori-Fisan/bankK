@@ -29,8 +29,11 @@ public class TransferController {
     @Operation(summary = "수취인 조회", description = "이체 전 수취인의 계좌 정보 및 성명을 확인합니다.")
     @CustomExceptionDescription(SwaggerResponseDescription.BANK_TRANSFER)
     @PostMapping("/recipient")
-    public ApiResponse<TransferRecipientResponse> getRecipient(@RequestBody @Valid TransferRecipientRequest request) {
-        TransferRecipientResponse response = transferService.getRecipient(request);
+    public ApiResponse<TransferRecipientResponse> getRecipient(
+            @RequestHeader("x-jws-signature") String jwsSignature,
+            @RequestHeader("x-bank-key-id") String bankKeyId,
+            @RequestBody @Valid TransferRecipientRequest request) {
+        TransferRecipientResponse response = transferService.getRecipient(request, jwsSignature, bankKeyId);
         return ApiResponse.success(response);
     }
 

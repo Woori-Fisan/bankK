@@ -13,16 +13,10 @@ import lombok.Setter;
 @NoArgsConstructor
 public class TransferRecipientRequest {
 
-    @NotBlank(message = "암호화된 AES 키는 필수입니다.")
-    private String encryptedKey;
-
-    @NotBlank(message = "JWS 전자서명은 필수입니다.")
-    private String jwsSignature;
+    @NotBlank(message = "암호화된 전체 페이로드(JWE)는 필수입니다.")
+    private String reqPayload;
 
     @NotBlank(message = "입금 은행 코드는 필수입니다.")
     private String depositBankCode;
-
-    @NotBlank(message = "입금 계좌 번호는 필수입니다.")
-    private String depositAccountNo;
 
 }
