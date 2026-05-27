@@ -1,7 +1,5 @@
 import axiosInstance from './axiosInstance';
-import { hybridEncrypt } from '../utils/bankCrypto';
-import { createJwsSignature } from '../utils/authCrypto';
-import { useBankKeyStore } from '../store/useBankKeyStore';
+import { prepareSecureRequest } from '../utils/bankCrypto';
 
 export interface BalanceInquiryRequest {
     encryptedKey: string;
@@ -64,50 +62,32 @@ export const getBalance = async (request: BalanceInquiryRequest): Promise<ApiRes
 
 /**
  * 수취인 조회를 수행합니다.
- * 입금 계좌번호(depositAccountNo) 등 민감정보를 하이브리드 암호화한 전체 JWE(reqPayload)를 전송합니다.
+ * 통합 보안 유틸리티(prepareSecureRequest)를 사용하여 암호화 및 서명을 자동 처리합니다.
  */
 export const getRecipient = async (
     bankCode: string,
     accountNo: string
 ): Promise<ApiResponse<TransferRecipientResponse>> => {
     try {
-        // 0. 암호화에 사용할 키 ID 조회
-        const keyId = useBankKeyStore.getState().getBankKeyId(bankCode);
-        if (!keyId) {
-            throw new Error(`은행[${bankCode}]의 키 ID를 찾을 수 없습니다.`);
-        }
-
-        // 1. 민감 정보(계좌번호) 암호화 (JWE 전체 반환)
-        const encryptionResult = await hybridEncrypt({ depositAccountNo: accountNo }, bankCode);
+        // 1. 보안 요청 준비 (암호화 + 서명 + 키ID 통합 처리)
+        const secureRequest = await prepareSecureRequest({ depositAccountNo: accountNo }, bankCode);
         
-        if (!encryptionResult) {
-            throw new Error('수취인 조회 암호화 실패');
+        if (!secureRequest) {
+            throw new Error('보안 요청 준비 실패');
         }
 
-        // 2. JWS 전자서명 생성 (위변조 방지 + Replay Attack 방지)
-        // 페이로드에는 전체 JWE 덩어리, 은행 코드, 그리고 타임스탬프를 포함
-        const jwsSignature = await createJwsSignature({
-            reqPayload: encryptionResult.reqPayload,
-            depositBankCode: bankCode,
-            timestamp: Date.now()
-        });
+        const { payload, headers } = secureRequest;
 
-        if (!jwsSignature) {
-            throw new Error('JWS 서명 생성 실패');
-        }
-
-        // 3. 요청 객체 구성 (Body에는 민감 데이터 암호문과 은행 코드만)
+        // 2. 요청 객체 구성 (암호화된 페이로드와 평문 은행 코드 조합)
         const request: TransferRecipientRequest = {
-            reqPayload: encryptionResult.reqPayload,
+            ...payload,
             depositBankCode: bankCode
         };
 
         const response = await axiosInstance.post<ApiResponse<TransferRecipientResponse>>('/bank/transfer/recipient', request, {
-            headers: {
-                'x-jws-signature': jwsSignature,
-                'x-bank-key-id': keyId
-            }
+            headers
         });
+        
         return response.data;
     } catch (error) {
         console.error('getRecipient Error:', error);

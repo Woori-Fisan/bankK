@@ -1,6 +1,7 @@
 import { importSPKI, CompactEncrypt } from 'jose';
 import axiosInstance from '../api/axiosInstance';
 import { useBankKeyStore } from '../store/useBankKeyStore';
+import { createJwsSignature } from './authCrypto';
 
 /**
  * 모든 은행의 최신 RSA 공개키를 서버로부터 조회하여 Zustand 저장소에 업데이트합니다.
@@ -61,6 +62,53 @@ export const hybridEncrypt = async (
         };
     } catch (error) {
         console.error('하이브리드 암호화 과정 중 오류 발생:', error);
+        return null;
+    }
+};
+
+/**
+ * 보안 요청 준비 (암호화 + 서명 통합)
+ * 1. 은행별 Key ID 조회
+ * 2. 민감 데이터 하이브리드 암호화 (reqPayload 생성)
+ * 3. JWS 전자서명 생성 (헤더용)
+ * 
+ * @param sensitiveData 암호화할 민감 정보 객체
+ * @param bankCode 대상 은행 코드
+ * @returns { payload: { reqPayload: string }, headers: { 'x-jws-signature': string, 'x-bank-key-id': string } } | null
+ */
+export const prepareSecureRequest = async (
+    sensitiveData: object,
+    bankCode: string
+) => {
+    try {
+        // 1. 키 ID 조회
+        const keyId = useBankKeyStore.getState().getBankKeyId(bankCode);
+        if (!keyId) throw new Error(`은행[${bankCode}]의 키 ID를 찾을 수 없습니다.`);
+
+        // 2. 하이브리드 암호화 수행
+        const encryptionResult = await hybridEncrypt(sensitiveData, bankCode);
+        if (!encryptionResult) throw new Error('데이터 암호화 실패');
+
+        const { reqPayload } = encryptionResult;
+
+        // 3. JWS 서명 생성 (페이로드에 암호문과 은행코드, 타임스탬프 포함)
+        const jwsSignature = await createJwsSignature({
+            reqPayload,
+            depositBankCode: bankCode,
+            timestamp: Date.now()
+        });
+        if (!jwsSignature) throw new Error('JWS 서명 생성 실패');
+
+        // 4. API 호출에 즉시 사용 가능한 구조로 반환
+        return {
+            payload: { reqPayload },
+            headers: {
+                'x-jws-signature': jwsSignature,
+                'x-bank-key-id': keyId
+            }
+        };
+    } catch (error) {
+        console.error('보안 요청 준비 중 오류 발생:', error);
         return null;
     }
 };
