@@ -70,14 +70,16 @@ export const hybridEncrypt = async (
  * 보안 요청 준비 (암호화 + 서명 통합)
  * 1. 은행별 Key ID 조회
  * 2. 민감 데이터 하이브리드 암호화 (reqPayload 생성)
- * 3. JWS 전자서명 생성 (헤더용)
+ * 3. JWS 전자서명 생성 (헤더용, reqPayload + 비민감 정보 + 타임스탬프)
  * 
  * @param sensitiveData 암호화할 민감 정보 객체
- * @param bankCode 대상 은행 코드
- * @returns { payload: { reqPayload: string }, headers: { 'x-jws-signature': string, 'x-bank-key-id': string } } | null
+ * @param nonSensitiveData 평문으로 보낼 비민감 정보 객체 (서명 포함 대상)
+ * @param bankCode 대상 은행 코드 (RSA 키 조회용)
+ * @returns { payload: object, headers: { 'x-jws-signature': string, 'x-bank-key-id': string } } | null
  */
 export const prepareSecureRequest = async (
     sensitiveData: object,
+    nonSensitiveData: object,
     bankCode: string
 ) => {
     try {
@@ -91,17 +93,20 @@ export const prepareSecureRequest = async (
 
         const { reqPayload } = encryptionResult;
 
-        // 3. JWS 서명 생성 (페이로드에 암호문과 은행코드, 타임스탬프 포함)
+        // 3. JWS 서명 생성 (페이로드에 암호문과 비민감 정보들, 타임스탬프 포함)
         const jwsSignature = await createJwsSignature({
             reqPayload,
-            depositBankCode: bankCode,
+            ...nonSensitiveData,
             timestamp: Date.now()
         });
         if (!jwsSignature) throw new Error('JWS 서명 생성 실패');
 
-        // 4. API 호출에 즉시 사용 가능한 구조로 반환
+        // 4. API 호출에 즉시 사용 가능한 구조로 반환 (payload에 reqPayload와 비민감 정보 병합)
         return {
-            payload: { reqPayload },
+            payload: { 
+                reqPayload,
+                ...nonSensitiveData 
+            },
             headers: {
                 'x-jws-signature': jwsSignature,
                 'x-bank-key-id': keyId

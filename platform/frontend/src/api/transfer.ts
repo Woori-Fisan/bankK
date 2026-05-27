@@ -70,24 +70,27 @@ export const getRecipient = async (
 ): Promise<ApiResponse<TransferRecipientResponse>> => {
     try {
         // 1. 보안 요청 준비 (암호화 + 서명 + 키ID 통합 처리)
-        const secureRequest = await prepareSecureRequest({ depositAccountNo: accountNo }, bankCode);
-        
+        // 민감정보: 수취인 계좌번호, 비민감정보: 입금은행 코드 (서명 포함 대상)
+        const secureRequest = await prepareSecureRequest(
+            { depositAccountNo: accountNo },
+            { depositBankCode: bankCode },
+            bankCode
+        );
+
         if (!secureRequest) {
             throw new Error('보안 요청 준비 실패');
         }
 
         const { payload, headers } = secureRequest;
 
-        // 2. 요청 객체 구성 (암호화된 페이로드와 평문 은행 코드 조합)
+        // 2. 요청 객체 구성 (payload에 이미 reqPayload와 depositBankCode가 포함되어 있음)
         const request: TransferRecipientRequest = {
-            ...payload,
-            depositBankCode: bankCode
+            ...(payload as any)
         };
 
         const response = await axiosInstance.post<ApiResponse<TransferRecipientResponse>>('/bank/transfer/recipient', request, {
             headers
-        });
-        
+        });        
         return response.data;
     } catch (error) {
         console.error('getRecipient Error:', error);
