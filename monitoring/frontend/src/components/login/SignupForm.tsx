@@ -1,16 +1,39 @@
 import React, { useState } from 'react';
 import { UserRound, Lock, BadgeInfo } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import LoginInput from './LoginInput';
+import { register } from '../../api/auth';
 
 const SignupForm: React.FC = () => {
     const [name, setName] = useState('');
     const [loginId, setLoginId] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const navigate = useNavigate();
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        console.log('회원가입 버튼 누름', { loginId, password, name });
+        setError('');
+
+        if (name.trim().length < 1) {
+            setError('이름을 입력해주세요.');
+            return;
+        }
+        if (loginId.trim().length < 1) {
+            setError('ID를 입력해주세요.');
+            return;
+        }
+        if (password.trim().length < 8) {
+            setError('비밀번호는 8자 이상 입력해주세요.');
+            return;
+        }
+
+        try {
+            await register({ name, loginId, password });
+            navigate('/login');
+        } catch {
+            setError('회원가입에 실패했습니다. 다시 시도해주세요.');
+        }
     };
 
     return (
@@ -39,6 +62,9 @@ const SignupForm: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
             />
+            {error && (
+                <p className="text-red-500 text-sm text-center -mt-2">{error}</p>
+            )}
             <button
                 type="submit"
                 className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-4 px-4 rounded-xl transition-all mt-4 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50"

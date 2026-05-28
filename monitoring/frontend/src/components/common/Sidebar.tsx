@@ -3,12 +3,8 @@ import { NavLink, Link } from 'react-router-dom';
 import {
     LayoutDashboard,
     Activity,
-    FileText,
-    Server,
-    Settings,
     Landmark,
 } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
 
 interface SidebarItemProps {
     icon: React.ElementType;
@@ -33,8 +29,6 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon: Icon, label, to }) => (
 );
 
 const Sidebar: React.FC = () => {
-    const { isAdmin } = useAuth();
-
     return (
         <aside className="w-60 bg-slate-900 flex flex-col flex-shrink-0">
             <div className="p-6 pb-8">
