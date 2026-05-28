@@ -22,7 +22,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -93,8 +92,10 @@ public class LoanService {
         }
 
         String documentId = UUID.randomUUID().toString();
-        String originalFileName = StringUtils.cleanPath(
-                Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"));
+        String rawName = file.getOriginalFilename();
+        String originalFileName = (rawName != null)
+                ? Paths.get(rawName).getFileName().toString()
+                : "document.pdf";
         String storedFileName = documentId + "_" + originalFileName;
         String filePath = uploadDir + "/" + storedFileName;
 
