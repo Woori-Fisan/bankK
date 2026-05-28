@@ -39,8 +39,8 @@ class WithdrawalServiceLockTest {
     private PasswordEncoder passwordEncoder;
 
     @Test
-    @DisplayName("실패: 업데이트 실패 시 잔액이 부족하면 INSUFFICIENT_BALANCE 예외가 발생해야 한다")
-    void 출금_실패_업데이트시_잔액부족_구분() {
+    @DisplayName("실패: 출금 금액이 잔액보다 크면 사전 검증에서 INSUFFICIENT_BALANCE 예외가 발생해야 한다")
+    void 출금_실패_사전검증_잔액부족() {
         // given
         BigDecimal amount = new BigDecimal("10000");
         WithdrawalRequest request = WithdrawalRequest.builder()
@@ -54,7 +54,7 @@ class WithdrawalServiceLockTest {
                 .id(1L)
                 .accountNo("123-456")
                 .password("encoded-password")
-                .balance(new BigDecimal("20000"))
+                .balance(new BigDecimal("5000")) // 요청 금액 10000보다 작음
                 .accountType("DEPOSIT")
                 .status("NORMAL")
                 .version(1)
@@ -63,18 +63,6 @@ class WithdrawalServiceLockTest {
         given(accountMapper.findByAccountNoAndRrnPrefix(anyString(), anyString()))
                 .willReturn(Optional.of(account));
         given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
-        
-        // updateBalance 0을 반환하도록 설정 (실패 상황)
-        given(accountMapper.updateBalance(anyLong(), any(BigDecimal.class), anyInt()))
-                .willReturn(0);
-        
-        // 다시 조회했을 때 잔액이 부족한 상황 모사
-        Account updatedAccount = Account.builder()
-                .id(1L)
-                .balance(new BigDecimal("5000")) // 요청 금액 10000보다 작음
-                .version(2)
-                .build();
-        given(accountMapper.findById(1L)).willReturn(Optional.of(updatedAccount));
 
         // when & then
         assertThatThrownBy(() -> withdrawalService.withdraw(request))
@@ -112,14 +100,6 @@ class WithdrawalServiceLockTest {
         given(accountMapper.updateBalance(anyLong(), any(BigDecimal.class), anyInt()))
                 .willReturn(0);
         
-        // 다시 조회했을 때 잔액은 충분하지만 버전이 다른 상황 모사
-        Account updatedAccount = Account.builder()
-                .id(1L)
-                .balance(new BigDecimal("20000")) 
-                .version(2) // 버전이 올라감
-                .build();
-        given(accountMapper.findById(1L)).willReturn(Optional.of(updatedAccount));
-
         // when & then
         assertThatThrownBy(() -> withdrawalService.withdraw(request))
                 .isInstanceOf(BusinessException.class)
