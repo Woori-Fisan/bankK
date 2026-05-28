@@ -4,11 +4,11 @@ import com.woorifisan.platform.crypto.dto.response.BankRsaKeyResponse;
 import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
+import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankDepositRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
-import com.woorifisan.platform.domain.bank.external.dto.BankRecipientResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferWithdrawRequest;
@@ -54,14 +54,14 @@ public class BankExternalClient {
     /**
      * 특정 은행의 수취인 조회 API를 호출합니다.
      */
-    public BankRecipientResponse fetchRecipient(String bankCode, BankRecipientRequest request) {
+    public TransferRecipientResponse fetchRecipient(String bankCode, BankRecipientRequest request) {
         BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
         if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
 
         String url = bankProperty.getUrl("recipient");
         log.info("외부 은행 API 호출 [수취인조회] - URL: {}, 은행코드: {}", url, bankCode);
 
-        return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankRecipientResponse>>() {}, bankCode);
+        return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<TransferRecipientResponse>>() {}, bankCode);
     }
 
     /**

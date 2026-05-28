@@ -6,7 +6,6 @@ import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientRespons
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.external.client.BankExternalClient;
 import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
-import com.woorifisan.platform.domain.bank.external.dto.BankRecipientResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferWithdrawRequest;
@@ -52,18 +51,11 @@ public class TransferService {
                 bankKeyId
         );
 
-        // 2. 외부 클라이언트를 통해 은행 코어 API 호출
-        BankRecipientResponse bankResponse = bankExternalClient.fetchRecipient(
+        // 2. 외부 클라이언트를 통해 은행 코어 API 호출 및 결과 직접 반환 (Pass-through)
+        return bankExternalClient.fetchRecipient(
                 request.getDepositBankCode(),
                 bankRequest
         );
-
-        // 3. 응답 DTO 변환 및 반환 (Pass-through)
-        return TransferRecipientResponse.builder()
-                .resPayload(bankResponse.getResPayload())
-                .depositBankName(bankResponse.getDepositBankName())
-                .accountStatus(bankResponse.getAccountStatus())
-                .build();
     }
 
     /**

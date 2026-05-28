@@ -19,4 +19,9 @@ public abstract class SecureRequest {
      */
     private String reqPayload;
 
+    /**
+     * 은행 측 개인키 식별을 위한 ID
+     */
+    private String bankKeyId;
+
 }
