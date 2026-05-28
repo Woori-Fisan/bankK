@@ -51,8 +51,15 @@ public class ControllerLoggingAspect {
     private static final String LOCALHOST            = "127.0.0.1";
 
     // 직렬화 제외 타입 (서블릿 내부 객체 · 멀티파트)
+    // Jackson으로 직렬화하려고 시도하면 순환 참조 오류가 발생하거나 직렬화 실패 예외가 발생할 수 있음
     private static final Set<Class<?>> NON_SERIALIZABLE_TYPES = Set.of(
-            HttpServletRequest.class, HttpServletResponse.class, MultipartFile.class
+            HttpServletRequest.class,
+            HttpServletResponse.class,
+            MultipartFile.class,
+            org.springframework.validation.Errors.class,       // BindingResult 포함
+            jakarta.servlet.http.HttpSession.class,
+            java.security.Principal.class,
+            org.springframework.web.context.request.WebRequest.class
     );
 
     @Pointcut("@within(org.springframework.web.bind.annotation.RestController)")
@@ -199,15 +206,19 @@ public class ControllerLoggingAspect {
     private String serialize(Object obj) {
         if (obj == null) return "null";
         if (obj instanceof Object[] args) {
-            return Arrays.stream(args)
-                    .filter(arg -> arg == null ||
-                            NON_SERIALIZABLE_TYPES.stream().noneMatch(t -> t.isInstance(arg)))
-                    .map(this::serialize)
-                    .collect(Collectors.joining(", ", "[", "]"));
+            try {
+                return Arrays.stream(args)
+                        .filter(arg -> arg == null ||
+                                NON_SERIALIZABLE_TYPES.stream().noneMatch(t -> t.isInstance(arg)))
+                        .map(this::serialize)
+                        .collect(Collectors.joining(", ", "[", "]"));
+            } catch (Throwable t) {
+                return String.valueOf(args);
+            }
         }
         try {
             return objectMapper.writeValueAsString(obj);
-        } catch (Exception e) {
+        } catch (Throwable t) {
             return String.valueOf(obj);
         }
     }
