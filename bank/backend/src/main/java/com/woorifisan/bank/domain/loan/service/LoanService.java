@@ -428,6 +428,7 @@ public class LoanService {
     private void validateRequiredDocuments(List<LoanEvaluateRequest.DocumentInfo> documents) {
         List<String> fileNames = (documents == null) ? List.of() :
                 documents.stream()
+                        .filter(Objects::nonNull)
                         .map(LoanEvaluateRequest.DocumentInfo::getFileName)
                         .filter(Objects::nonNull)
                         .map(String::toLowerCase)
