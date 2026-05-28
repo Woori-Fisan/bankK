@@ -9,7 +9,6 @@ const EmployeeDetailPanel: React.FC = () => {
     const { selectedEmployee } = useEmployeeStore();
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-    const [resetPasswordResult, setResetPasswordResult] = useState<string | null>(null);
     const [showResetSuccess, setShowResetSuccess] = useState(false);
 
     if (!selectedEmployee) {
