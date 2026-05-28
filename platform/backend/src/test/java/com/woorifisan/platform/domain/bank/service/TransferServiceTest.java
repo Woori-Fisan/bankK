@@ -10,7 +10,6 @@ import com.woorifisan.platform.domain.bank.dto.request.TransferRequest;
 import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.external.client.BankExternalClient;
-import com.woorifisan.platform.domain.bank.external.dto.BankRecipientResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -36,85 +35,58 @@ class TransferServiceTest {
         // given
         TransferRecipientRequest request = new TransferRecipientRequest();
         request.setDepositBankCode("020");
-        request.setDepositAccountNo("12345678");
+        request.setReqPayload("encrypted-payload");
 
-        BankRecipientResponse mockBankResponse = BankRecipientResponse.builder()
-                .depositorName("홍길동")
+        TransferRecipientResponse mockBankResponse = TransferRecipientResponse.builder()
+                .resPayload("encrypted-res-payload")
                 .depositBankName("우리은행")
-                .depositAccountNo("12345678")
                 .accountStatus("NORMAL")
                 .build();
 
         given(bankExternalClient.fetchRecipient(eq("020"), any())).willReturn(mockBankResponse);
 
         // when
-        TransferRecipientResponse response = transferService.getRecipient(request);
+        TransferRecipientResponse response = transferService.getRecipient(request, "bank-key-id");
 
         // then
-        assertThat(response.getDepositorName()).isEqualTo("홍길동");
-        assertThat(response.getDepositBankAccountNo()).isEqualTo("12345678");
+        assertThat(response.getDepositBankName()).isEqualTo("우리은행");
+        assertThat(response.getAccountStatus()).isEqualTo("NORMAL");
+        assertThat(response.getResPayload()).isEqualTo("encrypted-res-payload");
     }
 
     @Test
-    @DisplayName("당행 이체 실행 성공 테스트")
-    void executeTransfer_internal_success() {
+    @DisplayName("이체 실행 성공 테스트 (통합 로직)")
+    void executeTransfer_success() {
         // given
         TransferRequest request = new TransferRequest();
         request.setWithdrawalBankCode("020");
-        request.setWithdrawalAccountNo("11112222");
-        request.setWithdrawalPassword("1234");
-        request.setCustomerRrnPrefix("9001011");
-        request.setDepositBankCode("020");
-        request.setDepositAccountNo("33334444");
-        request.setAmount(new BigDecimal("10000"));
-
-        BankTransferResponse mockBankResponse = BankTransferResponse.builder()
-                .transactionId(UUID.randomUUID().toString())
-                .transactionDate("2026-05-27 10:00:00")
-                .balanceAfter(new BigDecimal("500000"))
-                .build();
-
-        given(bankExternalClient.executeTransfer(eq("020"), any())).willReturn(mockBankResponse);
-
-        // when
-        TransferResponse response = transferService.executeTransfer(request);
-
-        // then
-        assertThat(response.getTransactionId()).isEqualTo(mockBankResponse.getTransactionId());
-        assertThat(response.getTransactionDate()).isEqualTo("2026-05-27");
-        assertThat(response.getBalanceAfter()).isEqualByComparingTo(new BigDecimal("500000"));
-    }
-
-    @Test
-    @DisplayName("타행 이체 실행 성공 테스트")
-    void executeTransfer_external_success() {
-        // given
-        TransferRequest request = new TransferRequest();
-        request.setWithdrawalBankCode("020");
-        request.setWithdrawalAccountNo("11112222");
-        request.setWithdrawalPassword("1234");
-        request.setCustomerRrnPrefix("9001011");
         request.setDepositBankCode("004");
-        request.setDepositAccountNo("33334444");
         request.setAmount(new BigDecimal("10000"));
+        request.setWithdrawReqPayload("withdraw-jwe");
+        request.setDepositReqPayload("deposit-jwe");
 
         BankTransferResponse mockWithdrawResponse = BankTransferResponse.builder()
                 .transactionId(UUID.randomUUID().toString())
-                .balanceAfter(new BigDecimal("490000"))
+                .transactionDate("2026-05-27 10:00:00")
+                .balanceAfter(new BigDecimal("500000"))
+                .resPayload("withdraw-res-jwe")
                 .build();
 
         BankTransferResponse mockDepositResponse = BankTransferResponse.builder()
                 .transactionId(UUID.randomUUID().toString())
+                .transactionDate("2026-05-27 10:00:01")
                 .build();
 
         given(bankExternalClient.fetchTransferWithdraw(eq("020"), any())).willReturn(mockWithdrawResponse);
         given(bankExternalClient.fetchDeposit(eq("004"), any())).willReturn(mockDepositResponse);
 
         // when
-        TransferResponse response = transferService.executeTransfer(request);
+        TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key", "d-key");
 
         // then
         assertThat(response.getTransactionId()).isEqualTo(mockDepositResponse.getTransactionId());
-        assertThat(response.getBalanceAfter()).isEqualByComparingTo(new BigDecimal("490000"));
+        assertThat(response.getTransactionDate()).isEqualTo("2026-05-27");
+        assertThat(response.getBalanceAfter()).isEqualByComparingTo(new BigDecimal("500000"));
+        assertThat(response.getResPayload()).isEqualTo("withdraw-res-jwe");
     }
 }

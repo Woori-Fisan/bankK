@@ -22,7 +22,7 @@ VALUES (
        );
 
 INSERT INTO transaction_ledger (tx_id, account_id, tx_type, amount, balance_after, target_bank_code, target_account, description, status, transacted_at)
-VALUES (
+VALUES 
            (1, 10, 'DEPOSIT', 100000.00, 100000.00, NULL, NULL, '급여', 'SUCCESS', '2026-05-01 09:00:00'),
            (2, 10, 'WITHDRAWAL', 15000.00, 85000.00, NULL, NULL, '점심식사', 'SUCCESS', '2026-05-02 12:30:00'),
            (3, 10, 'TRANSFER_OUT', 30000.00, 55000.00, '004', '111-222-333', '친구송금', 'SUCCESS', '2026-05-03 18:45:00'),
@@ -43,4 +43,3 @@ VALUES (
            (18, 10, 'WITHDRAWAL', 18000.00, 162000.00, NULL, NULL, '도서구매', 'SUCCESS', '2026-05-22 14:45:00'),
            (19, 10, 'TRANSFER_OUT', 32000.00, 130000.00, '020', '333-222-111', '구독료', 'SUCCESS', '2026-05-24 09:30:00'),
            (20, 10, 'TRANSFER_IN', 20000.00, 150000.00, '081', '777-666-555', '캐시백', 'SUCCESS', '2026-05-25 15:00:00');
-      );
