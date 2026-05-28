@@ -142,8 +142,12 @@ public class BankExternalClient {
                                         String bankErrorCode    = (errorBody.getError() != null) ? errorBody.getError().getCode()    : "UNKNOWN";
                                         String bankErrorMessage = (errorBody.getError() != null) ? errorBody.getError().getMessage() : "UNKNOWN";
                                         int    bankHttpStatus   = clientResponse.statusCode().value();
-                                        return Mono.error(new BankCoreException(mapToInternalErrorCode(bankErrorCode), bankErrorCode, bankErrorMessage, bankHttpStatus));
+                                        return Mono.<Throwable>error(new BankCoreException(mapToInternalErrorCode(bankErrorCode), bankErrorCode, bankErrorMessage, bankHttpStatus));
                                     })
+                                    .switchIfEmpty(Mono.defer(() -> {
+                                        int bankHttpStatus = clientResponse.statusCode().value();
+                                        return Mono.error(new BankCoreException(ErrorCode.BANK_API_ERROR, "UNKNOWN", "Empty error response", bankHttpStatus));
+                                    }))
                     )
                     .bodyToMono(responseType)
                     .block();
