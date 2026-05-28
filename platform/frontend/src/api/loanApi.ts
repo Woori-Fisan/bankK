@@ -18,6 +18,11 @@ export interface LoanDocument {
   agreedAt: string;
 }
 
+export interface UploadedDocumentInfo {
+  documentId: string;
+  fileName: string;
+}
+
 export interface EvaluationRequest {
   bankCode: string;
   customerName: string;
@@ -26,6 +31,7 @@ export interface EvaluationRequest {
   depositBankCode: string;
   depositAccountNo: string;
   documents: LoanDocument[];
+  uploadedDocumentIds: string[];
 }
 
 export interface EvaluationResponse {
@@ -90,6 +96,17 @@ export interface ExecutionResponse {
   repaymentStartDate: string;
   maturityDate: string;
 }
+
+export const uploadLoanDocument = async (file: File): Promise<UploadedDocumentInfo> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await axiosInstance.post<ApiResponse<UploadedDocumentInfo>>(
+    '/loan/documents',
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return data.data!;
+};
 
 export const fetchReviewDocuments = async (): Promise<ReviewDocumentsResponse> => {
   const { data } = await axiosInstance.get<ApiResponse<ReviewDocumentsResponse>>(

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     User, Building2, Upload, FileText, X, ChevronLeft, ChevronRight,
     FileType, CheckCircle2, Loader2,
@@ -6,11 +6,19 @@ import {
 import type { LoanData } from '../../pages/LoanApplication';
 import { useReviewDocuments, useSubmitLoanEvaluation, useBankList, extractApiError } from '../../hooks/useLoan';
 import type { ReviewDocument } from '../../api/loanApi';
+import { uploadLoanDocument } from '../../api/loanApi';
 import { isValidAccountNumber } from '../../utils/validator';
 
 interface AgreedDoc extends ReviewDocument {
     agreed: boolean;
 }
+
+const REQUIRED_DOCS = [
+    { label: '신분증 사본', hint: '신분증.pdf / 면허증.pdf', keywords: ['신분증', '면허증'] },
+    { label: '재직증명서', hint: '재직증명서.pdf', keywords: ['재직증명서'] },
+    { label: '근로소득 원천징수영수증', hint: '원천징수.pdf', keywords: ['원천징수'] },
+    { label: '건강보험료 납부확인서', hint: '건강보험.pdf', keywords: ['건강보험'] },
+] as const;
 
 interface LoanRequestFormProps {
     onNext: (data: LoanData, applicationId: string) => void;
@@ -32,11 +40,12 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
     });
     const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoanData | 'submit', string>>>({});
 
-    const [files, setFiles] = useState<{ id: number; name: string; progress: number; status: string }[]>([]);
+    const [files, setFiles] = useState<{ id: number; name: string; progress: number; status: string; documentId?: string }[]>([]);
     const [agreedDocs, setAgreedDocs] = useState<AgreedDoc[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeDoc, setActiveDoc] = useState<AgreedDoc | null>(null);
     const [viewedDocs, setViewedDocs] = useState<Set<string>>(new Set());
+    const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
 
     const { data: docsData, isLoading: isDocsLoading } = useReviewDocuments();
     const { data: bankList, isLoading: isBankListLoading } = useBankList();
@@ -47,6 +56,17 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
             setAgreedDocs(docsData.documents.map((d) => ({ ...d, agreed: false })));
         }
     }, [docsData]);
+
+    useEffect(() => {
+        if (!isModalOpen) return;
+        const handler = (e: MessageEvent) => {
+            if (e.data === 'terms-scrolled-to-bottom') {
+                setHasScrolledToBottom(true);
+            }
+        };
+        window.addEventListener('message', handler);
+        return () => window.removeEventListener('message', handler);
+    }, [isModalOpen]);
 
     const handleTermToggle = (documentType: string) => {
         setAgreedDocs((prev) =>
@@ -61,16 +81,38 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
         setAgreedDocs((prev) => prev.map((d) => ({ ...d, agreed: !allAgreed })));
     };
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files;
         if (!selected) return;
-        const newFiles = Array.from(selected).map((file, idx) => ({
-            id: Date.now() + idx,
-            name: file.name,
-            progress: 100,
-            status: '완료',
-        }));
-        setFiles((prev) => [...prev, ...newFiles]);
+        const fileArray = Array.from(selected);
+        e.target.value = '';
+
+        for (let i = 0; i < fileArray.length; i++) {
+            const file = fileArray[i];
+            const tempId = Date.now() + i;
+
+            setFiles((prev) => [
+                ...prev,
+                { id: tempId, name: file.name, progress: 0, status: '업로드 중...' },
+            ]);
+
+            try {
+                const result = await uploadLoanDocument(file);
+                setFiles((prev) =>
+                    prev.map((f) =>
+                        f.id === tempId
+                            ? { ...f, progress: 100, status: '완료', documentId: result.documentId }
+                            : f,
+                    ),
+                );
+            } catch {
+                setFiles((prev) =>
+                    prev.map((f) =>
+                        f.id === tempId ? { ...f, status: '업로드 실패', progress: 0 } : f,
+                    ),
+                );
+            }
+        }
     };
 
     const handleFileDelete = (id: number) => {
@@ -80,7 +122,33 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
     const openModal = (doc: AgreedDoc) => {
         setViewedDocs(prev => new Set([...prev, doc.documentType]));
         setActiveDoc(doc);
+        setHasScrolledToBottom(false);
         setIsModalOpen(true);
+    };
+
+    const buildTermsSrcDoc = (content: string | undefined): string => {
+        const body = content ?? '<p style="padding:16px;font-family:sans-serif;color:#555">내용을 불러올 수 없습니다.</p>';
+        return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>html,body{margin:0;padding:0;}</style>
+</head>
+<body>
+${body}
+<script>
+(function(){
+  function check(){
+    var scrolled=window.scrollY+window.innerHeight;
+    var total=document.documentElement.scrollHeight;
+    if(scrolled>=total-5){window.parent.postMessage('terms-scrolled-to-bottom','*');}
+  }
+  window.addEventListener('scroll',check);
+  window.addEventListener('load',check);
+})();
+</` + `script>
+</body>
+</html>`;
     };
 
     const handleModalAgree = () => {
@@ -106,6 +174,10 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
         } else if (!isValidAccountNumber(formData.accountNo)) {
             errors.accountNo = '올바른 계좌번호 형식을 입력해주세요. (10~14자리 숫자)';
         }
+        if (!allDocsCovered) {
+            const missingLabels = coveredDocs.filter((d) => !d.covered).map((d) => d.label);
+            errors.submit = `누락된 서류: ${missingLabels.join(', ')}`;
+        }
         const mandatoryNotAgreed = agreedDocs.filter((d) => d.isMandatory && !d.agreed);
         if (mandatoryNotAgreed.length > 0) {
             errors.submit = '필수 약관에 모두 동의해주세요.';
@@ -129,6 +201,10 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                     agreedAt,
                 }));
 
+            const uploadedDocumentIds = files
+                .filter((f) => f.documentId)
+                .map((f) => f.documentId!);
+
             const result = await submitMutation.mutateAsync({
                 bankCode: formData.bankCode!,
                 customerName: formData.userName!,
@@ -137,6 +213,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                 depositBankCode: formData.bankCode!,
                 depositAccountNo: formData.accountNo!,
                 documents,
+                uploadedDocumentIds,
             });
 
             onNext({ ...formData, rrn: `${rrnFront}-${rrnBack}` }, result.applicationId);
@@ -145,8 +222,25 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
         }
     };
 
+    const isUploading = files.some((f) => f.status === '업로드 중...');
+
+    const uploadedFileNames = files
+        .filter((f) => f.documentId)
+        .map((f) => f.name.toLowerCase());
+
+    const coveredDocs = REQUIRED_DOCS.map((doc) => ({
+        ...doc,
+        covered: uploadedFileNames.some((name) =>
+            doc.keywords.some((kw) => name.includes(kw)),
+        ),
+    }));
+
+    const allDocsCovered = coveredDocs.every((d) => d.covered);
+
     const isNextDisabled =
         submitMutation.isPending ||
+        isUploading ||
+        !allDocsCovered ||
         agreedDocs.filter((d) => d.isMandatory).some((d) => !d.agreed) ||
         !formData.userName ||
         !formData.accountNo;
@@ -336,7 +430,22 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                         <Upload className="w-5 h-5 text-gray-400" />
                         <h3 className="text-sm font-bold text-gray-900">서류 업로드</h3>
                     </div>
-                    <p className="text-[10px] text-gray-500 mb-4">필수 서류를 업로드해주세요. (PDF, 최대 10MB)</p>
+
+                    {/* 필수 서류 체크리스트 */}
+                    <div className="mb-4 space-y-1.5">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">필수 서류 (4종)</p>
+                        {coveredDocs.map((doc) => (
+                            <div key={doc.label} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs border ${doc.covered ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-50 border-gray-100 text-gray-500'}`}>
+                                <CheckCircle2 className={`w-3.5 h-3.5 flex-shrink-0 ${doc.covered ? 'text-emerald-500' : 'text-gray-300'}`} />
+                                <span className="font-medium">{doc.label}</span>
+                                {!doc.covered && (
+                                    <span className="ml-auto text-[10px] text-gray-400">{doc.hint}</span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    <p className="text-[10px] text-gray-500 mb-3">파일명에 위 키워드가 포함되어야 합니다. (PDF, 최대 10MB)</p>
 
                     <input
                         type="file"
@@ -369,16 +478,22 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                 className="p-3 bg-gray-50 border border-gray-100 rounded-lg flex items-center gap-3"
                             >
                                 <div className="w-8 h-8 bg-white border border-gray-200 rounded flex items-center justify-center">
-                                    <FileType className="w-4 h-4 text-red-500" />
+                                    {file.status === '업로드 중...' ? (
+                                        <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                                    ) : (
+                                        <FileType className="w-4 h-4 text-red-500" />
+                                    )}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between mb-1">
                                         <p className="text-xs font-medium text-gray-900 truncate">{file.name}</p>
-                                        <span className="text-[10px] text-gray-500">{file.status}</span>
+                                        <span className={`text-[10px] ${file.status === '업로드 실패' ? 'text-red-500' : 'text-gray-500'}`}>
+                                            {file.status}
+                                        </span>
                                     </div>
                                     <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
                                         <div
-                                            className="h-full bg-emerald-500 transition-all duration-500"
+                                            className={`h-full transition-all duration-500 ${file.status === '업로드 실패' ? 'bg-red-400' : 'bg-emerald-500'}`}
                                             style={{ width: `${file.progress}%` }}
                                         />
                                     </div>
@@ -386,7 +501,8 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                                 <button
                                     type="button"
                                     onClick={() => handleFileDelete(file.id)}
-                                    className="text-gray-400 hover:text-red-500 transition-colors"
+                                    disabled={file.status === '업로드 중...'}
+                                    className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
@@ -533,12 +649,19 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                             </button>
                         </div>
                         <iframe
-                            srcDoc={activeDoc.documentContent ?? '<p style="padding:16px;font-family:sans-serif;color:#555">내용을 불러올 수 없습니다.</p>'}
+                            srcDoc={buildTermsSrcDoc(activeDoc.documentContent)}
                             className="w-full h-[400px] border-0 bg-white"
                             sandbox="allow-scripts"
                             title={activeDoc.documentName}
                         />
-                        <div className="p-5 border-t border-gray-100 flex justify-end gap-3">
+                        <div className="px-5 pt-3 pb-1 border-t border-gray-100">
+                            {!hasScrolledToBottom && (
+                                <p className="text-[11px] text-amber-600 text-center font-medium">
+                                    약관을 끝까지 읽어야 동의할 수 있습니다.
+                                </p>
+                            )}
+                        </div>
+                        <div className="px-5 pb-5 flex justify-end gap-3">
                             <button
                                 type="button"
                                 onClick={() => setIsModalOpen(false)}
@@ -549,7 +672,12 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
                             <button
                                 type="button"
                                 onClick={handleModalAgree}
-                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800"
+                                disabled={!hasScrolledToBottom}
+                                className={`px-6 py-2.5 rounded-xl font-bold text-xs transition-colors ${
+                                    hasScrolledToBottom
+                                        ? 'bg-slate-900 text-white hover:bg-slate-800'
+                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                }`}
                             >
                                 동의하고 닫기
                             </button>
