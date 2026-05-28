@@ -9,7 +9,6 @@ import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryReques
 import com.woorifisan.platform.domain.bank.external.dto.BankDepositRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
-import com.woorifisan.platform.domain.bank.external.dto.BankTransferRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferWithdrawRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankWithdrawalRequest;
@@ -65,19 +64,6 @@ public class BankExternalClient {
     }
 
     /**
-     * 특정 은행의 이체 API를 호출합니다. (당행 이체용)
-     */
-    public BankTransferResponse executeTransfer(String bankCode, BankTransferRequest request) {
-        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
-        if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
-
-        String url = bankProperty.getUrl("transfer");
-        log.info("외부 은행 API 호출 [이체] - URL: {}, 은행코드: {}", url, bankCode);
-
-        return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {}, bankCode);
-    }
-
-    /**
      * 특정 은행의 타행 이체용 출금 API를 호출합니다.
      */
     public BankTransferResponse fetchTransferWithdraw(String bankCode, BankTransferWithdrawRequest request) {
@@ -99,6 +85,19 @@ public class BankExternalClient {
 
         String url = bankProperty.getUrl("deposit");
         log.info("외부 은행 API 호출 [입금] - URL: {}, 은행코드: {}", url, bankCode);
+
+        return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {}, bankCode);
+    }
+
+    /**
+     * 특정 은행의 이체 환불 API를 호출합니다. (입금 실패 시 복구용)
+     */
+    public BankTransferResponse fetchRefund(String bankCode, BankTransferWithdrawRequest request) {
+        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
+        if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+
+        String url = bankProperty.getUrl("refund");
+        log.info("외부 은행 API 호출 [이체환불] - URL: {}, 은행코드: {}", url, bankCode);
 
         return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {}, bankCode);
     }

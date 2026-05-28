@@ -1,6 +1,8 @@
 package com.woorifisan.bank.domain.account.service;
 
+import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedDepositData;
 import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedRecipientData;
+import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedWithdrawData;
 import com.woorifisan.bank.domain.account.dto.request.DepositRequest;
 import com.woorifisan.bank.domain.account.dto.request.RecipientRequest;
 import com.woorifisan.bank.domain.account.dto.request.TransferRequest;
@@ -41,43 +43,6 @@ public class TransferService {
     private final SecurityService securityService;
 
     private static final String CURRENT_BANK_CODE = "020"; // 우리은행 코드 임시 정의
-
-    /**
-     * 이체 실행 (기존 로직 유지)
-     */
-    @Transactional
-    public TransferResponse executeTransfer(TransferRequest request) {
-        // ... (기존 로직 동일)
-        if (!CURRENT_BANK_CODE.equals(request.getDepositBankCode())) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT);
-        }
-        Account sender = accountMapper.findByAccountNoPlain(request.getWithdrawalAccountNo())
-                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-        verifyCustomerIdentification(sender.getCustomerId(), request.getCustomerRrnPrefix());
-        if (!passwordEncoder.matches(request.getWithdrawalPassword(), sender.getPassword())) {
-            throw new BusinessException(ErrorCode.BANK_PW_ERROR);
-        }
-        Account receiver = accountMapper.findByAccountNoPlain(request.getDepositAccountNo())
-                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-        if (sender.getId() < receiver.getId()) {
-            sender = accountMapper.findByIdForUpdate(sender.getId()).orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-            receiver = accountMapper.findByIdForUpdate(receiver.getId()).orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-        } else {
-            receiver = accountMapper.findByIdForUpdate(receiver.getId()).orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-            sender = accountMapper.findByIdForUpdate(sender.getId()).orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-        }
-        if (sender.getBalance().compareTo(request.getAmount()) < 0) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
-        BigDecimal senderNewBalance = sender.getBalance().subtract(request.getAmount());
-        BigDecimal receiverNewBalance = receiver.getBalance().add(request.getAmount());
-        accountMapper.updateBalance(sender.getId(), request.getAmount().negate());
-        accountMapper.updateBalance(receiver.getId(), request.getAmount());
-        String txId = UUID.randomUUID().toString();
-        transactionLedgerMapper.insert(TransactionLedger.of(txId + "-W", sender.getId(), "TRANSFER", request.getAmount().negate(), senderNewBalance, CURRENT_BANK_CODE, request.getDepositAccountNo(), "이체출금(" + request.getDepositAccountNo() + ")", "SUCCESS"));
-        transactionLedgerMapper.insert(TransactionLedger.of(txId + "-D", receiver.getId(), "TRANSFER", request.getAmount(), receiverNewBalance, CURRENT_BANK_CODE, request.getWithdrawalAccountNo(), "이체입금(" + request.getWithdrawalAccountNo() + ")", "SUCCESS"));
-        return TransferResponse.of(txId, LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")), senderNewBalance);
-    }
 
     /**
      * 수취인 확인
@@ -124,40 +89,155 @@ public class TransferService {
     }
 
     /**
-     * 출금 이체 실행 (기존 로직 유지)
+     * 출금 이체 실행 (E2EE 적용)
      */
     @Transactional
     public TransferResponse withdrawTransfer(TransferRequest request) {
-        Account sender = accountMapper.findByAccountNoPlain(request.getWithdrawalAccountNo()).orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-        verifyCustomerIdentification(sender.getCustomerId(), request.getCustomerRrnPrefix());
-        if (!passwordEncoder.matches(request.getWithdrawalPassword(), sender.getPassword())) {
+        log.info("출금 이체 요청 수신 - 출금은행: {}, 입금은행: {}, 금액: {}", 
+                request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
+
+        // 1. 복호화 및 CEK 추출
+        SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
+                securityService.decryptWithKey(request, DecryptedWithdrawData.class);
+        
+        DecryptedWithdrawData decryptedData = decryptionResult.getData();
+
+        // 2. 계좌 조회 및 검증
+        Account sender = accountMapper.findByAccountNoPlain(decryptedData.getWithdrawalAccountNo())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+        
+        verifyCustomerIdentification(sender.getCustomerId(), decryptedData.getCustomerRrnPrefix());
+        
+        if (!passwordEncoder.matches(decryptedData.getWithdrawalPassword(), sender.getPassword())) {
             throw new BusinessException(ErrorCode.BANK_PW_ERROR);
         }
+
         if (sender.getBalance().compareTo(request.getAmount()) < 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
-        sender = accountMapper.findByIdForUpdate(sender.getId()).orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+
+        // 3. 잔액 업데이트 (비관적 락 적용을 위해 다시 조회)
+        sender = accountMapper.findByIdForUpdate(sender.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+        
         if (sender.getBalance().compareTo(request.getAmount()) < 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
+
         BigDecimal newBalance = sender.getBalance().subtract(request.getAmount());
         accountMapper.updateBalance(sender.getId(), request.getAmount().negate());
+
+        // 4. 원장 기록
         String txId = UUID.randomUUID().toString();
-        transactionLedgerMapper.insert(TransactionLedger.of(txId, sender.getId(), "TRANSFER", request.getAmount().negate(), newBalance, request.getDepositBankCode(), request.getDepositAccountNo(), "타행이체출금(" + request.getDepositBankCode() + "/" + request.getDepositAccountNo() + ")", "SUCCESS"));
-        return TransferResponse.of(txId, getCurrentTimestamp(), newBalance);
+        transactionLedgerMapper.insert(TransactionLedger.of(
+                txId, 
+                sender.getId(), 
+                "TRANSFER", 
+                request.getAmount().negate(), 
+                newBalance, 
+                request.getDepositBankCode(), 
+                decryptedData.getDepositAccountNo(), 
+                "이체출금(" + request.getDepositBankCode() + "/" + decryptedData.getDepositAccountNo() + ")", 
+                "SUCCESS"
+        ));
+
+        // 5. 결과 암호화
+        TransferResponse.SensitiveData sensitiveData = TransferResponse.SensitiveData.builder()
+                .balanceAfter(newBalance)
+                .build();
+        
+        String resPayload = securityService.encryptResponse(sensitiveData, decryptionResult.getCek());
+
+        return TransferResponse.of(txId, getCurrentTimestamp(), newBalance, resPayload);
     }
 
     /**
-     * 입금 이체 실행 (기존 로직 유지)
+     * 입금 이체 실행 (E2EE 적용)
      */
     @Transactional
     public TransferResponse depositTransfer(DepositRequest request) {
-        Account receiver = accountMapper.findByAccountNoPlain(request.getDepositAccountNo()).orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-        receiver = accountMapper.findByIdForUpdate(receiver.getId()).orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+        log.info("입금 이체 요청 수신 - 출금은행: {}, 금액: {}", request.getWithdrawalBankCode(), request.getAmount());
+
+        // 1. 복호화 및 CEK 추출
+        SecurityService.DecryptionResult<DecryptedDepositData> decryptionResult = 
+                securityService.decryptWithKey(request, DecryptedDepositData.class);
+        
+        DecryptedDepositData decryptedData = decryptionResult.getData();
+
+        // 2. 계좌 조회
+        Account receiver = accountMapper.findByAccountNoPlain(decryptedData.getDepositAccountNo())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+        
+        receiver = accountMapper.findByIdForUpdate(receiver.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+
+        // 3. 잔액 업데이트
         BigDecimal newBalance = receiver.getBalance().add(request.getAmount());
         accountMapper.updateBalance(receiver.getId(), request.getAmount());
+
+        // 4. 원장 기록
         String txId = UUID.randomUUID().toString();
-        transactionLedgerMapper.insert(TransactionLedger.of(txId, receiver.getId(), "TRANSFER", request.getAmount(), newBalance, request.getWithdrawalBankCode(), request.getWithdrawalAccountNo(), "타행이체입금(" + request.getWithdrawalBankCode() + "/" + request.getWithdrawalAccountNo() + ")", "SUCCESS"));
+        transactionLedgerMapper.insert(TransactionLedger.of(
+                txId, 
+                receiver.getId(), 
+                "TRANSFER",
+                request.getAmount(), 
+                newBalance, 
+                request.getWithdrawalBankCode(), 
+                decryptedData.getWithdrawalAccountNo(), 
+                "이체입금(" + request.getWithdrawalBankCode() + "/" + decryptedData.getWithdrawalAccountNo() + ")", 
+                "SUCCESS"
+        ));
+
+        // 5. 결과 암호화
+        TransferResponse.SensitiveData sensitiveData = TransferResponse.SensitiveData.builder()
+                .balanceAfter(newBalance)
+                .build();
+        
+        String resPayload = securityService.encryptResponse(sensitiveData, decryptionResult.getCek());
+
+        return TransferResponse.of(txId, getCurrentTimestamp(), newBalance, resPayload);
+    }
+
+    /**
+     * 이체 환불 실행 (E2EE 적용)
+     * - 출금 시 사용했던 페이로드를 재사용하여 원래 출금 계좌로 자금을 복구합니다.
+     */
+    @Transactional
+    public TransferResponse refundTransfer(TransferRequest request) {
+        log.info("이체 환불 요청 수신 - 원래 입금하려던 은행: {}, 금액: {}", request.getDepositBankCode(), request.getAmount());
+
+        // 1. 복호화 (출금 시 사용된 WithdrawReqPayload를 복호화)
+        SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
+                securityService.decryptWithKey(request, DecryptedWithdrawData.class);
+        
+        DecryptedWithdrawData originalWithdrawData = decryptionResult.getData();
+
+        // 2. 원래 출금 계좌(환불받을 계좌) 조회
+        Account account = accountMapper.findByAccountNoPlain(originalWithdrawData.getWithdrawalAccountNo())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+        
+        account = accountMapper.findByIdForUpdate(account.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+
+        // 3. 잔액 복구 (입금)
+        BigDecimal newBalance = account.getBalance().add(request.getAmount());
+        accountMapper.updateBalance(account.getId(), request.getAmount());
+
+        // 4. 원장 기록
+        String txId = UUID.randomUUID().toString();
+        transactionLedgerMapper.insert(TransactionLedger.of(
+                txId, 
+                account.getId(), 
+                "DEPOSIT", 
+                request.getAmount(), 
+                newBalance, 
+                request.getDepositBankCode(), 
+                originalWithdrawData.getDepositAccountNo(), 
+                "이체환불(입금실패로 인한 복구)", 
+                "SUCCESS"
+        ));
+
         return TransferResponse.of(txId, getCurrentTimestamp(), newBalance);
     }
 

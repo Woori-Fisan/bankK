@@ -41,9 +41,14 @@ public class TransferController {
 
     @Operation(summary = "이체 실행", description = "대행기관 직원이 고객의 이체 요청을 실행합니다.")
     @CustomExceptionDescription(SwaggerResponseDescription.BANK_TRANSFER)
+    @VerifyTerminalSignature
     @PostMapping
-    public ApiResponse<TransferResponse> executeTransfer(@RequestBody @Valid TransferRequest request) {
-        TransferResponse response = transferService.executeTransfer(request);
+    public ApiResponse<TransferResponse> executeTransfer(
+            @RequestHeader("x-jws-signature") String jwsSignature,
+            @RequestHeader("x-withdraw-key-id") String withdrawKeyId,
+            @RequestHeader("x-deposit-key-id") String depositKeyId,
+            @RequestBody @Valid TransferRequest request) {
+        TransferResponse response = transferService.executeTransfer(request, jwsSignature, withdrawKeyId, depositKeyId);
         return ApiResponse.success(response);
     }
 

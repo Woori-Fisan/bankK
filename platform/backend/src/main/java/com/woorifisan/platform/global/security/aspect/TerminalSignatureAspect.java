@@ -129,8 +129,19 @@ public class TerminalSignatureAspect {
             JsonNode signedValue = entry.getValue();
             JsonNode actualValue = bodyNode.path(key);
 
-            if (actualValue.isMissingNode() || !signedValue.equals(actualValue)) {
-                log.warn("데이터 무결성 검증 실패 - 필드: {}, 서명된 값과 실제 값이 다릅니다.", key);
+            if (actualValue.isMissingNode()) {
+                log.warn("데이터 무결성 검증 실패 - 필드: {} 가 실제 요청 바디에 존재하지 않습니다.", key);
+                throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            }
+
+            // 숫자형 필드의 경우 타입이 다르더라도(IntNode vs DecimalNode) 값 자체가 같으면 통과
+            if (signedValue.isNumber() && actualValue.isNumber()) {
+                if (signedValue.decimalValue().compareTo(actualValue.decimalValue()) != 0) {
+                    log.warn("데이터 무결성 검증 실패 - 숫자 필드: {}, 서명된 값: {}, 실제 값: {}", key, signedValue, actualValue);
+                    throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+                }
+            } else if (!signedValue.equals(actualValue)) {
+                log.warn("데이터 무결성 검증 실패 - 필드: {}, 서명된 값: {}, 실제 값: {}", key, signedValue, actualValue);
                 throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
             }
         }

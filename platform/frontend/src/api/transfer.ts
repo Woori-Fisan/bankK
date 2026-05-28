@@ -1,5 +1,5 @@
 import axiosInstance from './axiosInstance';
-import { prepareSecureRequest, decryptBankResponse } from '../utils/bankCrypto';
+import { prepareSecureRequest, prepareTransferSecureRequest, decryptBankResponse } from '../utils/bankCrypto';
 
 export interface BalanceInquiryRequest {
     encryptedKey: string;
@@ -50,15 +50,20 @@ export interface DecryptedRecipientResult {
 }
 
 export interface TransferRequest {
-    encryptedKey: string;
-    jwsSignature: string;
     withdrawalBankCode: string;
-    withdrawalAccountNo: string;
-    withdrawalPassword: string;
-    customerRrnPrefix: string;
     depositBankCode: string;
-    depositAccountNo: string;
     amount: number;
+    // 이전 평문 필드 대신 암호화된 페이로드 전달
+    withdrawReqPayload?: string;
+    depositReqPayload?: string;
+    
+    // 컴포넌트 호출 파라미터 유지를 위한 임시 필드 (백엔드 전송 전 제거됨)
+    withdrawalAccountNo?: string;
+    withdrawalPassword?: string;
+    customerRrnPrefix?: string;
+    depositAccountNo?: string;
+    encryptedKey?: string;
+    jwsSignature?: string;
 }
 
 export interface TransferResponse {
@@ -134,6 +139,56 @@ export const getRecipient = async (
 };
 
 export const executeTransfer = async (request: TransferRequest): Promise<ApiResponse<TransferResponse>> => {
-    const response = await axiosInstance.post<ApiResponse<TransferResponse>>('/bank/transfer', request);
-    return response.data;
+    try {
+        // 1. 보안 요청 준비 (출금/입금 은행 각각 암호화 및 통합 서명)
+        const secureRequest = await prepareTransferSecureRequest(
+            { 
+                withdrawalAccountNo: request.withdrawalAccountNo,
+                withdrawalPassword: request.withdrawalPassword,
+                customerRrnPrefix: request.customerRrnPrefix,
+                depositAccountNo: request.depositAccountNo // 출금 은행이 알 수 있도록 포함
+            },
+            { 
+                depositAccountNo: request.depositAccountNo,
+                withdrawalAccountNo: request.withdrawalAccountNo // 입금 은행이 알 수 있도록 포함
+            },
+            { 
+                withdrawalBankCode: request.withdrawalBankCode,
+                depositBankCode: request.depositBankCode,
+                amount: request.amount
+            }
+        );
+
+        if (!secureRequest) {
+            throw new Error('이체 보안 요청 준비 실패');
+        }
+
+        const { payload, headers, withdrawAesKey } = secureRequest;
+
+        // 2. 요청 전송
+        const response = await axiosInstance.post<ApiResponse<TransferResponse>>('/bank/transfer', payload, {
+            headers
+        });
+
+        // 3. 응답 복호화 (출금 후 잔액 정보는 출금 은행의 응답이므로 withdrawAesKey 사용)
+        if (response.data.success && (response.data.data as any).resPayload) {
+            const decryptedData = await decryptBankResponse(
+                (response.data.data as any).resPayload,
+                withdrawAesKey
+            );
+            return {
+                ...response.data,
+                data: { ...response.data.data, ...decryptedData }
+            };
+        }
+
+        return response.data;
+    } catch (error) {
+        console.error('executeTransfer Error:', error);
+        return {
+            success: false,
+            data: null as any,
+            error: { code: 'CLIENT_ERROR', message: '이체 요청 중 오류가 발생했습니다.' }
+        };
+    }
 };

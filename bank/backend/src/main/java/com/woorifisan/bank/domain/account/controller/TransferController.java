@@ -25,18 +25,6 @@ public class TransferController {
     private final TransferService transferService;
 
     /**
-     * 이체 실행
-     * @param request 이체 실행 요청 정보
-     * @return 이체 결과
-     */
-    @Operation(summary = "이체 실행", description = "타 은행 또는 당행 계좌로 이체를 실행합니다.")
-    @PostMapping
-    public ApiResponse<TransferResponse> executeTransfer(@RequestBody @Valid TransferRequest request) {
-        TransferResponse response = transferService.executeTransfer(request);
-        return ApiResponse.success(response);
-    }
-
-    /**
      * 출금 이체 실행 (타행 이체용)
      * @param request 출금 이체 요청 정보
      * @return 출금 결과
@@ -57,6 +45,18 @@ public class TransferController {
     @PostMapping("/deposit")
     public ApiResponse<TransferResponse> depositTransfer(@RequestBody @Valid DepositRequest request) {
         TransferResponse response = transferService.depositTransfer(request);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 이체 환불 실행 (입금 실패 시 복구용)
+     * @param request 출금 시 사용했던 이체 요청 정보
+     * @return 환불 결과
+     */
+    @Operation(summary = "이체 환불 실행 (입금 실패 시 복구용)", description = "입금 단계 실패 시 출금되었던 금액을 원래 계좌로 환불합니다.")
+    @PostMapping("/refund")
+    public ApiResponse<TransferResponse> refundTransfer(@RequestBody @Valid TransferRequest request) {
+        TransferResponse response = transferService.refundTransfer(request);
         return ApiResponse.success(response);
     }
 
