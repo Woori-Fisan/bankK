@@ -102,10 +102,10 @@ public class LoanService {
         String storedFileName = documentId + "_" + originalFileName;
         String filePath = uploadDir + "/" + storedFileName;
 
-        try {
+        try (var inputStream = file.getInputStream()) {
             Path dir = Paths.get(uploadDir);
             Files.createDirectories(dir);
-            Files.copy(file.getInputStream(), dir.resolve(storedFileName), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(inputStream, dir.resolve(storedFileName), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             log.error("서류 파일 저장 실패 - documentId: {}, fileName: {}", documentId, originalFileName, e);
             throw new BusinessException(ErrorCode.LOAN_DOCUMENT_UPLOAD_ERROR);
@@ -224,6 +224,7 @@ public class LoanService {
         // SSE가 즉시 연결할 수 있도록 GUID와 결과 Future를 먼저 저장
         redisTemplate.opsForValue().set(String.format(REDIS_APP_GUID_KEY, applicationId), guid, GUID_TTL_HOURS, TimeUnit.HOURS);
         CompletableFuture<String> resultFuture = new CompletableFuture<>();
+        resultFuture.whenComplete((res, ex) -> pendingResults.remove(applicationId));
         pendingResults.put(applicationId, resultFuture);
 
         log.info("[{}] 대출 심사 요청 접수 완료 - applicationId: {}, 서류 수: {}, 은행 API 비동기 호출 시작", guid, applicationId, documents.size());
