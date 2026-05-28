@@ -62,6 +62,7 @@ class TransferServiceTest {
                 .balance(new BigDecimal("100000"))
                 .password("hashedPassword")
                 .status("NORMAL")
+                .version(1)
                 .build();
 
         receiver = Account.builder()
@@ -70,6 +71,7 @@ class TransferServiceTest {
                 .accountNo("222-222")
                 .balance(new BigDecimal("50000"))
                 .status("NORMAL")
+                .version(1)
                 .build();
 
         senderCustomer = Customer.builder()
@@ -95,6 +97,7 @@ class TransferServiceTest {
         // Locking (sender.id < receiver.id)
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
         given(accountMapper.findByIdForUpdate(2L)).willReturn(Optional.of(receiver));
+        given(accountMapper.updateBalance(any(), any(), any())).willReturn(1);
 
         // when
         TransferResponse response = transferService.executeTransfer(request);
@@ -103,8 +106,8 @@ class TransferServiceTest {
         assertNotNull(response);
         assertEquals(new BigDecimal("90000"), response.getBalanceAfter());
         // Delta values
-        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate());
-        verify(accountMapper).updateBalance(receiver.getId(), new BigDecimal("10000"));
+        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate(), sender.getVersion());
+        verify(accountMapper).updateBalance(receiver.getId(), new BigDecimal("10000"), receiver.getVersion());
         verify(transactionLedgerMapper, org.mockito.Mockito.times(2)).insert(any());
     }
 
@@ -118,6 +121,7 @@ class TransferServiceTest {
         given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
+        given(accountMapper.updateBalance(any(), any(), any())).willReturn(1);
 
         // when
         TransferResponse response = transferService.withdrawTransfer(request);
@@ -126,7 +130,7 @@ class TransferServiceTest {
         assertNotNull(response);
         assertEquals(new BigDecimal("90000"), response.getBalanceAfter());
         // Delta values
-        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate());
+        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate(), sender.getVersion());
     }
 
     @Test
@@ -142,6 +146,7 @@ class TransferServiceTest {
 
         given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(receiver));
         given(accountMapper.findByIdForUpdate(2L)).willReturn(Optional.of(receiver));
+        given(accountMapper.updateBalance(any(), any(), any())).willReturn(1);
 
         // when
         TransferResponse response = transferService.depositTransfer(request);
@@ -150,7 +155,7 @@ class TransferServiceTest {
         assertNotNull(response);
         assertEquals(new BigDecimal("60000"), response.getBalanceAfter());
         // Delta values
-        verify(accountMapper).updateBalance(receiver.getId(), new BigDecimal("10000"));
+        verify(accountMapper).updateBalance(receiver.getId(), new BigDecimal("10000"), receiver.getVersion());
     }
 
     // --- 실패 케이스 (에러코드 검증) ---
