@@ -1,0 +1,121 @@
+name: Platform Frontend Deploy
+
+on:
+  push:
+    branches:
+      - develop
+
+    paths:
+      - 'platform/frontend/**'
+      - '.github/workflows/platform-frontend-deploy.yml'
+
+concurrency:
+  group: platform-frontend-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: platform/frontend
+
+    steps:
+
+      # --------------------------------------------------
+      # Checkout
+      # --------------------------------------------------
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------
+      # Node Setup
+      # --------------------------------------------------
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+
+        with:
+          node-version: 20
+
+      # --------------------------------------------------
+      # Install Dependencies
+      # --------------------------------------------------
+
+      - name: Install Dependencies
+        run: npm install
+
+      # --------------------------------------------------
+      # Run Tests
+      # --------------------------------------------------
+
+      - name: Run Tests
+        run: npm run test -- --run
+
+      # --------------------------------------------------
+      # Build
+      # --------------------------------------------------
+
+      - name: Build Frontend
+        run: npm run build
+
+      # --------------------------------------------------
+      # SonarQube Scan
+      # --------------------------------------------------
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+
+        with:
+          projectBaseDir: platform/frontend
+
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      # --------------------------------------------------
+      # Compress Dist
+      # --------------------------------------------------
+
+      - name: Compress Dist
+        run: |
+          cd dist
+          tar -czf ../dist.tar.gz .
+
+      # --------------------------------------------------
+      # SSH Key Setup
+      # --------------------------------------------------
+
+      - name: Setup SSH Keys
+        run: |
+          echo "${{ secrets.BASTION_SSH_KEY }}" > bastion.pem
+          chmod 600 bastion.pem
+
+          echo "${{ secrets.PLATFORM_RUNTIME_SSH_KEY }}" > runtime.pem
+          chmod 600 runtime.pem
+
+      # --------------------------------------------------
+      # Upload Dist To Runtime
+      # --------------------------------------------------
+
+      - name: Upload Dist To Runtime
+        run: |
+          scp -o StrictHostKeyChecking=no \
+            -o ProxyCommand="ssh -o StrictHostKeyChecking=no -W %h:%p -p ${{ secrets.BASTION_PORT }} -i bastion.pem ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}" \
+            -i runtime.pem \
+            dist.tar.gz \
+            ubuntu@${{ secrets.PLATFORM_RUNTIME_HOST }}:/home/ubuntu/platform-frontend/dist.tar.gz
+
+      # --------------------------------------------------
+      # Deploy
+      # --------------------------------------------------
+
+      - name: Deploy Frontend
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+            -o ProxyCommand="ssh -o StrictHostKeyChecking=no -W %h:%p -p ${{ secrets.BASTION_PORT }} -i bastion.pem ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}" \
+            -i runtime.pem \
+            ubuntu@${{ secrets.PLATFORM_RUNTIME_HOST }} \
+            "/home/ubuntu/platform-frontend/deploy.sh"

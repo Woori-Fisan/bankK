@@ -1,4 +1,4 @@
-name: Platform Backend Deploy
+name: Bank Backend Deploy
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
       - develop
 
     paths:
-      - 'platform/backend/**'
-      - '.github/workflows/platform-backend-deploy.yml'
+      - 'bank/backend/**'
+      - '.github/workflows/bank-backend-deploy.yml'
 
 concurrency:
-  group: platform-backend-deploy
+  group: bank-backend-deploy
   cancel-in-progress: true
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
 
     steps:
 
-      # --------------------------------------------------
+      # ------------완--------------------------------------
       # Checkout
       # --------------------------------------------------
 
@@ -53,7 +53,7 @@ jobs:
       # --------------------------------------------------
 
       - name: Grant Gradle Execute Permission
-        working-directory: platform/backend
+        working-directory: bank/backend
 
         run: chmod +x ./gradlew
 
@@ -62,7 +62,7 @@ jobs:
       # --------------------------------------------------
 
       - name: SonarQube Scan
-        working-directory: platform/backend
+        working-directory: bank/backend
 
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -73,6 +73,7 @@ jobs:
             -Dspring.profiles.active=test \
             -Dsonar.host.url=$SONAR_HOST_URL \
             -Dsonar.token=$SONAR_TOKEN
+
 
       # --------------------------------------------------
       # Extract SHA
@@ -89,7 +90,7 @@ jobs:
       # --------------------------------------------------
 
       - name: Build & Push with Jib
-        working-directory: platform/backend
+        working-directory: bank/backend
 
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -110,6 +111,7 @@ jobs:
 
       # --------------------------------------------------
       # Deploy
+
       # --------------------------------------------------
 
       - name: Deploy to Runtime Server
@@ -119,6 +121,6 @@ jobs:
             -i key.pem \
             ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }} \
             "ssh -o StrictHostKeyChecking=no \
-            -i ~/.ssh/Platform-Key.pem \
-            ubuntu@${{ secrets.PLATFORM_RUNTIME_HOST }} \
-            '/home/ubuntu/platform-backend/deploy.sh'"
+            -i ~/.ssh/Bank-Key.pem \
+            ubuntu@${{ secrets.BANK_RUNTIME_HOST }} \
+            '/home/ubuntu/bank/deploy.sh'"
