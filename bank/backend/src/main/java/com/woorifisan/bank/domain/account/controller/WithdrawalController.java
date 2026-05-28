@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Withdrawal", description = "출금 API")
 @RestController
-@RequestMapping("/api/v1/baas/withdrawals")
+@RequestMapping("/api/v1/baas/transfer/withdrawal")
 @RequiredArgsConstructor
 public class WithdrawalController {
 

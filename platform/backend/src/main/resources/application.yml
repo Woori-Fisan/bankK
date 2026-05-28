@@ -108,7 +108,7 @@ bank:
       endpoints:
         balance: "/account/balance"
         history: "/account/transactions"
-        withdraw: "/withdrawals"
+        withdraw: "/transfer/withdrawal"
         deposit: "/transfer/deposit"
         recipient: "/transfer/recipient"
         transfer: "/transfer"
@@ -117,7 +117,7 @@ bank:
       endpoints:
         balance: "/account/balance"
         history: "/account/transactions"
-        withdraw: "/withdrawals"
+        withdraw: "/transfer/withdrawal"
         deposit: "/transfer/deposit"
         recipient: "/transfer/recipient"
         transfer: "/transfer"
