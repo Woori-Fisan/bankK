@@ -17,7 +17,15 @@ public interface AccountMapper {
     Optional<Account> findByAccountNo(@Param("accountNo") String accountNo);
     Optional<Account> findByIdForUpdate(Long id);
     Optional<Account> findByAccountNoPlain(String accountNo);
-    void updateBalance(@Param("id") Long id, @Param("amount") BigDecimal amount);
+    /**
+     * 낙관적 락을 적용한 잔액 업데이트 (증액/차감 공용)
+     * @return 수정된 행 수 (0이면 버전 불일치)
+     */
+    int updateBalance(
+            @Param("id") Long id,
+            @Param("amount") BigDecimal amount,
+            @Param("version") Integer version
+    );
 
     /**
      * 계좌번호와 주민번호 앞자리를 이용해 계좌 정보 조회
