@@ -255,7 +255,10 @@ public class LoanService {
                 .build();
         loanLedgerMapper.updateExecution(forUpdate);
 
-        accountMapper.updateBalance(account.getId(), request.getLoanAmount());
+        int updatedCount = accountMapper.updateBalance(account.getId(), request.getLoanAmount(), account.getVersion());
+        if (updatedCount == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
+        }
 
         BigDecimal balanceAfter = account.getBalance().add(request.getLoanAmount());
         String txId = "LOAN-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
