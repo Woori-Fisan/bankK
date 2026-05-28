@@ -25,11 +25,7 @@ CREATE TABLE system_logs (
     error_message TEXT                                        COMMENT '커스텀 에러 메시지 (예외 시만 채움)',
 
     INDEX idx_trace_id   (trace_id),
-    INDEX idx_created_at (created_at),
-    INDEX idx_level      (level),
-    INDEX idx_bank_code  (bank_code),
-    INDEX idx_staff_id   (staff_id),
-    INDEX idx_log_type   (log_type)
+    INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COMMENT='시스템 로그 테이블';
