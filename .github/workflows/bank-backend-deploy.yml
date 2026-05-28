@@ -44,6 +44,11 @@ jobs:
         run: |
           echo "${{ secrets.BANK_BACKEND_ENV_TEST }}" > .env
 
+      - name: Export env variables
+        working-directory: bank/backend
+        run: |
+          grep -v '^#' .env | grep -v '^$' >> $GITHUB_ENV
+
       # --------------------------------------------------
       # Java Setup
       # --------------------------------------------------
