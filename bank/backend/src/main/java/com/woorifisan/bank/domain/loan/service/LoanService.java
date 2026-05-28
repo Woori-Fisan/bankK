@@ -136,13 +136,6 @@ public class LoanService {
 
         String loanNo = generateLoanNo();
 
-        // 서류 검토 mock delay — 실제 심사관이 서류를 확인하는 시간을 시뮬레이션
-        try {
-            Thread.sleep(3_000L);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
         // BK-B13: NICE Mock 신용점수 조회
         int creditScore = getMockCreditScore(customer.getId());
 

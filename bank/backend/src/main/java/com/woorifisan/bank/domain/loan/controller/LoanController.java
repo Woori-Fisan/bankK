@@ -53,7 +53,9 @@ public class LoanController {
                description = "NICE 신용점수 조회 → 600점 컷 → DSR 40% 컷 → 한도 산출 → 금리 산출 → 추천 상품 → 결과 저장")
     @PostMapping("/evaluation")
     public ResponseEntity<ApiResponse<LoanEvaluateResponse>> evaluate(
-            @RequestBody @Valid LoanEvaluateRequest request) {
+            @RequestBody @Valid LoanEvaluateRequest request) throws InterruptedException {
+        // 실제 은행 심사 처리 시간 시뮬레이션 — 트랜잭션 외부에서 대기
+        Thread.sleep(3_000L);
         return ResponseEntity.ok(ApiResponse.success(loanService.evaluateLoan(request)));
     }
 
