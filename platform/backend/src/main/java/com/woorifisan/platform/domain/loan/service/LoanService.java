@@ -57,7 +57,6 @@ public class LoanService {
     private static final String REDIS_LOAN_NO_ID_MAP = "loan:loanNo:%s:id";
     private static final String REDIS_DOC_META_KEY = "loan:doc:%s:meta";
     private static final long GUID_TTL_HOURS = 24L;
-    private static final long SSE_MOCK_DELAY_MS = 2_000L;
 
     @Value("${loan.upload.dir:uploads/loan}")
     private String uploadDir;
@@ -216,53 +215,59 @@ public class LoanService {
             }
         }
         bankRequest.put("documents", documents);
-        log.info("[{}] 은행에 전달할 서류 수: {}", guid, documents.size());
 
-        try {
-            com.woorifisan.platform.global.response.ApiResponse<Map<String, Object>> bankResponse = bankWebClient.post()
-                    .uri("/api/v1/loan/evaluation")
-                    .bodyValue(bankRequest)
-                    .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<com.woorifisan.platform.global.response.ApiResponse<Map<String, Object>>>() {})
-                    .block(Duration.ofSeconds(15));
+        // SSE가 즉시 연결할 수 있도록 GUID를 먼저 저장
+        redisTemplate.opsForValue().set(String.format(REDIS_APP_GUID_KEY, applicationId), guid, GUID_TTL_HOURS, TimeUnit.HOURS);
 
-            if (bankResponse == null || bankResponse.getData() == null) {
-                throw new BusinessException(ErrorCode.BANK_API_ERROR);
+        log.info("[{}] 대출 심사 요청 접수 완료 - applicationId: {}, 서류 수: {}, 은행 API 비동기 호출 시작", guid, applicationId, documents.size());
+
+        // 은행 API를 백그라운드에서 비동기 호출 — evaluateLoan은 즉시 반환
+        CompletableFuture.runAsync(() -> {
+            try {
+                com.woorifisan.platform.global.response.ApiResponse<Map<String, Object>> bankResponse = bankWebClient.post()
+                        .uri("/api/v1/loan/evaluation")
+                        .bodyValue(bankRequest)
+                        .retrieve()
+                        .bodyToMono(new ParameterizedTypeReference<com.woorifisan.platform.global.response.ApiResponse<Map<String, Object>>>() {})
+                        .block(Duration.ofSeconds(15));
+
+                if (bankResponse == null || bankResponse.getData() == null) {
+                    cacheErrorResult(applicationId, guid, "은행 API 응답 오류");
+                    return;
+                }
+
+                Map<String, Object> evalData = bankResponse.getData();
+                Object evalIdObj = evalData.get("evaluationId");
+                Object loanNoObj = evalData.get("loanNo");
+                if (evalIdObj == null || loanNoObj == null) {
+                    cacheErrorResult(applicationId, guid, "은행 API 응답 필드 누락");
+                    return;
+                }
+                String evaluationId = String.valueOf(evalIdObj);
+                String loanNo = String.valueOf(loanNoObj);
+
+                redisTemplate.opsForValue().set(String.format(REDIS_APP_EVAL_KEY, applicationId), loanNo, GUID_TTL_HOURS, TimeUnit.HOURS);
+                redisTemplate.opsForValue().set(String.format(REDIS_EVAL_GUID_KEY, loanNo), guid, GUID_TTL_HOURS, TimeUnit.HOURS);
+                redisTemplate.opsForValue().set(String.format(REDIS_LOAN_NO_ID_MAP, loanNo), evaluationId, GUID_TTL_HOURS, TimeUnit.HOURS);
+                redisTemplate.opsForValue().set(String.format(REDIS_APP_RESULT_KEY, applicationId),
+                        objectMapper.writeValueAsString(evalData), GUID_TTL_HOURS, TimeUnit.HOURS);
+
+                log.info("[{}] 은행 심사 결과 수신 및 캐싱 완료 - loanNo: {}", guid, loanNo);
+
+            } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
+                log.warn("[{}] 은행 API 오류 응답 - status: {}, body: {}", guid, e.getStatusCode(), e.getResponseBodyAsString());
+                String bankMsg = extractBankErrorMessage(e);
+                cacheErrorResult(applicationId, guid, bankMsg != null ? bankMsg : "은행 API 오류");
+            } catch (Exception e) {
+                log.error("[{}] 은행 API 비동기 호출 실패", guid, e);
+                cacheErrorResult(applicationId, guid, "은행 API 호출 실패");
             }
+        }, sseTaskExecutor);
 
-            Map<String, Object> evalData = bankResponse.getData();
-            Object evalIdObj = evalData.get("evaluationId");
-            Object loanNoObj = evalData.get("loanNo");
-            if (evalIdObj == null || loanNoObj == null) {
-                throw new BusinessException(ErrorCode.BANK_API_ERROR);
-            }
-            String evaluationId = String.valueOf(evalIdObj); // 은행 내부 ID (Long)
-            String loanNo = String.valueOf(loanNoObj);       // 플랫폼용 식별자 (LN-XXX)
-
-            // Redis 상태 저장 (SSE 및 다음 단계에서 사용)
-            redisTemplate.opsForValue().set(String.format(REDIS_APP_GUID_KEY, applicationId), guid, GUID_TTL_HOURS, TimeUnit.HOURS);
-            redisTemplate.opsForValue().set(String.format(REDIS_APP_EVAL_KEY, applicationId), loanNo, GUID_TTL_HOURS, TimeUnit.HOURS);
-            redisTemplate.opsForValue().set(String.format(REDIS_EVAL_GUID_KEY, loanNo), guid, GUID_TTL_HOURS, TimeUnit.HOURS);
-            redisTemplate.opsForValue().set(String.format(REDIS_LOAN_NO_ID_MAP, loanNo), evaluationId, GUID_TTL_HOURS, TimeUnit.HOURS);
-
-            // 4. 심사 결과를 Redis에 캐싱하여 SSE에서 즉시 응답하도록 함
-            redisTemplate.opsForValue().set(String.format(REDIS_APP_RESULT_KEY, applicationId),
-                    objectMapper.writeValueAsString(evalData), GUID_TTL_HOURS, TimeUnit.HOURS);
-
-            log.info("[{}] 대출 심사 접수 및 결과 캐싱 완료 - loanNo: {}", guid, loanNo);
-            return LoanEvaluateResponse.builder()
-                    .applicationId(applicationId)
-                    .receivedAt(receivedAt.toString())
-                    .build();
-
-        } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
-            log.warn("[{}] 은행 API 오류 응답 (심사 신청) - status: {}, body: {}", guid, e.getStatusCode(), e.getResponseBodyAsString());
-            String bankMsg = extractBankErrorMessage(e);
-            throw new BusinessException(ErrorCode.LOAN_BANK_ROUTING_ERROR, bankMsg);
-        } catch (Exception e) {
-            log.error("[{}] 은행 API 연동 중 오류 발생 (심사 신청)", guid, e);
-            throw new BusinessException(ErrorCode.LOAN_BANK_ROUTING_ERROR);
-        }
+        return LoanEvaluateResponse.builder()
+                .applicationId(applicationId)
+                .receivedAt(receivedAt.toString())
+                .build();
     }
 
     private boolean hasAgreed(LoanEvaluateRequest request, String type) {
@@ -275,8 +280,7 @@ public class LoanService {
      */
     public SseEmitter streamEvaluationResult(String applicationId, Long staffId) {
         String guid = resolveGuidForApp(applicationId);
-        String loanNo = resolveEvaluationIdForApp(applicationId); // 사용하지 않던 로직 활용
-        log.info("[{}] SSE 심사 결과 스트림 시작 - staffId: {}, loanNo: {}, applicationId: {}", guid, staffId, loanNo, applicationId);
+        log.info("[{}] SSE 심사 결과 스트림 시작 - staffId: {}, applicationId: {}", guid, staffId, applicationId);
 
         SseEmitter emitter = new SseEmitter(30_000L);
         emitter.onTimeout(emitter::complete);
@@ -284,24 +288,29 @@ public class LoanService {
 
         CompletableFuture.runAsync(() -> {
             try {
-                // 1) PENDING 상태 먼저 전송
                 sendSse(emitter, guid, "status", LoanEvaluationResultResponse.builder()
                         .applicationId(applicationId)
                         .evaluationStatus("PENDING")
                         .requestedAt(LocalDateTime.now().toString()).build());
 
-                Thread.sleep(SSE_MOCK_DELAY_MS); // UI 체감을 위한 약간의 지연
-
-                // 2) Redis에 저장된 실제 심사 결과 꺼내기
-                String resultJson = redisTemplate.opsForValue().get(String.format(REDIS_APP_RESULT_KEY, applicationId));
+                // 은행 API 결과가 Redis에 캐싱될 때까지 폴링 (최대 25초)
+                String resultJson = null;
+                long elapsed = 0L;
+                while (resultJson == null && elapsed < 25_000L) {
+                    Thread.sleep(500L);
+                    elapsed += 500L;
+                    resultJson = redisTemplate.opsForValue().get(String.format(REDIS_APP_RESULT_KEY, applicationId));
+                }
                 if (resultJson == null) throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
+
+                String loanNo = Objects.requireNonNullElse(
+                        redisTemplate.opsForValue().get(String.format(REDIS_APP_EVAL_KEY, applicationId)), "unknown");
 
                 Map<String, Object> evalData = objectMapper.readValue(resultJson, new TypeReference<>() {});
                 String status = String.valueOf(evalData.get("status"));
-                
+
                 LoanEvaluationResultResponse result;
                 if ("APPROVED".equals(status)) {
-                    // 은행 코어의 AvailableProductDto 필드명(productId, productName, minLimit, maxLimit, minRate)에 맞춰 매핑 수정
                     @SuppressWarnings("unchecked")
                     List<Map<String, Object>> bankProducts = (List<Map<String, Object>>) evalData.get("availableProducts");
                     List<AvailableProductDto> products = (bankProducts != null ? bankProducts : List.<Map<String, Object>>of()).stream()
@@ -327,7 +336,7 @@ public class LoanService {
                 } else {
                     result = LoanEvaluationResultResponse.builder()
                             .applicationId(applicationId)
-                            .evaluationStatus("REJECTED")
+                            .evaluationStatus(status)
                             .rejectionMessage(String.valueOf(evalData.get("rejectReason"))).build();
                 }
 
@@ -347,6 +356,21 @@ public class LoanService {
         }, sseTaskExecutor);
 
         return emitter;
+    }
+
+    private void cacheErrorResult(String applicationId, String guid, String message) {
+        try {
+            Map<String, Object> errorData = new HashMap<>();
+            errorData.put("status", "FAILED");
+            errorData.put("rejectReason", message);
+            redisTemplate.opsForValue().set(
+                    String.format(REDIS_APP_RESULT_KEY, applicationId),
+                    objectMapper.writeValueAsString(errorData),
+                    GUID_TTL_HOURS, TimeUnit.HOURS);
+            log.warn("[{}] 은행 API 오류 결과 캐싱 - message: {}", guid, message);
+        } catch (Exception e) {
+            log.error("[{}] 오류 결과 캐싱 실패", guid, e);
+        }
     }
 
     private boolean sendSse(SseEmitter emitter, String guid, String name, Object data) {
