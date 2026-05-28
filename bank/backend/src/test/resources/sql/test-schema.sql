@@ -109,8 +109,9 @@ CREATE TABLE IF NOT EXISTS bank_terms (
     terms_url    VARCHAR(255),
     is_mandatory BOOLEAN      NOT NULL,
     is_active    BOOLEAN      NOT NULL DEFAULT TRUE,
-    terms_type   VARCHAR(20)  NOT NULL DEFAULT 'EVALUATION',
-    created_at   TIMESTAMP    DEFAULT NOW(),
+    terms_type    VARCHAR(20)  NOT NULL DEFAULT 'EVALUATION',
+    terms_content LONGTEXT,
+    created_at    TIMESTAMP    DEFAULT NOW(),
     CONSTRAINT uq_terms UNIQUE (terms_code, version)
 );
 

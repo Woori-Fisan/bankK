@@ -9,12 +9,11 @@ import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryReques
 import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 
 /**
  * 계좌 조회 서비스
@@ -33,7 +32,6 @@ public class AccountInquiryService {
      * 잔액 조회 실행
      */
     public BalanceInquiryResponse getBalance(BalanceInquiryRequest request) {
-        log.info("잔액 조회 요청 수신 - 계좌번호: {}", request.getAccountNo());
 
         BankBalanceInquiryRequest bankRequest = BankBalanceInquiryRequest.of(
                 request.getEncryptedKey(),
@@ -49,8 +47,6 @@ public class AccountInquiryService {
      * 거래내역 조회 실행 (오케스트레이션)
      */
     public HistoryInquiryResponse getHistory(HistoryInquiryRequest request) {
-        log.info("거래내역 조회 요청 수신 - 계좌: {}, 기간: {} ~ {}", 
-                 request.getAccountNo(), request.getStartDate(), request.getEndDate());
 
         // 1. 날짜 검증
         validateInquiryPeriod(request.getStartDate(), request.getEndDate());
@@ -71,7 +67,6 @@ public class AccountInquiryService {
             endDate = LocalDate.parse(end, DATE_FORMATTER);
 
         } catch (Exception e) {
-            log.error("날짜 파싱 중 오류 발생: {}", e.getMessage());
             throw new BusinessException(ErrorCode.INVALID_INPUT, "날짜 형식이 올바르지 않습니다. (yyyy-MM-dd)");
         }
 

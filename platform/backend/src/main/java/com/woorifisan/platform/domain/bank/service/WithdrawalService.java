@@ -24,8 +24,6 @@ public class WithdrawalService {
      */
     @Transactional
     public TransferResponse executeWithdraw(WithdrawalRequest request) {
-        log.info("출금 실행 요청 - 은행: {}, 계좌: {}, 금액: {}",
-                request.getWithdrawalBankCode(), request.getWithdrawalAccountNo(), request.getAmount());
 
         // 1. 외부 은행 전용 요청 DTO로 변환 (비밀번호는 평문으로 전달)
         BankWithdrawalRequest bankRequest = BankWithdrawalRequest.of(

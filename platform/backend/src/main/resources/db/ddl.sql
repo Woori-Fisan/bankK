@@ -29,6 +29,7 @@ CREATE TABLE platform_user
     id                  BIGINT       NOT NULL AUTO_INCREMENT,
     agency_id           BIGINT       NOT NULL COMMENT '소속 대행업체 FK',
     login_id            VARCHAR(50)  NOT NULL COMMENT '사번 등 로그인 ID',
+    agency_employee_num VARCHAR(50)  NOT NULL COMMENT '대행업체 직원 사번',
     password_hash       VARCHAR(255) NOT NULL COMMENT 'Bcrypt 단방향 해싱',
     role                VARCHAR(20)  NOT NULL COMMENT 'AGENCY_USER / AGENCY_ADMIN',
     failed_login_count  INT          NOT NULL DEFAULT 0 COMMENT '로그인 실패 횟수',
