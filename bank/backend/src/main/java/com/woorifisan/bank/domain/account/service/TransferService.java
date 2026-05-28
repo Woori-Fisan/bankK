@@ -11,8 +11,8 @@ import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
-import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.exception.BusinessException;
+import com.woorifisan.bank.global.response.ErrorCode;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -57,6 +57,11 @@ public class TransferService {
         // 2. 출금 계좌 조회
         Account sender = accountMapper.findByAccountNoPlain(request.getWithdrawalAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+
+        // 출금 계좌와 입금 계좌가 동일한지 검증
+        if (request.getWithdrawalAccountNo().equals(request.getDepositAccountNo())) {
+            throw new BusinessException(ErrorCode.SAME_ACCOUNT_TRANSFER);
+        }
 
         // 3. 본인 인증 검증 (주민번호 앞자리)
         verifyCustomerIdentification(sender.getCustomerId(), request.getCustomerRrnPrefix());
