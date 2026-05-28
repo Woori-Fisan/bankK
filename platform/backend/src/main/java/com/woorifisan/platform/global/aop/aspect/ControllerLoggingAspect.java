@@ -29,12 +29,6 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * {@link org.springframework.web.bind.annotation.RestController} 메서드의
- * 요청 · 응답 · 예외를 구조화된 JSON 로그로 기록하는 AOP Aspect.
- *
- * <p>요청 진입 시 staffId를 MDC에 적재하고, 처리 완료 후 반드시 제거한다.</p>
- */
 @Aspect
 @Component
 @Slf4j
@@ -52,115 +46,79 @@ public class ControllerLoggingAspect {
     private static final String UNKNOWN_IP = "unknown";
 
     // IPv6 로컬호스트 정규화
-    private static final String IPV6_LOCALHOST      = "0:0:0:0:0:0:0:1";
+    private static final String IPV6_LOCALHOST       = "0:0:0:0:0:0:0:1";
     private static final String IPV6_SHORT_LOCALHOST = "::1";
-    private static final String LOCALHOST           = "127.0.0.1";
+    private static final String LOCALHOST            = "127.0.0.1";
 
     // 직렬화 제외 타입 (서블릿 내부 객체 · 멀티파트)
     private static final Set<Class<?>> NON_SERIALIZABLE_TYPES = Set.of(
             HttpServletRequest.class, HttpServletResponse.class, MultipartFile.class
     );
 
-    /** 모든 {@code @RestController} 클래스의 메서드를 포인트컷으로 지정한다. */
     @Pointcut("@within(org.springframework.web.bind.annotation.RestController)")
     public void controllerPointcut() {}
 
-    /**
-     * 요청 진입부터 응답(또는 예외) 반환까지 Around Advice로 로깅한다.
-     * HTTP 컨텍스트가 없는 경우(Non-HTTP 호출)는 별도 포맷으로 기록한다.
-     */
     @Around("controllerPointcut()")
     public Object logController(ProceedingJoinPoint joinPoint) throws Throwable {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        
-        String className = joinPoint.getSignature().getDeclaringType().getSimpleName();
-        String methodName = joinPoint.getSignature().getName();
-        Object[] args = joinPoint.getArgs();
-        String argsJson = serialize(args);
+        HttpServletRequest  request  = attributes.getRequest();
+        HttpServletResponse response = attributes.getResponse();
+
+        Object[] args      = joinPoint.getArgs();
+        String   argsJson  = serialize(args);
+        String   className = joinPoint.getSignature().getDeclaringType().getSimpleName();
+        String   methodName = joinPoint.getSignature().getName();
 
         // staffId 추출 및 MDC 적재
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String currentStaffId = null;
         if (auth != null) {
             Object principal = auth.getPrincipal();
-            if (principal instanceof Long) {
-                currentStaffId = String.valueOf(principal);
-            } else if (principal instanceof String) {
-                currentStaffId = (String) principal;
+            if (principal instanceof Long id) {
+                MDC.put(MDC_STAFF_ID, String.valueOf(id));
+            } else if (principal instanceof String s) {
+                MDC.put(MDC_STAFF_ID, s);
             }
         }
-
-        if (currentStaffId != null) {
-            MDC.put(MDC_STAFF_ID, currentStaffId);
-        }
-
-        // request / response 를 상단에서 한 번만 추출
-        HttpServletRequest request = attributes != null ? attributes.getRequest() : null;
-        HttpServletResponse response = attributes != null ? attributes.getResponse() : null;
 
         Map<String, Object> httpContext = new HashMap<>();
         httpContext.put("bankKeyId", null); // 추후 구현 예정
-        if (request != null) {
-            httpContext.put("method", request.getMethod());
-            httpContext.put("uri", request.getRequestURI());
-            httpContext.put("clientIp", getClientIp(request));
-            httpContext.put("controller", className + "." + methodName);
-            // 요청 시점에 bankCode/targetCode를 한 번만 파싱해 httpContext에 저장
-            // → 이후 RES / ERR 로그에서도 동일한 맵을 재사용하므로 자동으로 포함됨
-            putBankCodes(args, httpContext);
+        httpContext.put("method", request.getMethod());
+        httpContext.put("uri", request.getRequestURI());
+        httpContext.put("clientIp", getClientIp(request));
+        httpContext.put("controller", className + "." + methodName);
+        // 요청 시점에 bankCode/targetCode를 한 번만 파싱해 httpContext에 저장
+        // → 이후 RES / ERR 로그에서도 동일한 맵을 재사용하므로 자동으로 포함됨
+        putBankCodes(args, httpContext);
 
-            log.info("[Request] Args: {}", argsJson, entries(Map.of("http", httpContext)));
-        } else {
-            log.info("[Request] Non-HTTP | Controller: {}.{} | Args: {}",
-                    className, methodName, argsJson);
-        }
+        log.info("[Request] Args: {}", argsJson, entries(Map.of("http", httpContext)));
 
         long start = System.currentTimeMillis();
         try {
-            Object result = joinPoint.proceed();
-            long executionTime = System.currentTimeMillis() - start;
+            Object result          = joinPoint.proceed();
+            long   executionTime   = System.currentTimeMillis() - start;
 
-            if (request != null) {
-                applyElapsedAndStatus(httpContext, executionTime, response);
-                String resultJson = serialize(result);
-                log.info("[Response] Result: {}", resultJson, entries(Map.of("http", httpContext)));
-            } else {
-                log.info("[Response] Non-HTTP | Controller: {}.{} | Time: {}ms | Result: {}",
-                        className, methodName, executionTime, serialize(result));
-            }
+            applyElapsedAndStatus(httpContext, executionTime, response);
+            log.info("[Response] Result: {}", serialize(result), entries(Map.of("http", httpContext)));
             return result;
         } catch (BusinessException e) {
             // 예상된 비즈니스 예외 — errorCode에서 status 직접 추출, WARN 레벨로 기록
             long executionTime = System.currentTimeMillis() - start;
-            int httpStatus = e.getErrorCode().getHttpStatus().value();
-
-            if (request != null) {
-                applyElapsedAndStatus(httpContext, executionTime, httpStatus);
-                httpContext.put("exception", e.getClass().getSimpleName());
-                // GlobalExceptionHandler가 반환할 응답 바디를 재현하여 result로 기록
-                String resultJson = serialize(ApiResponse.error(e.getErrorCode(), e.getMessage()));
-                log.warn("[Error] Result: {} | Exception: {} | Message: {}",
-                        resultJson, e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
-            } else {
-                log.warn("[Error] Non-HTTP | Controller: {}.{} | Time: {}ms | Exception: {} | Message: {}",
-                        className, methodName, executionTime, e.getClass().getSimpleName(), e.getMessage());
-            }
+            applyElapsedAndStatus(httpContext, executionTime, e.getErrorCode().getHttpStatus().value());
+            httpContext.put("exception", e.getClass().getSimpleName());
+            // GlobalExceptionHandler가 반환할 응답 바디를 재현하여 result로 기록
+            String resultJson = serialize(ApiResponse.error(e.getErrorCode(), e.getMessage()));
+            log.warn("[Error] Result: {} | Exception: {} | Message: {}",
+                    resultJson, e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
             throw e;
         } catch (Throwable e) {
             // 예상치 못한 시스템 예외 — status 500, ERROR 레벨로 기록
             long executionTime = System.currentTimeMillis() - start;
-
-            if (request != null) {
-                applyElapsedAndStatus(httpContext, executionTime, HttpStatus.INTERNAL_SERVER_ERROR.value());
-                httpContext.put("exception", e.getClass().getSimpleName());
-                // 시스템 예외는 GlobalExceptionHandler가 INTERNAL_SERVER_ERROR로 응답
-                String resultJson = serialize(ApiResponse.error(ErrorCode.INTERNAL_SERVER_ERROR));
-                log.error("[Error] Result: {} | Exception: {} | Message: {}",
-                        resultJson, e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
-            } else {
-                log.error("[Error] Non-HTTP | Controller: {}.{} | Time: {}ms | Exception: {} | Message: {}",
-                        className, methodName, executionTime, e.getClass().getSimpleName(), e.getMessage());
-            }
+            applyElapsedAndStatus(httpContext, executionTime, HttpStatus.INTERNAL_SERVER_ERROR.value());
+            httpContext.put("exception", e.getClass().getSimpleName());
+            // 시스템 예외는 GlobalExceptionHandler가 INTERNAL_SERVER_ERROR로 응답
+            String resultJson = serialize(ApiResponse.error(ErrorCode.INTERNAL_SERVER_ERROR));
+            log.error("[Error] Result: {} | Exception: {} | Message: {}",
+                    resultJson, e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
             throw e;
         } finally {
             MDC.remove(MDC_STAFF_ID);
@@ -181,7 +139,6 @@ public class ControllerLoggingAspect {
         httpContext.put("status", status);
     }
 
-    /** 프록시 환경을 고려해 {@link #IP_HEADER_CANDIDATES} 우선순위대로 실제 클라이언트 IP를 추출한다. */
     private String getClientIp(HttpServletRequest request) {
         String ip = IP_HEADER_CANDIDATES.stream()
                 .map(request::getHeader)
@@ -191,7 +148,6 @@ public class ControllerLoggingAspect {
         return normalizeIp(ip);
     }
 
-    /** IPv6 루프백 주소를 IPv4 {@code 127.0.0.1}로 정규화한다. */
     private String normalizeIp(String ip) {
         if (IPV6_LOCALHOST.equals(ip) || IPV6_SHORT_LOCALHOST.equals(ip)) {
             return LOCALHOST;
@@ -240,7 +196,6 @@ public class ControllerLoggingAspect {
         }
     }
 
-    /** 서블릿 · 멀티파트 객체를 제외하고 파라미터를 JSON 문자열로 직렬화한다. 직렬화 실패 시 {@code toString()}으로 폴백한다. */
     private String serialize(Object obj) {
         if (obj == null) return "null";
         if (obj instanceof Object[] args) {

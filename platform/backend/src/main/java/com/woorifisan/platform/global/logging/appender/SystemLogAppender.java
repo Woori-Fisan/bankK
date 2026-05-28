@@ -132,7 +132,7 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
         if (message.startsWith(MSG_CONTROLLER_REQ)) return "CONTROLLER_REQ";
         if (message.startsWith(MSG_CONTROLLER_RES)) return "CONTROLLER_RES";
         if (message.startsWith(MSG_CONTROLLER_ERR)) return "CONTROLLER_ERR";
-        return null; // Non-HTTP 분기([Request] Non-HTTP ...) 등 알 수 없는 형식
+        return null;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
