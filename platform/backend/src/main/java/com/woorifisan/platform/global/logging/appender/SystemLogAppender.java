@@ -106,7 +106,7 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
         String errorCode     = isError ? parseApiErrorField(rawBody, "code")    : null;
         String errorMessage  = isError ? parseApiErrorField(rawBody, "message") : null;
 
-        // bankCode: REQ 시점에 ControllerLoggingAspect가 httpContext에 저장 → RES/ERR도 동일 맵 재사용
+        // bankCode/targetCode: REQ 시점에 ControllerLoggingAspect가 httpContext에 저장 → RES/ERR도 동일 맵 재사용
         String bankCode = firstNonNull(getStr(httpContext, "bankCode"), UNKNOWN_BANK);
 
         return SystemLog.builder()
@@ -116,6 +116,7 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
                 .traceId(mdc.get("traceId"))
                 .staffId(mdc.get("staffId"))
                 .bankCode(bankCode)
+                .targetCode(getStr(httpContext, "targetCode"))
                 .httpMethod(getStr(httpContext, "method"))
                 .httpUri(getStr(httpContext, "uri"))
                 .httpStatus(getInt(httpContext, "status"))

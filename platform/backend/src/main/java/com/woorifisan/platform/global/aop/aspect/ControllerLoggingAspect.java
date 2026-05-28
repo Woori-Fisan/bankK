@@ -105,9 +105,9 @@ public class ControllerLoggingAspect {
             httpContext.put("uri", request.getRequestURI());
             httpContext.put("clientIp", getClientIp(request));
             httpContext.put("controller", className + "." + methodName);
-            // 요청 시점에 bankCode를 한 번만 파싱해 httpContext에 저장
+            // 요청 시점에 bankCode/targetCode를 한 번만 파싱해 httpContext에 저장
             // → 이후 RES / ERR 로그에서도 동일한 맵을 재사용하므로 자동으로 포함됨
-            extractBankCode(args).ifPresent(code -> httpContext.put("bankCode", code));
+            putBankCodes(args, httpContext);
 
             log.info("[Request] Args: {}", argsJson, entries(Map.of("http", httpContext)));
         } else {
@@ -199,14 +199,9 @@ public class ControllerLoggingAspect {
         return ip;
     }
 
-    /**
-     * 컨트롤러 파라미터 배열에서 {@code bankCode} 필드를 찾아 반환한다.
-     *
-     * <p>직렬화 없이 원본 객체에서 직접 읽으므로 JSON 파싱 비용이 없다.
-     * {@code getBankCode()} 메서드가 있는 첫 번째 파라미터에서 추출한다.</p>
-     */
-    // getBankCode() 우선, 없으면 *BankCode 패턴 필드(withdrawalBankCode 등)에서 첫 번째 값 추출
-    private java.util.Optional<String> extractBankCode(Object[] args) {
+    // bankCode(출금/단일) → httpContext["bankCode"], depositBankCode → httpContext["targetCode"]
+    // getBankCode() 우선, 없으면 withdrawal*/source* → bankCode, deposit*/target* → targetCode 로 분류
+    private void putBankCodes(Object[] args, Map<String, Object> httpContext) {
         for (Object arg : args) {
             if (arg == null) continue;
             if (NON_SERIALIZABLE_TYPES.stream().anyMatch(t -> t.isInstance(arg))) continue;
@@ -214,25 +209,35 @@ public class ControllerLoggingAspect {
                 java.lang.reflect.Method getter = arg.getClass().getMethod("getBankCode");
                 Object value = getter.invoke(arg);
                 if (value instanceof String s && !s.isBlank()) {
-                    return java.util.Optional.of(s);
+                    httpContext.put("bankCode", s);
+                    return;
                 }
             } catch (NoSuchMethodException ignored) {
-                // getBankCode() 없으면 *BankCode 패턴 필드 탐색
+                String bankCode   = null;
+                String targetCode = null;
                 for (java.lang.reflect.Field field : arg.getClass().getDeclaredFields()) {
-                    if (!field.getName().endsWith("BankCode")) continue;
+                    String name = field.getName();
+                    if (!name.endsWith("BankCode")) continue;
                     try {
-                        String getterName = "get" + Character.toUpperCase(field.getName().charAt(0))
-                                + field.getName().substring(1);
-                        java.lang.reflect.Method m = arg.getClass().getMethod(getterName);
-                        Object value = m.invoke(arg);
-                        if (value instanceof String s && !s.isBlank()) {
-                            return java.util.Optional.of(s);
+                        String getterName = "get" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
+                        Object value = arg.getClass().getMethod(getterName).invoke(arg);
+                        if (!(value instanceof String s) || s.isBlank()) continue;
+                        if (name.startsWith("withdrawal") || name.startsWith("source")) {
+                            bankCode = s;
+                        } else if (name.startsWith("deposit") || name.startsWith("target")) {
+                            targetCode = s;
+                        } else if (bankCode == null) {
+                            bankCode = s;
                         }
                     } catch (Exception ignored2) {}
                 }
+                // withdrawalBankCode 없이 depositBankCode만 있으면 bankCode로 승격
+                if (bankCode == null && targetCode != null) { bankCode = targetCode; targetCode = null; }
+                if (bankCode   != null) httpContext.put("bankCode",   bankCode);
+                if (targetCode != null) httpContext.put("targetCode", targetCode);
+                if (bankCode != null || targetCode != null) return;
             } catch (Exception ignored) {}
         }
-        return java.util.Optional.empty();
     }
 
     /** 서블릿 · 멀티파트 객체를 제외하고 파라미터를 JSON 문자열로 직렬화한다. 직렬화 실패 시 {@code toString()}으로 폴백한다. */
