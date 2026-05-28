@@ -45,9 +45,7 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
         try {
             f = MapEntriesAppendingMarker.class.getDeclaredField("map");
             f.setAccessible(true);
-        } catch (Exception ignored) {
-            // 리플렉션 실패 시 컨텍스트 추출 불가 — append()에서 null 반환으로 처리
-        }
+        } catch (Exception ignored) {}
         MAP_ENTRIES_FIELD = f;
     }
 
@@ -253,7 +251,8 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
         return Map.of();
     }
 
-    // MapEntriesAppendingMarker에서 리플렉션으로 내부 맵을 꺼내 contextKey 값 반환. 실패 시 null.
+    // MapEntriesAppendingMarker 내부 맵(private)을 리플렉션으로 꺼내 contextKey 값 반환. 실패 시 null.
+    // logstash-logback-encoder 7.4는 getMap() 미제공 → 리플렉션 불가피
     @SuppressWarnings("unchecked")
     private Map<String, Object> tryExtractFromMarker(Object arg, String contextKey) {
         if (!(arg instanceof MapEntriesAppendingMarker) || MAP_ENTRIES_FIELD == null) return null;
