@@ -36,7 +36,10 @@ out/
 ### VS Code ###
 .vscode/
 
+# env
 .env
+.env.*
+!.env.example
 
 # 로그 파일 관리
 /logs/

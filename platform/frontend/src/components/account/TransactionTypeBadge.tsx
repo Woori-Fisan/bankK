@@ -1,7 +1,7 @@
 import React from 'react';
 
 // 거래 유형 매핑 상수 정의
-const TRANSACTION_TYPE_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+const TRANSACTION_TYPE_MAP: Record<string, { label: string; color: string; icon?: React.ReactNode }> = {
     'DEPOSIT': { 
         label: '입금', 
         color: 'text-emerald-600', 
