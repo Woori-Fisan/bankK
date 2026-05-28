@@ -205,6 +205,7 @@ public class ControllerLoggingAspect {
      * <p>직렬화 없이 원본 객체에서 직접 읽으므로 JSON 파싱 비용이 없다.
      * {@code getBankCode()} 메서드가 있는 첫 번째 파라미터에서 추출한다.</p>
      */
+    // getBankCode() 우선, 없으면 *BankCode 패턴 필드(withdrawalBankCode 등)에서 첫 번째 값 추출
     private java.util.Optional<String> extractBankCode(Object[] args) {
         for (Object arg : args) {
             if (arg == null) continue;
@@ -216,7 +217,19 @@ public class ControllerLoggingAspect {
                     return java.util.Optional.of(s);
                 }
             } catch (NoSuchMethodException ignored) {
-                // 해당 파라미터에 getBankCode() 없음 — 다음 파라미터로
+                // getBankCode() 없으면 *BankCode 패턴 필드 탐색
+                for (java.lang.reflect.Field field : arg.getClass().getDeclaredFields()) {
+                    if (!field.getName().endsWith("BankCode")) continue;
+                    try {
+                        String getterName = "get" + Character.toUpperCase(field.getName().charAt(0))
+                                + field.getName().substring(1);
+                        java.lang.reflect.Method m = arg.getClass().getMethod(getterName);
+                        Object value = m.invoke(arg);
+                        if (value instanceof String s && !s.isBlank()) {
+                            return java.util.Optional.of(s);
+                        }
+                    } catch (Exception ignored2) {}
+                }
             } catch (Exception ignored) {}
         }
         return java.util.Optional.empty();
