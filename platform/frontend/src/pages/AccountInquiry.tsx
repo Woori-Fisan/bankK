@@ -186,7 +186,7 @@ const AccountInquiry: React.FC = () => {
             <BalanceSummary customBalance={balanceData?.balance} />
             
             <section className="flex-1 flex flex-col">
-                <TransactionFilter onSearch={handleSearch} onReset={handleReset} />
+                <TransactionFilter onSearch={handleSearch} />
                 <TransactionTable 
                     transactions={transactions} // 더 이상 slice()로 자르지 않고 받아온 그대로 넘김
                     currentPage={currentPage}

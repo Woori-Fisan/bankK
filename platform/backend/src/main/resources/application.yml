@@ -99,7 +99,7 @@ logging:
 
 bank:
   core:
-    url: ${BANK_CORE_URL:http://localhost:8081}
+    url: ${BANK_SERVER_URL:http://localhost:8081}
   urls:
     "020":
       base-url: ${WOORI_BASE_URL:http://localhost:8081/api/v1/baas}

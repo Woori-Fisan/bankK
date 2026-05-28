@@ -3,7 +3,6 @@ import { Calendar as CalendarIcon, RotateCcw } from 'lucide-react';
 
 interface TransactionFilterProps {
     onSearch: (filters: FilterState) => void;
-    onReset: () => void;
 }
 
 export interface FilterState {
@@ -11,7 +10,7 @@ export interface FilterState {
     endDate: string;
 }
 
-const TransactionFilter: React.FC<TransactionFilterProps> = ({ onSearch, onReset }) => {
+const TransactionFilter: React.FC<TransactionFilterProps> = ({ onSearch }) => {
     // 기본값: 한 달 전 ~ 오늘
     const getDefaultFilters = () => {
         const today = new Date().toISOString().split('T')[0];
