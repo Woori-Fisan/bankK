@@ -96,8 +96,6 @@ springdoc:
 # 로깅
 logging:
   config: classpath:logback-spring.xml
-  file:
-    path: ${LOGGING_PATH:./logs}
 
 bank:
   core:

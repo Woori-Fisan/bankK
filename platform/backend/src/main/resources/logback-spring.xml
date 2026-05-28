@@ -12,7 +12,7 @@
         </encoder>
     </appender>
 
-    <!-- ── JSON 파일 (Fluent Bit 파싱 대상) ──────────── -->
+    <!-- ── JSON 파일 ──────────── -->
     <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_FILE}</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -20,7 +20,7 @@
             <fileNamePattern>${LOG_PATH}/application.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
-        <!-- Fluent Bit이 파싱할 수 있도록 JSON 형식으로 출력 -->
+        <!-- JSON 형식으로 출력 -->
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <includeContext>false</includeContext>
             <fieldNames>
@@ -39,6 +39,7 @@
 
     <!-- ── 비동기 래퍼 (메인 스레드 블로킹 방지) ─────── -->
     <!-- DOMAIN_MONITOR.md: 모든 로깅은 완전 비동기로 처리 -->
+    <!-- 현재는 사용하지 않지만 남겨둠 -->
     <appender name="ASYNC_JSON_FILE" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="JSON_FILE"/>
         <!-- 큐가 80% 차면 TRACE/DEBUG/INFO 드롭, ERROR는 유지 -->
@@ -64,30 +65,27 @@
     </appender>
 
     <!-- ── 프로파일별 설정 ────────────────────────────── -->
-    <!-- 로컬 개발: 콘솔 + JSON 파일(임시 테스트) -->
+    <!-- 로컬 개발: 콘솔 + DB -->
     <springProfile name="local">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="ASYNC_JSON_FILE"/>
             <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
         <logger name="com.woorifisan.platform" level="DEBUG"/>
     </springProfile>
 
-    <!-- 개발 서버: 콘솔 + JSON 파일 -->
+    <!-- 개발 서버: 콘솔 + DB -->
     <springProfile name="dev">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="ASYNC_JSON_FILE"/>
             <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
         <logger name="com.woorifisan.platform" level="DEBUG"/>
     </springProfile>
 
-    <!-- 운영: JSON 파일만 (Fluent Bit 수집 대상) -->
+    <!-- 운영: DB 만 -->
     <springProfile name="prod">
         <root level="INFO">
-            <appender-ref ref="ASYNC_JSON_FILE"/>
             <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
     </springProfile>
