@@ -9,8 +9,8 @@ import { executeTransfer } from '../../../api/transfer';
 
 const FinalConfirmForm: React.FC = () => {
     const { 
-        fromBank, fromAccountNumber, customerRrnPrefix,
-        toBank, toAccountNumber, toName, amount,
+        fromBank, fromBankName, fromAccountNumber, customerRrnPrefix,
+        toBank, toBankName, toAccountNumber, toName, amount,
         prevStep, nextStep, updateData 
     } = useTransferStore();
     const [memo, setMemo] = useState('');
@@ -71,12 +71,12 @@ const FinalConfirmForm: React.FC = () => {
             <div className="space-y-6">
                 <FinalRecipientCardSection 
                     recipientName={toName}
-                    recipientBank={toBank}
+                    recipientBank={toBankName}
                     recipientAccount={toAccountNumber}
                 />
 
                 <FinalDetailCardSection 
-                    fromAccount={`${fromBank} (${fromAccountNumber})`}
+                    fromAccount={`${fromBankName} (${fromAccountNumber})`}
                     amount={amount}
                     memo={memo}
                     setMemo={setMemo}

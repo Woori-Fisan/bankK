@@ -6,7 +6,7 @@ import { useTransferStore } from '../../../store/useTransferStore';
 const ResultForm: React.FC = () => {
     const { 
         amount, toName, toBankName, toBankAccountNo, 
-        fromBank, fromAccountNumber, 
+        fromBankName, fromAccountNumber, 
         transactionId, transactionDate, balanceAfter, reset 
     } = useTransferStore();
 
@@ -18,7 +18,7 @@ const ResultForm: React.FC = () => {
                 toName={toName}
                 toBank={toBankName}
                 toAccountNumber={toBankAccountNo}
-                fromBank={fromBank}
+                fromBank={fromBankName}
                 fromAccountNumber={fromAccountNumber}
                 transactionId={transactionId}
                 transactionDate={transactionDate}

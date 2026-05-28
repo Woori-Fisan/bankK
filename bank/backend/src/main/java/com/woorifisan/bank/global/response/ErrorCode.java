@@ -30,6 +30,10 @@ public enum ErrorCode {
 
     // 은행
     BANK_NOT_FOUND("BANK_001", "존재하지 않는 은행입니다.", HttpStatus.NOT_FOUND),
+    BANK_PW_ERROR("BANK_002", "계좌 비밀번호가 틀렸습니다.", HttpStatus.FORBIDDEN),
+
+    // 이체
+    IDENTIFICATION_ERROR("TRANSFER_001", "본인 인증 정보가 일치하지 않습니다.", HttpStatus.FORBIDDEN),
 
     // 멱등성
     DUPLICATE_REQUEST("IDEM_001", "중복 요청입니다.", HttpStatus.CONFLICT),
