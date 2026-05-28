@@ -1,4 +1,4 @@
-package com.woorifisan.bank.domain.account.dto.decrtypted;
+package com.woorifisan.bank.domain.account.dto.decrypted;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -1,6 +1,6 @@
 package com.woorifisan.bank.domain.account.service;
 
-import com.woorifisan.bank.domain.account.dto.decrtypted.DecryptedRecipientData;
+import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedRecipientData;
 import com.woorifisan.bank.domain.account.dto.request.DepositRequest;
 import com.woorifisan.bank.domain.account.dto.request.RecipientRequest;
 import com.woorifisan.bank.domain.account.dto.request.TransferRequest;
