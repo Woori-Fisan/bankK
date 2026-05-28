@@ -35,13 +35,4 @@
           AND c.rrn_prefix = #{rrnPrefix}
     </select>
 
-    <update id="subtractBalance">
-        UPDATE account
-        SET balance = balance - #{amount},
-            version = version + 1,
-            updated_at = NOW()
-        WHERE id = #{id}
-          AND version = #{version}
-          AND balance >= #{amount}
-    </update>
 </mapper>

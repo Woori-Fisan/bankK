@@ -1,6 +1,5 @@
 package com.woorifisan.bank.domain.account.mapper;
 
-import com.woorifisan.bank.domain.account.dto.response.RecipientResponse;
 import com.woorifisan.bank.domain.account.model.Account;
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -33,15 +32,5 @@ public interface AccountMapper {
     Optional<Account> findByAccountNoAndRrnPrefix(
             @Param("accountNo") String accountNo,
             @Param("rrnPrefix") String rrnPrefix
-    );
-
-    /**
-     * 낙관적 락을 적용한 잔액 차감
-     * @return 수정된 행 수 (0이면 버전 불일치)
-     */
-    int subtractBalance(
-            @Param("id") Long id,
-            @Param("amount") BigDecimal amount,
-            @Param("version") Integer version
     );
 }

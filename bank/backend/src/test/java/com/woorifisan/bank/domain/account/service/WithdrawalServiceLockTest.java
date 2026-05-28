@@ -64,8 +64,8 @@ class WithdrawalServiceLockTest {
                 .willReturn(Optional.of(account));
         given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
         
-        // subtractBalance가 0을 반환하도록 설정 (실패 상황)
-        given(accountMapper.subtractBalance(anyLong(), any(BigDecimal.class), anyInt()))
+        // updateBalance 0을 반환하도록 설정 (실패 상황)
+        given(accountMapper.updateBalance(anyLong(), any(BigDecimal.class), anyInt()))
                 .willReturn(0);
         
         // 다시 조회했을 때 잔액이 부족한 상황 모사
@@ -109,7 +109,7 @@ class WithdrawalServiceLockTest {
         given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
         
         // subtractBalance가 0을 반환하도록 설정
-        given(accountMapper.subtractBalance(anyLong(), any(BigDecimal.class), anyInt()))
+        given(accountMapper.updateBalance(anyLong(), any(BigDecimal.class), anyInt()))
                 .willReturn(0);
         
         // 다시 조회했을 때 잔액은 충분하지만 버전이 다른 상황 모사
