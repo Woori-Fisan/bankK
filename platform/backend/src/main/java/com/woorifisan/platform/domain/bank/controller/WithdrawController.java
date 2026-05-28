@@ -7,6 +7,7 @@ import com.woorifisan.platform.global.config.resolver.CurrentUser;
 import com.woorifisan.platform.global.config.swagger.CustomExceptionDescription;
 import com.woorifisan.platform.global.config.swagger.SwaggerResponseDescription;
 import com.woorifisan.platform.global.response.ApiResponse;
+import com.woorifisan.platform.global.security.annotation.VerifyTerminalSignature;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,6 +15,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,14 +27,16 @@ public class WithdrawController {
 
     private final WithdrawalService withdrawalService;
 
-    @Operation(summary = "출금 실행", description = "대행기관 직원이 고객의 출금 요청을 실행합니다.")
+    @Operation(summary = "출금 실행", description = "대행기관 직원이 고객의 출금 요청을 실행합니다. (E2EE 적용)")
     @CustomExceptionDescription(SwaggerResponseDescription.BANK_WITHDRAW)
+    @VerifyTerminalSignature
     @PostMapping
     public ApiResponse<TransferResponse> executeWithdraw(
             @Parameter(hidden = true) @CurrentUser Long staffId,
-//            @RequestHeader(value = "x-jws-signature") String jwsSignature,
+            @RequestHeader("x-jws-signature") String jwsSignature,
+            @RequestHeader("x-bank-key-id") String bankKeyId,
             @Valid @RequestBody WithdrawalRequest request) {
-        TransferResponse response = withdrawalService.executeWithdraw(request);
+        TransferResponse response = withdrawalService.executeWithdraw(request, bankKeyId);
         return ApiResponse.success(response);
     }
 }

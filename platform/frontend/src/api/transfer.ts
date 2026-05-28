@@ -13,6 +13,51 @@ export interface ApiResponse<T> {
 }
 
 export interface TransferRecipientRequest {
+    reqPayload: string; // 은행 코어용 암호화된 전체 JWE (Zero-Knowledge)
+    depositBankCode: string;
+}
+
+/**
+ * 수취인 조회 응답 (네트워크 수신용)
+ */
+export interface TransferRecipientResponse {
+    resPayload: string; // 암호화된 민감 정보
+    depositBankName: string;
+    accountStatus: string;
+}
+
+/**
+ * 수취인 조회 최종 결과 (복호화 후 UI 사용용)
+ */
+export interface DecryptedRecipientResult {
+    depositorName: string;
+    depositBankName: string;
+    depositBankAccountNo: string;
+    accountStatus: string;
+}
+
+export interface TransferRequest {
+    withdrawalBankCode: string;
+    depositBankCode: string;
+    amount: number;
+    // 이전 평문 필드 대신 암호화된 페이로드 전달
+    withdrawReqPayload?: string;
+    depositReqPayload?: string;
+    
+    // 컴포넌트 호출 파라미터 유지를 위한 임시 필드 (백엔드 전송 전 제거됨)
+    withdrawalAccountNo?: string;
+    withdrawalPassword?: string;
+    customerRrnPrefix?: string;
+    depositAccountNo?: string;
+    encryptedKey?: string;
+    jwsSignature?: string;
+}
+
+export interface TransferResponse {
+    transactionId: string;
+    transactionDate: string;
+    balanceAfter: string;
+}
 
 /**
  * 수취인 조회를 수행합니다.

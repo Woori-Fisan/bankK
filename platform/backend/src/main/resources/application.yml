@@ -111,3 +111,4 @@ bank:
         recipient: "/transfer/recipient"
         transfer: "/transfer"
         public-key: "/keys/public"
+        cash-withdraw: "/withdrawals"

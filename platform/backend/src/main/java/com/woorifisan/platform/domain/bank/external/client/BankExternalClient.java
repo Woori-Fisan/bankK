@@ -122,7 +122,7 @@ public class BankExternalClient {
         BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
         if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
 
-        String url = bankProperty.getUrl("withdraw");
+        String url = bankProperty.getUrl("cash-withdraw");
         log.info("외부 은행 API 호출 [현금출금] - URL: {}, 은행코드: {}", url, bankCode);
 
         return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<TransferResponse>>() {}, bankCode);

@@ -17,23 +17,21 @@ public class WithdrawalService {
     private final BankExternalClient bankExternalClient;
 
     /**
-     * 출금 실행
+     * 출금 실행 (E2EE Zero-Knowledge Pass-through)
      *
      * @param request 출금 요청 정보
+     * @param bankKeyId 은행 키 ID
      * @return 출금 결과 정보
      */
     @Transactional
-    public TransferResponse executeWithdraw(WithdrawalRequest request) {
-        log.info("출금 실행 요청 - 은행: {}, 계좌: {}, 금액: {}",
-                request.getWithdrawalBankCode(), request.getWithdrawalAccountNo(), request.getAmount());
+    public TransferResponse executeWithdraw(WithdrawalRequest request, String bankKeyId) {
+        log.info("출금 실행 요청 중계 - 은행코드: {}, 키ID: {}, 금액: {}",
+                request.getWithdrawalBankCode(), bankKeyId, request.getAmount());
 
-        // 1. 외부 은행 전용 요청 DTO로 변환 (비밀번호는 평문으로 전달)
+        // 1. 외부 은행 전용 요청 DTO로 변환 (Pass-through)
         BankWithdrawalRequest bankRequest = BankWithdrawalRequest.of(
-                request.getEncryptedKey(),
-                "jwsSignature",
-                request.getWithdrawalAccountNo(),
-                request.getWithdrawalPassword(),
-                request.getCustomerRrnPrefix(),
+                request.getReqPayload(),
+                bankKeyId,
                 request.getAmount()
         );
 
