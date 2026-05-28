@@ -8,6 +8,7 @@ import com.woorifisan.platform.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
 import com.woorifisan.platform.domain.loan.dto.response.AvailableProductDto;
 import com.woorifisan.platform.domain.loan.dto.response.LoanContractDocumentsResponse;
+import com.woorifisan.platform.domain.loan.dto.response.LoanDocumentUploadResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluateResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluationResultResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanExecuteResponse;
@@ -21,13 +22,21 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,10 +54,14 @@ public class LoanService {
     private static final String REDIS_EVAL_GUID_KEY = "loan:eval:%s:guid";
     private static final String REDIS_APP_GUID_KEY = "loan:app:%s:guid";
     private static final String REDIS_APP_EVAL_KEY = "loan:app:%s:evalId";
-    private static final String REDIS_APP_RESULT_KEY = "loan:app:%s:result"; // 실제 심사 결과 캐싱용
-    private static final String REDIS_LOAN_NO_ID_MAP = "loan:loanNo:%s:id"; // loanNo -> evaluationId 매핑용
+    private static final String REDIS_APP_RESULT_KEY = "loan:app:%s:result";
+    private static final String REDIS_LOAN_NO_ID_MAP = "loan:loanNo:%s:id";
+    private static final String REDIS_DOC_META_KEY = "loan:doc:%s:meta";
     private static final long GUID_TTL_HOURS = 24L;
     private static final long SSE_MOCK_DELAY_MS = 2_000L;
+
+    @Value("${loan.upload.dir:uploads/loan}")
+    private String uploadDir;
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -68,6 +81,48 @@ public class LoanService {
         this.bankMapper = bankMapper;
         this.bankWebClient = bankWebClient.mutate()
                 .baseUrl(bankCoreUrl)
+                .build();
+    }
+
+    /**
+     * 서류 업로드 — 파일을 서버에 저장하고 documentId를 반환
+     */
+    public LoanDocumentUploadResponse uploadDocument(MultipartFile file, Long staffId) {
+        if (file.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        String documentId = UUID.randomUUID().toString();
+        String originalFileName = StringUtils.cleanPath(
+                Objects.requireNonNullElse(file.getOriginalFilename(), "document.pdf"));
+        String storedFileName = documentId + "_" + originalFileName;
+        String filePath = uploadDir + "/" + storedFileName;
+
+        try {
+            Path dir = Paths.get(uploadDir);
+            Files.createDirectories(dir);
+            Files.copy(file.getInputStream(), dir.resolve(storedFileName), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            log.error("서류 파일 저장 실패 - documentId: {}, fileName: {}", documentId, originalFileName, e);
+            throw new BusinessException(ErrorCode.LOAN_DOCUMENT_UPLOAD_ERROR);
+        }
+
+        // Redis에 메타데이터 저장 (evaluateLoan에서 은행에 전달하기 위해)
+        try {
+            Map<String, String> meta = Map.of("fileName", originalFileName, "filePath", filePath);
+            redisTemplate.opsForValue().set(
+                    String.format(REDIS_DOC_META_KEY, documentId),
+                    objectMapper.writeValueAsString(meta),
+                    GUID_TTL_HOURS, TimeUnit.HOURS);
+        } catch (Exception e) {
+            log.warn("서류 메타데이터 Redis 저장 실패 - documentId: {}", documentId, e);
+        }
+
+        log.info("서류 업로드 완료 - staffId: {}, documentId: {}, fileName: {}", staffId, documentId, originalFileName);
+        return LoanDocumentUploadResponse.builder()
+                .documentId(documentId)
+                .fileName(originalFileName)
+                .filePath(filePath)
                 .build();
     }
 
@@ -142,13 +197,33 @@ public class LoanService {
         bankRequest.put("isProductTermsAgreed", hasAgreed(request, "NICE_CREDIT_INQUIRY"));
         bankRequest.put("isDocumentCollected", hasAgreed(request, "DOCUMENT_COLLECT"));
 
+        // 업로드된 서류 메타데이터 조회 후 은행에 전달
+        List<Map<String, String>> documents = new ArrayList<>();
+        if (request.getUploadedDocumentIds() != null) {
+            for (String docId : request.getUploadedDocumentIds()) {
+                try {
+                    String metaJson = redisTemplate.opsForValue().get(String.format(REDIS_DOC_META_KEY, docId));
+                    if (metaJson != null) {
+                        Map<String, String> meta = objectMapper.readValue(metaJson, new TypeReference<>() {});
+                        Map<String, String> docInfo = new HashMap<>(meta);
+                        docInfo.put("documentId", docId);
+                        documents.add(docInfo);
+                    }
+                } catch (Exception e) {
+                    log.warn("[{}] 서류 메타데이터 조회 실패 - documentId: {}", guid, docId);
+                }
+            }
+        }
+        bankRequest.put("documents", documents);
+        log.info("[{}] 은행에 전달할 서류 수: {}", guid, documents.size());
+
         try {
             com.woorifisan.platform.global.response.ApiResponse<Map<String, Object>> bankResponse = bankWebClient.post()
                     .uri("/api/v1/loan/evaluation")
                     .bodyValue(bankRequest)
                     .retrieve()
                     .bodyToMono(new ParameterizedTypeReference<com.woorifisan.platform.global.response.ApiResponse<Map<String, Object>>>() {})
-                    .block(Duration.ofSeconds(5));
+                    .block(Duration.ofSeconds(15));
 
             if (bankResponse == null || bankResponse.getData() == null) {
                 throw new BusinessException(ErrorCode.BANK_API_ERROR);
@@ -255,8 +330,10 @@ public class LoanService {
                             .rejectionMessage(String.valueOf(evalData.get("rejectReason"))).build();
                 }
 
-                sendSse(emitter, guid, "status", result);
-                log.info("[{}] SSE 심사 결과 전송 완료 - loanNo: {}, status: {}", guid, loanNo, status);
+                boolean sent = sendSse(emitter, guid, "status", result);
+                if (sent) {
+                    log.info("[{}] SSE 심사 결과 전송 완료 - loanNo: {}, status: {}", guid, loanNo, status);
+                }
                 emitter.complete();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -271,13 +348,16 @@ public class LoanService {
         return emitter;
     }
 
-    private void sendSse(SseEmitter emitter, String guid, String name, Object data) {
+    private boolean sendSse(SseEmitter emitter, String guid, String name, Object data) {
         try {
             emitter.send(SseEmitter.event().name(name).data(objectMapper.writeValueAsString(data)));
+            return true;
         } catch (AsyncRequestNotUsableException e) {
             log.warn("[{}] SSE 이미 종료된 연결에 대한 전송 시도 (AsyncRequestNotUsableException)", guid);
+            return false;
         } catch (java.io.IOException e) {
             log.warn("[{}] SSE 클라이언트 연결 중단 (IOException): {}", guid, e.getMessage());
+            return false;
         } catch (Exception e) {
             log.error("[{}] SSE 전송 중 예외 발생", guid, e);
             throw new RuntimeException(e);

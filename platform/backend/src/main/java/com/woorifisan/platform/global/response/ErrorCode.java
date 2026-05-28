@@ -59,6 +59,7 @@ public enum ErrorCode {
     LOAN_EVALUATION_REJECTED("LOAN_005", "대출 심사가 거절되었습니다.", HttpStatus.UNPROCESSABLE_ENTITY),
     LOAN_TERMS_NOT_AGREED("LOAN_006", "필수 약관에 동의하지 않았습니다.", HttpStatus.BAD_REQUEST),
     LOAN_DEPOSIT_BANK_MISMATCH("LOAN_007", "입금 계좌 은행이 선택한 은행과 일치하지 않습니다.", HttpStatus.BAD_REQUEST),
+    LOAN_DOCUMENT_UPLOAD_ERROR("LOAN_008", "서류 업로드 중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
 
     // 출금
     WITHDRAW_AMOUNT_FAULT("WITHDRAW_001", "출금 금액이 유효하지 않습니다.", HttpStatus.BAD_REQUEST),

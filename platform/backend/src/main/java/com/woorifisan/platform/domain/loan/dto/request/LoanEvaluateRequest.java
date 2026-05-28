@@ -50,4 +50,7 @@ public class LoanEvaluateRequest {
     @Valid
     @NotEmpty(message = "동의 서류 목록은 필수입니다.")
     private List<LoanDocumentDto> documents;
+
+    /** 플랫폼에 업로드된 서류의 documentId 목록 */
+    private List<String> uploadedDocumentIds;
 }

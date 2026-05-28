@@ -3,6 +3,7 @@ package com.woorifisan.platform.domain.loan.controller;
 import com.woorifisan.platform.global.response.ApiResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanContractDocumentsResponse;
 import com.woorifisan.platform.domain.loan.dto.request.LoanEvaluateRequest;
+import com.woorifisan.platform.domain.loan.dto.response.LoanDocumentUploadResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluateResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluationResultResponse;
 import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
@@ -24,7 +25,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
@@ -74,6 +77,22 @@ public class LoanController {
             @AuthenticationPrincipal Long staffId) {
 
         return ApiResponse.success(loanService.getRequiredDocuments(staffId));
+    }
+
+    /**
+     * [1-5] 서류 업로드
+     * POST /api/v1/loan/documents
+     *
+     * 심사 신청 전 필수 서류(PDF)를 플랫폼 서버에 업로드한다.
+     * 성공 시 documentId를 반환하며, 심사 신청 시 이 ID를 함께 전송한다.
+     */
+    @Operation(summary = "서류 업로드", description = "대출 심사 신청 전 필수 서류를 업로드합니다.")
+    @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<LoanDocumentUploadResponse> uploadDocument(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal Long staffId) {
+
+        return ApiResponse.success(loanService.uploadDocument(file, staffId));
     }
 
     /**
