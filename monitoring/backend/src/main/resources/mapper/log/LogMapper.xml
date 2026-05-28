@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.woorifisan.monitoring.domain.log.mapper.LogMapper">
+
+    <sql id="logSearchCondition">
+        <where>
+            <if test="agencyCode != null and agencyCode != ''">
+                AND agency_code = #{agencyCode}
+            </if>
+            <if test="bankCode != null and bankCode != ''">
+                AND bank_code = #{bankCode}
+            </if>
+            <if test="staffId != null and staffId != ''">
+                AND staff_id = #{staffId}
+            </if>
+            <if test="logType != null and logType != ''">
+                AND log_type = #{logType}
+            </if>
+            <if test="httpStatus != null">
+                AND http_status = #{httpStatus}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND created_at &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND created_at &lt;= #{endDate}
+            </if>
+        </where>
+    </sql>
+
+    <select id="findLogList" parameterType="com.woorifisan.monitoring.domain.log.dto.LogRequest"
+            resultType="com.woorifisan.monitoring.domain.log.dto.LogListDTO">
+        SELECT
+            id,
+            created_at as createdAt,
+            level,
+            log_type as logType,
+            trace_id as traceId,
+            staff_id as staffId,
+            bank_code as bankCode,
+            target_code as targetCode,
+            agency_code as agencyCode,
+            bank_key_id as bankKeyId,
+            http_method as httpMethod,
+            http_uri as httpUri,
+            http_status as httpStatus,
+            elapsed_ms as elapsedMs,
+            client_ip as clientIp,
+            jws_signature as jwsSignature,
+            body_data as bodyData,
+            error_code as errorCode,
+            error_message as errorMessage
+        FROM system_logs
+        <include refid="logSearchCondition" />
+        ORDER BY created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+        </select>
+
+        <select id="countLogList" parameterType="com.woorifisan.monitoring.domain.log.dto.LogRequest" resultType="long">
+        SELECT COUNT(*)
+        FROM system_logs
+        <include refid="logSearchCondition" />
+        </select>
+
+</mapper>
