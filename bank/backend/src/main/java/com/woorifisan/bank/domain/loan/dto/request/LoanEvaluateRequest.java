@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -40,4 +41,14 @@ public class LoanEvaluateRequest {
 
     @NotNull
     private Boolean isDocumentCollected;
+
+    private List<DocumentInfo> documents;
+
+    @Getter
+    @NoArgsConstructor
+    public static class DocumentInfo {
+        private String documentId;
+        private String fileName;
+        private String filePath;
+    }
 }

@@ -52,6 +52,7 @@ public enum ErrorCode {
     LOAN_CUSTOMER_IDENTITY_MISMATCH("LOAN_011", "고객 본인 확인에 실패했습니다.", HttpStatus.FORBIDDEN),
     LOAN_ACCOUNT_LOCKED("LOAN_012", "입금 계좌가 잠겨있습니다.", HttpStatus.FORBIDDEN),
     LOAN_DEPOSIT_BANK_MISMATCH("LOAN_013", "입금 계좌의 은행이 선택한 은행과 일치하지 않습니다.", HttpStatus.BAD_REQUEST),
+    LOAN_MISSING_REQUIRED_DOCUMENTS("LOAN_014", "필수 서류가 누락되었습니다.", HttpStatus.BAD_REQUEST),
 
     //조회
     INQUIRY_ACCOUNT_NOTFOUND("INQUIRY_001", "계좌 정보를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),

@@ -7,4 +7,5 @@ import org.apache.ibatis.annotations.Mapper;
 @Mapper
 public interface CommonDocumentMapper {
     Optional<CommonDocument> findById(Long id);
+    void insertDocument(CommonDocument document);
 }

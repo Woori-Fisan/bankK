@@ -6,6 +6,8 @@ import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.domain.document.mapper.CommonDocumentMapper;
+import com.woorifisan.bank.domain.document.model.CommonDocument;
 import com.woorifisan.bank.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.bank.domain.loan.dto.request.LoanExecuteRequest;
 import com.woorifisan.bank.domain.loan.dto.response.AvailableProductDto;
@@ -26,7 +28,9 @@ import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -48,12 +52,21 @@ public class LoanService {
     private static final int CREDIT_SCORE_MIN = 600;
     private static final BigDecimal MAX_LOAN_AMOUNT = new BigDecimal("100000000");
 
+    // 필수 서류 키워드 정의: 각 서류마다 키워드 중 하나라도 파일명에 포함되면 OK
+    private static final Map<String, List<String>> REQUIRED_DOCUMENT_KEYWORDS = Map.of(
+        "신분증 사본",                 List.of("신분증", "면허증"),
+        "재직증명서",                  List.of("재직증명서"),
+        "근로소득 원천징수영수증",       List.of("원천징수"),
+        "건강보험료 납부확인서",         List.of("건강보험")
+    );
+
     private final CustomerMapper customerMapper;
     private final AccountMapper accountMapper;
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final LoanLedgerMapper loanLedgerMapper;
     private final LoanProductMapper loanProductMapper;
     private final BankTermsMapper bankTermsMapper;
+    private final CommonDocumentMapper commonDocumentMapper;
     private final BCryptPasswordEncoder passwordEncoder;
 
     // ── BK-B11: 심사 약관 조회 ────────────────────────────────────────────────
@@ -94,6 +107,9 @@ public class LoanService {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
+        // 업로드된 파일명 기반 필수 서류 검증
+        validateRequiredDocuments(request.getDocuments());
+
         // 입금 계좌의 은행 코드가 이 은행과 일치하는지 검증
         if (!Objects.equals(bankCode, request.getDepositBankCode())) {
             throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH);
@@ -119,6 +135,13 @@ public class LoanService {
         }
 
         String loanNo = generateLoanNo();
+
+        // 서류 검토 mock delay — 실제 심사관이 서류를 확인하는 시간을 시뮬레이션
+        try {
+            Thread.sleep(3_000L);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
         // BK-B13: NICE Mock 신용점수 조회
         int creditScore = getMockCreditScore(customer.getId());
@@ -172,6 +195,17 @@ public class LoanService {
         // BK-B19: 심사 결과 저장 (approvedLimit 함께 저장 — 실행 시 검증·폴링 재계산 방지용)
         LoanLedger saved = saveLoanLedger(loanNo, customer.getId(), account.getId(), request,
                 creditScore, dsr, approvedLimit, appliedRate, "APPROVED", null);
+
+        // 업로드된 서류를 common_document에 저장
+        if (request.getDocuments() != null) {
+            for (LoanEvaluateRequest.DocumentInfo doc : request.getDocuments()) {
+                commonDocumentMapper.insertDocument(CommonDocument.ofLoan(
+                        saved.getId(),
+                        "LOAN_DOCUMENT",
+                        doc.getFileName(),
+                        doc.getFilePath()));
+            }
+        }
 
         return LoanEvaluateResponse.approved(saved.getId(), loanNo,
                 approvedLimit, appliedRate, creditScore, dsr, products);
@@ -396,5 +430,30 @@ public class LoanService {
 
     private String generateLoanNo() {
         return "LN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
+    }
+
+    private void validateRequiredDocuments(List<LoanEvaluateRequest.DocumentInfo> documents) {
+        List<String> fileNames = (documents == null) ? List.of() :
+                documents.stream()
+                        .map(LoanEvaluateRequest.DocumentInfo::getFileName)
+                        .filter(Objects::nonNull)
+                        .map(String::toLowerCase)
+                        .toList();
+
+        List<String> missing = new ArrayList<>();
+        for (Map.Entry<String, List<String>> entry : REQUIRED_DOCUMENT_KEYWORDS.entrySet()) {
+            String docLabel = entry.getKey();
+            List<String> keywords = entry.getValue();
+            boolean covered = fileNames.stream()
+                    .anyMatch(name -> keywords.stream().anyMatch(name::contains));
+            if (!covered) {
+                missing.add(docLabel);
+            }
+        }
+
+        if (!missing.isEmpty()) {
+            throw new BusinessException(ErrorCode.LOAN_MISSING_REQUIRED_DOCUMENTS,
+                    "필수 서류가 누락되었습니다: " + String.join(", ", missing));
+        }
     }
 }
