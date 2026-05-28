@@ -16,6 +16,7 @@ public class PlatformUser {
     private Long id;
     private Long agencyId;
     private String loginId;
+    private String agencyEmployeeNum;
     private String passwordHash;
     private String role;
     private int failedLoginCount;
