@@ -2,17 +2,17 @@
 <configuration>
 
     <!-- ── 프로퍼티 ──────────────────────────────────── -->
-    <property name="LOG_PATH" value="/var/log/app"/>
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="./logs"/>
     <property name="LOG_FILE" value="${LOG_PATH}/application.log"/>
 
     <!-- ── 콘솔 (개발용) ─────────────────────────────── -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [traceId=%X{traceId}] - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [traceId=%X{traceId}, staffId=%X{staffId}] - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <!-- ── JSON 파일 (Fluent Bit 파싱 대상) ──────────── -->
+    <!-- ── JSON 파일 ──────────── -->
     <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_FILE}</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -20,12 +20,18 @@
             <fileNamePattern>${LOG_PATH}/application.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
-        <!-- Fluent Bit이 파싱할 수 있도록 JSON 형식으로 출력 -->
+        <!-- JSON 형식으로 출력 -->
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeContext>false</includeContext>
+            <fieldNames>
+                <version>[ignore]</version>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
             <!-- 서비스 식별용 필드 -->
             <customFields>{"service":"agency-platform"}</customFields>
-            <!-- MDC 전체 자동 포함 (traceId, spanId 포함) -->
-            <!-- excludeMdcKeyNames만 사용 (include와 동시 사용 불가) -->
+            
+            <!-- MDC 설정을 통해 구조화된 데이터 지원 -->
+            <includeMdc>true</includeMdc>
             <excludeMdcKeyName>password</excludeMdcKeyName>
             <excludeMdcKeyName>token</excludeMdcKeyName>
         </encoder>
@@ -33,6 +39,7 @@
 
     <!-- ── 비동기 래퍼 (메인 스레드 블로킹 방지) ─────── -->
     <!-- DOMAIN_MONITOR.md: 모든 로깅은 완전 비동기로 처리 -->
+    <!-- 현재는 사용하지 않지만 남겨둠 -->
     <appender name="ASYNC_JSON_FILE" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="JSON_FILE"/>
         <!-- 큐가 80% 차면 TRACE/DEBUG/INFO 드롭, ERROR는 유지 -->
@@ -42,28 +49,45 @@
         <maxFlushTime>1000</maxFlushTime>
     </appender>
 
+    <!-- ── DB 로그 Appender (system_logs 테이블) ─────── -->
+    <!-- Aspect 로그(ControllerLoggingAspect · BankExternalApiAspect)를 DB에 삽입 -->
+    <!-- Spring 미준비 시 자동 스킵, 준비 후 Bean 캐싱하여 사용 -->
+    <appender name="DB_LOG"
+              class="com.woorifisan.platform.global.logging.appender.SystemLogAppender"/>
+
+    <!-- 비동기 래퍼: DB INSERT가 요청 스레드를 블로킹하지 않도록 -->
+    <appender name="ASYNC_DB_LOG" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="DB_LOG"/>
+        <queueSize>1024</queueSize>
+        <!-- 0 = 레벨과 무관하게 로그 드롭 금지 (로그 유실 방지) -->
+        <discardingThreshold>0</discardingThreshold>
+        <maxFlushTime>2000</maxFlushTime>
+        <neverBlock>true</neverBlock>   <!-- DB 장애 시 로그 드롭, 서비스 보호 -->
+    </appender>
+
     <!-- ── 프로파일별 설정 ────────────────────────────── -->
-    <!-- 로컬 개발: 콘솔만 -->
+    <!-- 로컬 개발: 콘솔 + DB -->
     <springProfile name="local">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
         <logger name="com.woorifisan.platform" level="DEBUG"/>
     </springProfile>
 
-    <!-- 개발 서버: 콘솔 + JSON 파일 -->
+    <!-- 개발 서버: 콘솔 + DB -->
     <springProfile name="dev">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="ASYNC_JSON_FILE"/>
+            <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
         <logger name="com.woorifisan.platform" level="DEBUG"/>
     </springProfile>
 
-    <!-- 운영: JSON 파일만 (Fluent Bit 수집 대상) -->
+    <!-- 운영: DB 만 -->
     <springProfile name="prod">
         <root level="INFO">
-            <appender-ref ref="ASYNC_JSON_FILE"/>
+            <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
     </springProfile>
 
