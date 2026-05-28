@@ -27,6 +27,15 @@ jobs:
         uses: actions/checkout@v4
 
       # --------------------------------------------------
+      # Set .env
+      # --------------------------------------------------
+
+      - name: Create env file
+        working-directory: platform/backend
+        run: |
+          echo "${{ secrets.PLATFORM_BACKEND_ENV_TEST }}" > .env
+
+      # --------------------------------------------------
       # Java Setup
       # --------------------------------------------------
 
