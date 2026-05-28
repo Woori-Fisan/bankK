@@ -28,6 +28,7 @@ interface LoanRequestFormProps {
 const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const rrnBackRef = useRef<HTMLInputElement>(null);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
     const [rrnFront, setRrnFront] = useState('');
     const [rrnBack, setRrnBack] = useState('');
     const [formData, setFormData] = useState<LoanData>({
@@ -60,7 +61,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack }) => 
     useEffect(() => {
         if (!isModalOpen) return;
         const handler = (e: MessageEvent) => {
-            if (e.data === 'terms-scrolled-to-bottom') {
+            if (e.data === 'terms-scrolled-to-bottom' && e.source === iframeRef.current?.contentWindow) {
                 setHasScrolledToBottom(true);
             }
         };
@@ -649,6 +650,7 @@ ${body}
                             </button>
                         </div>
                         <iframe
+                            ref={iframeRef}
                             srcDoc={buildTermsSrcDoc(activeDoc.documentContent)}
                             className="w-full h-[400px] border-0 bg-white"
                             sandbox="allow-scripts"

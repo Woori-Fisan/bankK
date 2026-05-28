@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
@@ -57,6 +58,7 @@ public class LoanService {
     private static final String REDIS_LOAN_NO_ID_MAP = "loan:loanNo:%s:id";
     private static final String REDIS_DOC_META_KEY = "loan:doc:%s:meta";
     private static final long GUID_TTL_HOURS = 24L;
+    private static final ConcurrentHashMap<String, CompletableFuture<String>> pendingResults = new ConcurrentHashMap<>();
 
     @Value("${loan.upload.dir:uploads/loan}")
     private String uploadDir;
@@ -92,9 +94,11 @@ public class LoanService {
 
         String documentId = UUID.randomUUID().toString();
         String rawName = file.getOriginalFilename();
-        String originalFileName = (rawName != null)
-                ? Paths.get(rawName).getFileName().toString()
-                : "document.pdf";
+        String originalFileName = "document.pdf";
+        if (rawName != null && !rawName.isBlank()) {
+            Path p = Paths.get(rawName).getFileName();
+            if (p != null) originalFileName = p.toString();
+        }
         String storedFileName = documentId + "_" + originalFileName;
         String filePath = uploadDir + "/" + storedFileName;
 
@@ -115,7 +119,8 @@ public class LoanService {
                     objectMapper.writeValueAsString(meta),
                     GUID_TTL_HOURS, TimeUnit.HOURS);
         } catch (Exception e) {
-            log.warn("서류 메타데이터 Redis 저장 실패 - documentId: {}", documentId, e);
+            log.error("서류 메타데이터 Redis 저장 실패 - documentId: {}", documentId, e);
+            throw new BusinessException(ErrorCode.LOAN_DOCUMENT_UPLOAD_ERROR);
         }
 
         log.info("서류 업로드 완료 - staffId: {}, documentId: {}, fileName: {}", staffId, documentId, originalFileName);
@@ -216,8 +221,10 @@ public class LoanService {
         }
         bankRequest.put("documents", documents);
 
-        // SSE가 즉시 연결할 수 있도록 GUID를 먼저 저장
+        // SSE가 즉시 연결할 수 있도록 GUID와 결과 Future를 먼저 저장
         redisTemplate.opsForValue().set(String.format(REDIS_APP_GUID_KEY, applicationId), guid, GUID_TTL_HOURS, TimeUnit.HOURS);
+        CompletableFuture<String> resultFuture = new CompletableFuture<>();
+        pendingResults.put(applicationId, resultFuture);
 
         log.info("[{}] 대출 심사 요청 접수 완료 - applicationId: {}, 서류 수: {}, 은행 API 비동기 호출 시작", guid, applicationId, documents.size());
 
@@ -232,7 +239,7 @@ public class LoanService {
                         .block(Duration.ofSeconds(15));
 
                 if (bankResponse == null || bankResponse.getData() == null) {
-                    cacheErrorResult(applicationId, guid, "은행 API 응답 오류");
+                    resultFuture.complete(cacheErrorResult(applicationId, guid, "은행 API 응답 오류"));
                     return;
                 }
 
@@ -240,7 +247,7 @@ public class LoanService {
                 Object evalIdObj = evalData.get("evaluationId");
                 Object loanNoObj = evalData.get("loanNo");
                 if (evalIdObj == null || loanNoObj == null) {
-                    cacheErrorResult(applicationId, guid, "은행 API 응답 필드 누락");
+                    resultFuture.complete(cacheErrorResult(applicationId, guid, "은행 API 응답 필드 누락"));
                     return;
                 }
                 String evaluationId = String.valueOf(evalIdObj);
@@ -249,18 +256,19 @@ public class LoanService {
                 redisTemplate.opsForValue().set(String.format(REDIS_APP_EVAL_KEY, applicationId), loanNo, GUID_TTL_HOURS, TimeUnit.HOURS);
                 redisTemplate.opsForValue().set(String.format(REDIS_EVAL_GUID_KEY, loanNo), guid, GUID_TTL_HOURS, TimeUnit.HOURS);
                 redisTemplate.opsForValue().set(String.format(REDIS_LOAN_NO_ID_MAP, loanNo), evaluationId, GUID_TTL_HOURS, TimeUnit.HOURS);
+                String evalJson = objectMapper.writeValueAsString(evalData);
                 redisTemplate.opsForValue().set(String.format(REDIS_APP_RESULT_KEY, applicationId),
-                        objectMapper.writeValueAsString(evalData), GUID_TTL_HOURS, TimeUnit.HOURS);
-
+                        evalJson, GUID_TTL_HOURS, TimeUnit.HOURS);
+                resultFuture.complete(evalJson);
                 log.info("[{}] 은행 심사 결과 수신 및 캐싱 완료 - loanNo: {}", guid, loanNo);
 
             } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
                 log.warn("[{}] 은행 API 오류 응답 - status: {}, body: {}", guid, e.getStatusCode(), e.getResponseBodyAsString());
                 String bankMsg = extractBankErrorMessage(e);
-                cacheErrorResult(applicationId, guid, bankMsg != null ? bankMsg : "은행 API 오류");
+                resultFuture.complete(cacheErrorResult(applicationId, guid, bankMsg != null ? bankMsg : "은행 API 오류"));
             } catch (Exception e) {
                 log.error("[{}] 은행 API 비동기 호출 실패", guid, e);
-                cacheErrorResult(applicationId, guid, "은행 API 호출 실패");
+                resultFuture.complete(cacheErrorResult(applicationId, guid, "은행 API 호출 실패"));
             }
         }, sseTaskExecutor);
 
@@ -286,90 +294,95 @@ public class LoanService {
         emitter.onTimeout(emitter::complete);
         emitter.onError(e -> log.warn("[{}] SSE 연결 오류", guid));
 
-        CompletableFuture.runAsync(() -> {
-            try {
-                sendSse(emitter, guid, "status", LoanEvaluationResultResponse.builder()
-                        .applicationId(applicationId)
-                        .evaluationStatus("PENDING")
-                        .requestedAt(LocalDateTime.now().toString()).build());
+        // PENDING 즉시 전송 (Spring earlyData에 버퍼링됨)
+        sendSse(emitter, guid, "status", LoanEvaluationResultResponse.builder()
+                .applicationId(applicationId)
+                .evaluationStatus("PENDING")
+                .requestedAt(LocalDateTime.now().toString()).build());
 
-                // 은행 API 결과가 Redis에 캐싱될 때까지 폴링 (최대 25초)
-                String resultJson = null;
-                long elapsed = 0L;
-                while (resultJson == null && elapsed < 25_000L) {
-                    Thread.sleep(500L);
-                    elapsed += 500L;
-                    resultJson = redisTemplate.opsForValue().get(String.format(REDIS_APP_RESULT_KEY, applicationId));
+        // 결과 Future 조회 (없으면 Redis 폴백 — 서버 재시작 등 예외 상황 대비)
+        CompletableFuture<String> resultFuture = pendingResults.get(applicationId);
+        if (resultFuture == null) {
+            String cached = redisTemplate.opsForValue().get(String.format(REDIS_APP_RESULT_KEY, applicationId));
+            resultFuture = new CompletableFuture<>();
+            if (cached != null) resultFuture.complete(cached);
+        }
+
+        resultFuture
+            .orTimeout(25, TimeUnit.SECONDS)
+            .whenCompleteAsync((resultJson, ex) -> {
+                pendingResults.remove(applicationId);
+                if (ex != null) {
+                    log.warn("[{}] SSE 심사 결과 대기 타임아웃", guid);
+                    emitter.completeWithError(new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND));
+                    return;
                 }
-                if (resultJson == null) throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
+                try {
+                    String loanNo = Objects.requireNonNullElse(
+                            redisTemplate.opsForValue().get(String.format(REDIS_APP_EVAL_KEY, applicationId)), "unknown");
 
-                String loanNo = Objects.requireNonNullElse(
-                        redisTemplate.opsForValue().get(String.format(REDIS_APP_EVAL_KEY, applicationId)), "unknown");
+                    Map<String, Object> evalData = objectMapper.readValue(resultJson, new TypeReference<>() {});
+                    String status = String.valueOf(evalData.get("status"));
 
-                Map<String, Object> evalData = objectMapper.readValue(resultJson, new TypeReference<>() {});
-                String status = String.valueOf(evalData.get("status"));
+                    LoanEvaluationResultResponse result;
+                    if ("APPROVED".equals(status)) {
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> bankProducts = (List<Map<String, Object>>) evalData.get("availableProducts");
+                        List<AvailableProductDto> products = (bankProducts != null ? bankProducts : List.<Map<String, Object>>of()).stream()
+                                .map(p -> {
+                                    Object minLimit = p.get("minLimit");
+                                    Object maxLimit = p.get("maxLimit");
+                                    Object minRate = p.get("minRate");
+                                    return AvailableProductDto.builder()
+                                            .loanProductCode(String.valueOf(p.get("productId")))
+                                            .loanProductName(String.valueOf(p.get("productName")))
+                                            .minAmount(minLimit != null ? new BigDecimal(minLimit.toString()) : BigDecimal.ZERO)
+                                            .maxAmount(maxLimit != null ? new BigDecimal(maxLimit.toString()) : BigDecimal.ZERO)
+                                            .interestRate(minRate != null ? new BigDecimal(minRate.toString()) : BigDecimal.ZERO)
+                                            .loanPeriodMonths(36).build();
+                                }).toList();
 
-                LoanEvaluationResultResponse result;
-                if ("APPROVED".equals(status)) {
-                    @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> bankProducts = (List<Map<String, Object>>) evalData.get("availableProducts");
-                    List<AvailableProductDto> products = (bankProducts != null ? bankProducts : List.<Map<String, Object>>of()).stream()
-                            .map(p -> {
-                                Object minLimit = p.get("minLimit");
-                                Object maxLimit = p.get("maxLimit");
-                                Object minRate = p.get("minRate");
-                                return AvailableProductDto.builder()
-                                        .loanProductCode(String.valueOf(p.get("productId")))
-                                        .loanProductName(String.valueOf(p.get("productName")))
-                                        .minAmount(minLimit != null ? new BigDecimal(minLimit.toString()) : BigDecimal.ZERO)
-                                        .maxAmount(maxLimit != null ? new BigDecimal(maxLimit.toString()) : BigDecimal.ZERO)
-                                        .interestRate(minRate != null ? new BigDecimal(minRate.toString()) : BigDecimal.ZERO)
-                                        .loanPeriodMonths(36).build();
-                            }).toList();
+                        result = LoanEvaluationResultResponse.builder()
+                                .applicationId(applicationId)
+                                .evaluationStatus("APPROVED")
+                                .evaluationId(String.valueOf(evalData.get("loanNo")))
+                                .approvedLimit(new BigDecimal(String.valueOf(evalData.get("approvedLimit"))))
+                                .availableProducts(products).build();
+                    } else {
+                        result = LoanEvaluationResultResponse.builder()
+                                .applicationId(applicationId)
+                                .evaluationStatus(status)
+                                .rejectionMessage(String.valueOf(evalData.get("rejectReason"))).build();
+                    }
 
-                    result = LoanEvaluationResultResponse.builder()
-                            .applicationId(applicationId)
-                            .evaluationStatus("APPROVED")
-                            .evaluationId(String.valueOf(evalData.get("loanNo")))
-                            .approvedLimit(new BigDecimal(String.valueOf(evalData.get("approvedLimit"))))
-                            .availableProducts(products).build();
-                } else {
-                    result = LoanEvaluationResultResponse.builder()
-                            .applicationId(applicationId)
-                            .evaluationStatus(status)
-                            .rejectionMessage(String.valueOf(evalData.get("rejectReason"))).build();
+                    boolean sent = sendSse(emitter, guid, "status", result);
+                    if (sent) {
+                        log.info("[{}] SSE 심사 결과 전송 완료 - loanNo: {}, status: {}", guid, loanNo, status);
+                    }
+                    emitter.complete();
+                } catch (Exception e) {
+                    log.error("[{}] SSE 처리 중 예외 발생", guid, e);
+                    emitter.completeWithError(e);
                 }
-
-                boolean sent = sendSse(emitter, guid, "status", result);
-                if (sent) {
-                    log.info("[{}] SSE 심사 결과 전송 완료 - loanNo: {}, status: {}", guid, loanNo, status);
-                }
-                emitter.complete();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.warn("[{}] SSE 스레드 중단", guid);
-                emitter.complete();
-            } catch (Exception e) {
-                log.error("[{}] SSE 처리 중 예외 발생", guid, e);
-                emitter.completeWithError(e);
-            }
-        }, sseTaskExecutor);
+            }, sseTaskExecutor);
 
         return emitter;
     }
 
-    private void cacheErrorResult(String applicationId, String guid, String message) {
+    private String cacheErrorResult(String applicationId, String guid, String message) {
         try {
             Map<String, Object> errorData = new HashMap<>();
             errorData.put("status", "FAILED");
             errorData.put("rejectReason", message);
+            String json = objectMapper.writeValueAsString(errorData);
             redisTemplate.opsForValue().set(
                     String.format(REDIS_APP_RESULT_KEY, applicationId),
-                    objectMapper.writeValueAsString(errorData),
-                    GUID_TTL_HOURS, TimeUnit.HOURS);
+                    json, GUID_TTL_HOURS, TimeUnit.HOURS);
             log.warn("[{}] 은행 API 오류 결과 캐싱 - message: {}", guid, message);
+            return json;
         } catch (Exception e) {
             log.error("[{}] 오류 결과 캐싱 실패", guid, e);
+            return "{\"status\":\"FAILED\",\"rejectReason\":\"" + message.replace("\"", "'") + "\"}";
         }
     }
 
