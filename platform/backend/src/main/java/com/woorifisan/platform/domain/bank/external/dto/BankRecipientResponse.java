@@ -15,9 +15,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class BankRecipientResponse {
 
-    private String depositorName;
+    private String resPayload; // 암호화된 민감 정보
     private String depositBankName;
-    private String depositAccountNo;
     private String accountStatus;
 
 }

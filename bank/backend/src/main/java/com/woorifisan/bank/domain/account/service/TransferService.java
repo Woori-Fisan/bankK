@@ -82,7 +82,7 @@ public class TransferService {
     /**
      * 수취인 확인
      * @param request 수취인 확인 요청 정보 (SecureRequest 상속)
-     * @return 수취인 정보
+     * @return 수취인 정보 (부분 암호화 적용)
      */
     public RecipientResponse verifyRecipient(RecipientRequest request) {
         log.info("수취인 확인 요청 수신 - 은행코드: {}, 키ID: {}", request.getDepositBankCode(), request.getBankKeyId());
@@ -93,8 +93,11 @@ public class TransferService {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
-        // 1. 공통 보안 서비스를 통해 복호화 및 데이터 추출
-        DecryptedRecipientData decryptedData = securityService.decrypt(request, DecryptedRecipientData.class);
+        // 1. 공통 보안 서비스를 통해 복호화 및 CEK 추출
+        SecurityService.DecryptionResult<DecryptedRecipientData> decryptionResult = 
+                securityService.decryptWithKey(request, DecryptedRecipientData.class);
+        
+        DecryptedRecipientData decryptedData = decryptionResult.getData();
 
         // 2. 계좌 조회 (복호화된 계좌번호 사용)
         Account account = accountMapper.findByAccountNoPlain(decryptedData.getDepositAccountNo())
@@ -104,11 +107,18 @@ public class TransferService {
         Customer customer = customerMapper.findById(account.getCustomerId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 4. 응답 생성
+        // 4. 민감 데이터(성명, 계좌번호) 암호화
+        RecipientResponse.SensitiveData sensitiveData = RecipientResponse.SensitiveData.builder()
+                .depositorName(customer.getCustomerName())
+                .depositAccountNo(account.getAccountNo())
+                .build();
+        
+        String resPayload = securityService.encryptResponse(sensitiveData, decryptionResult.getCek());
+
+        // 5. 응답 생성 (민감 정보는 resPayload에, 나머지는 평문)
         return RecipientResponse.of(
-                customer.getCustomerName(),
+                resPayload,
                 "우리은행",
-                account.getAccountNo(),
                 account.getStatus()
         );
     }

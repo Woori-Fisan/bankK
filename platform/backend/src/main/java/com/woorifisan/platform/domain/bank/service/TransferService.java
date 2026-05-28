@@ -58,11 +58,10 @@ public class TransferService {
                 bankRequest
         );
 
-        // 3. 응답 DTO 변환 및 반환
+        // 3. 응답 DTO 변환 및 반환 (Pass-through)
         return TransferRecipientResponse.builder()
-                .depositorName(bankResponse.getDepositorName())
+                .resPayload(bankResponse.getResPayload())
                 .depositBankName(bankResponse.getDepositBankName())
-                .depositBankAccountNo(bankResponse.getDepositAccountNo())
                 .accountStatus(bankResponse.getAccountStatus())
                 .build();
     }

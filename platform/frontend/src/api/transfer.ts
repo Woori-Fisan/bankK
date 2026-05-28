@@ -1,5 +1,5 @@
 import axiosInstance from './axiosInstance';
-import { prepareSecureRequest } from '../utils/bankCrypto';
+import { prepareSecureRequest, decryptBankResponse } from '../utils/bankCrypto';
 
 export interface BalanceInquiryRequest {
     encryptedKey: string;
@@ -30,7 +30,19 @@ export interface TransferRecipientRequest {
     depositBankCode: string;
 }
 
+/**
+ * 수취인 조회 응답 (네트워크 수신용)
+ */
 export interface TransferRecipientResponse {
+    resPayload: string; // 암호화된 민감 정보
+    depositBankName: string;
+    accountStatus: string;
+}
+
+/**
+ * 수취인 조회 최종 결과 (복호화 후 UI 사용용)
+ */
+export interface DecryptedRecipientResult {
     depositorName: string;
     depositBankName: string;
     depositBankAccountNo: string;
@@ -62,15 +74,15 @@ export const getBalance = async (request: BalanceInquiryRequest): Promise<ApiRes
 
 /**
  * 수취인 조회를 수행합니다.
- * 통합 보안 유틸리티(prepareSecureRequest)를 사용하여 암호화 및 서명을 자동 처리합니다.
+ * 통합 보안 유틸리티를 사용하여 요청을 암호화하고, 응답의 resPayload를 복호화합니다.
  */
 export const getRecipient = async (
     bankCode: string,
     accountNo: string
-): Promise<ApiResponse<TransferRecipientResponse>> => {
+): Promise<ApiResponse<DecryptedRecipientResult>> => {
     try {
         // 1. 보안 요청 준비 (암호화 + 서명 + 키ID 통합 처리)
-        // 민감정보: 수취인 계좌번호, 비민감정보: 입금은행 코드 (서명 포함 대상)
+        // aesKey는 요청과 응답 사이클 동안 메모리에 유지됨
         const secureRequest = await prepareSecureRequest(
             { depositAccountNo: accountNo },
             { depositBankCode: bankCode },
@@ -81,17 +93,36 @@ export const getRecipient = async (
             throw new Error('보안 요청 준비 실패');
         }
 
-        const { payload, headers } = secureRequest;
+        const { payload, headers, aesKey } = secureRequest;
 
-        // 2. 요청 객체 구성 (payload에 이미 reqPayload와 depositBankCode가 포함되어 있음)
-        const request: TransferRecipientRequest = {
-            ...(payload as any)
+        // 2. 요청 전송 (네트워크 타입은 TransferRecipientResponse)
+        const response = await axiosInstance.post<ApiResponse<TransferRecipientResponse>>('/bank/transfer/recipient', payload, {
+            headers
+        });
+
+        if (!response.data.success || !response.data.data.resPayload) {
+            return response.data as any;
+        }
+
+        // 3. 응답 복호화 (메모리에 보관 중이던 aesKey 사용)
+        const decryptedSensitiveData = await decryptBankResponse(
+            response.data.data.resPayload,
+            aesKey
+        );
+
+        // 4. 평문 데이터와 복호화된 데이터를 병합하여 반환
+        const finalData: DecryptedRecipientResult = {
+            depositorName: decryptedSensitiveData.depositorName,
+            depositBankAccountNo: decryptedSensitiveData.depositAccountNo,
+            depositBankName: response.data.data.depositBankName,
+            accountStatus: response.data.data.accountStatus
         };
 
-        const response = await axiosInstance.post<ApiResponse<TransferRecipientResponse>>('/bank/transfer/recipient', request, {
-            headers
-        });        
-        return response.data;
+        return {
+            success: true,
+            data: finalData
+        };
+
     } catch (error) {
         console.error('getRecipient Error:', error);
         return {
