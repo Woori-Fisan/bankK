@@ -58,10 +58,11 @@
     <!-- 비동기 래퍼: DB INSERT가 요청 스레드를 블로킹하지 않도록 -->
     <appender name="ASYNC_DB_LOG" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="DB_LOG"/>
-        <queueSize>256</queueSize>
+        <queueSize>1024</queueSize>
         <!-- 0 = 레벨과 무관하게 로그 드롭 금지 (로그 유실 방지) -->
         <discardingThreshold>0</discardingThreshold>
         <maxFlushTime>2000</maxFlushTime>
+        <neverBlock>true</neverBlock>   <!-- DB 장애 시 로그 드롭, 서비스 보호 -->
     </appender>
 
     <!-- ── 프로파일별 설정 ────────────────────────────── -->
