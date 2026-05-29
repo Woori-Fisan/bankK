@@ -104,6 +104,11 @@ public class LoanService {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
+        // 대출 기간 0 이하면 금융 계산(DSR, 월납입금)이 0으로 흘러 잘못된 승인이 날 수 있음
+        if (request.getRequestedPeriod() == null || request.getRequestedPeriod() <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
         // 2. 파일명 기반 서류 종류 검증 (신분증, 재직증명서, 원천징수, 건강보험)
         validateFileNames(files);
 
@@ -266,6 +271,11 @@ public class LoanService {
         }
         if (!"APPROVED".equals(loanLedger.getStatus())) {
             throw new BusinessException(ErrorCode.LOAN_INVALID_STATUS);
+        }
+
+        // 대출 기간 0 이하면 월납입금 계산 및 만기일 산정이 잘못됨
+        if (request.getRepaymentPeriod() == null || request.getRepaymentPeriod() <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
         // 2. 실행 금액이 승인 한도 초과 여부 확인
