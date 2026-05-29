@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { SystemLog } from '../../types/log';
 import LogDetailModal from './LogDetailModal';
+import { getLog } from '../../api/log';
 
 interface LogListProps {
     logs: SystemLog[];
@@ -40,6 +41,17 @@ const getStatusColor = (status: number) => {
 
 const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCount, isLoading, onPageChange }) => {
     const [selectedLog, setSelectedLog] = useState<SystemLog | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+
+    const handleRowClick = async (id: number) => {
+        setDetailLoading(true);
+        try {
+            const res = await getLog(id);
+            if (res.data) setSelectedLog(res.data);
+        } finally {
+            setDetailLoading(false);
+        }
+    };
 
     const pageNumbers = Array.from({ length: Math.min(totalPage, 5) }, (_, i) => {
         const half = 2;
@@ -90,8 +102,8 @@ const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCo
                                     logs.map((log) => (
                                         <tr
                                             key={log.id}
-                                            onClick={() => setSelectedLog(log)}
-                                            className="hover:bg-emerald-50/50 transition-colors cursor-pointer"
+                                            onClick={() => handleRowClick(log.id)}
+                                            className={`hover:bg-emerald-50/50 transition-colors cursor-pointer ${detailLoading ? 'pointer-events-none opacity-60' : ''}`}
                                         >
                                             <td className="px-6 py-3 text-xs text-gray-600 whitespace-nowrap">
                                                 {log.createdAt.replace('T', ' ').slice(0, 19)}

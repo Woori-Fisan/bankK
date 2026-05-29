@@ -42,3 +42,5 @@ export interface LogListDTO {
 }
 
 export type LogListApiResponse = ApiCommonResponse<LogListDTO>;
+
+export type LogApiResponse = ApiCommonResponse<SystemLog>;
