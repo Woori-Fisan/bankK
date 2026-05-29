@@ -46,6 +46,20 @@ public class LogService {
                 .build();
     }
 
+    public LogListDTO getLogDetail(Long id) {
+        log.info("[Service 시작] 거래 로그 단건 조회 로직 수행 - ID: {}", id);
+
+        LogListDTO logDetail = logMapper.findById(id);
+
+        if (logDetail == null) {
+            log.warn("[Service 경고] 해당 ID의 로그를 찾을 수 없음 - ID: {}", id);
+            throw new BusinessException("해당 로그 정보를 찾을 수 없습니다.", ErrorCode.INVALID_INPUT);
+        }
+
+        log.info("[Service 완료] 로그 단건 조회 결과 - ID: {}, Trace ID: {}", logDetail.getId(), logDetail.getTraceId());
+        return logDetail;
+    }
+
     private void validateInquiryPeriod(String start, String end) {
         if (start == null || end == null || start.isBlank() || end.isBlank()) {
             throw new BusinessException("날짜 형식이 올바르지 않습니다. (yyyy-MM-dd HH:mm:ss)", ErrorCode.INVALID_INPUT);
