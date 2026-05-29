@@ -144,6 +144,10 @@ public class LoanService {
         }
 
         String requestKey = callback.getRequestKey();
+        if (requestKey == null) {
+            log.warn("[Webhook] requestKey 누락 - loanNo: {}", callback.getLoanNo());
+            return;
+        }
         // 2. Map에서 emitter 꺼내기 (이후 중복 webhook이 와도 처리 안 함)
         SseEmitter emitter = pendingEmitters.remove(requestKey);
         if (emitter == null) {
