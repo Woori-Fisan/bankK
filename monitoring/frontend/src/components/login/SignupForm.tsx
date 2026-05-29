@@ -19,8 +19,9 @@ const SignupForm: React.FC = () => {
             setError('이름을 입력해주세요.');
             return;
         }
-        if (loginId.trim().length < 1) {
-            setError('ID를 입력해주세요.');
+        const trimmedId = loginId.trim();
+        if (trimmedId.length < 4 || trimmedId.length > 20) {
+            setError('ID는 4~20자로 입력해주세요.');
             return;
         }
         if (password.trim().length < 8) {

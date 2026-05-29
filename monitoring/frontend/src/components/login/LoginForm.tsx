@@ -16,8 +16,9 @@ const LoginForm: React.FC = () => {
     const handleSubmit = async (e: { preventDefault(): void }) => {
         e.preventDefault();
         setError('');
-        if (employeeId.trim().length < 1) {
-            setError('ID를 입력해주세요.');
+        const trimmedId = employeeId.trim();
+        if (trimmedId.length < 4 || trimmedId.length > 20) {
+            setError('ID는 4~20자로 입력해주세요.');
             return;
         }
         if (password.trim().length < 8) {
