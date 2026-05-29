@@ -1,3 +1,0 @@
-ALTER TABLE bank
-    ADD COLUMN key_id VARCHAR(50) NOT NULL
-    COMMENT 'RSA 키 아이디';

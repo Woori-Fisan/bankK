@@ -12,7 +12,34 @@ export interface ApiResponse<T> {
     error?: ErrorResponse;
 }
 
-export interface TransferRecipientRequest {
+export interface DecryptedRecipientResult {
+    depositorName: string;
+    depositBankAccountNo: string;
+    depositBankName: string;
+    accountStatus: string;
+}
+
+export interface TransferRecipientResponse {
+    resPayload: string;
+    depositBankName: string;
+    accountStatus: string;
+}
+
+export interface TransferRequest {
+    withdrawalBankCode: string;
+    withdrawalAccountNo: string;
+    withdrawalPassword: string;
+    customerRrnPrefix: string;
+    depositBankCode: string;
+    depositAccountNo: string;
+    amount: number;
+}
+
+export interface TransferResponse {
+    transactionId: string;
+    transactionDate: string;
+    balanceAfter: string;
+}
 
 /**
  * 수취인 조회를 수행합니다.

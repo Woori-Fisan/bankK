@@ -140,40 +140,7 @@ public class BankExternalClient {
 
         return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<HistoryInquiryResponse>>() {}, bankCode);
     }
-
-    /**
-     * 공통 GET 요청 처리 메서드
-     */
-    private <T> T getRequest(String url, ParameterizedTypeReference<ApiResponse<T>> responseType, String bankCode) {
-        try {
-            ApiResponse<T> response = webClient.get()
-                    .uri(url)
-                    .retrieve()
-                    .onStatus(HttpStatusCode::isError, clientResponse ->
-                            clientResponse.bodyToMono(responseType)
-                                    .flatMap(errorBody -> {
-                                        String bankErrorCode = (errorBody.getError() != null) ? errorBody.getError().getCode() : "UNKNOWN";
-                                        return Mono.<Throwable>error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
-                                    })
-                                    .switchIfEmpty(Mono.<Throwable>error(new BusinessException(ErrorCode.BANK_API_ERROR)))
-                    )
-                    .bodyToMono(responseType)
-                    .block();
-
-            if (response == null || response.getData() == null) {
-                log.error("외부 은행 API 응답 바디 또는 데이터가 null입니다. 은행코드: {}", bankCode);
-                throw new BusinessException(ErrorCode.BANK_API_ERROR);
-            }
-
-            return response.getData();
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("외부 은행 API 통신 중 오류 발생", e);
-            throw new BusinessException(ErrorCode.BANK_API_ERROR);
-        }
-    }
-
+    
     /**
      * 공통 GET 요청 처리 메서드
      */

@@ -6,8 +6,8 @@ import { createJwsSignature } from './authCrypto';
 /**
  * Base64Url 인코딩 유틸리티 (바이너리 데이터를 안전하게 처리)
  */
-const base64UrlEncode = (buffer: ArrayBuffer): string => {
-    const bytes = new Uint8Array(buffer);
+const base64UrlEncode = (buffer: ArrayBuffer | Uint8Array): string => {
+    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     let binary = '';
     for (let i = 0; i < bytes.byteLength; i++) {
         binary += String.fromCharCode(bytes[i]);

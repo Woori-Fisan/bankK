@@ -228,7 +228,10 @@ public class TransferService {
 
         // 3. 잔액 복구 (입금)
         BigDecimal newBalance = account.getBalance().add(request.getAmount());
-        accountMapper.updateBalance(account.getId(), request.getAmount());
+        int updatedCount = accountMapper.updateBalance(account.getId(), request.getAmount(), account.getVersion());
+        if (updatedCount == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
+        }
 
         // 4. 원장 기록
         String txId = UUID.randomUUID().toString();

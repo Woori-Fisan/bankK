@@ -1,35 +1,28 @@
 package com.woorifisan.platform.domain.bank.external.dto;
 
+import com.woorifisan.platform.global.security.dto.SecureRequest;
 import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
- * 은행 코어 시스템으로 전송할 출금 요청 DTO
+ * 은행 코어 시스템으로 전송할 출금 요청 DTO (E2EE 적용)
  */
 @Getter
-@Builder
+@SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class BankWithdrawalRequest {
+public class BankWithdrawalRequest extends SecureRequest {
 
-    private String encryptedKey;
-    private String jwsSignature;
-    private String withdrawalAccountNo;
-    private String withdrawalPassword;
-    private String customerRrnPrefix;
     private BigDecimal amount;
 
-    public static BankWithdrawalRequest of(String encryptedKey, String jwsSignature, String withdrawalAccountNo, String withdrawalPassword, String customerRrnPrefix, BigDecimal amount) {
+    public static BankWithdrawalRequest of(String reqPayload, String bankKeyId, BigDecimal amount) {
         return BankWithdrawalRequest.builder()
-                .encryptedKey(encryptedKey)
-                .jwsSignature(jwsSignature)
-                .withdrawalAccountNo(withdrawalAccountNo)
-                .withdrawalPassword(withdrawalPassword)
-                .customerRrnPrefix(customerRrnPrefix)
+                .reqPayload(reqPayload)
+                .bankKeyId(bankKeyId)
                 .amount(amount)
                 .build();
     }
