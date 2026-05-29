@@ -15,7 +15,7 @@ export interface TransactionSummaryResponse {
     successCount: number;
     errorCount: number;
     successRate: number;
-    avgElapsedMs: number;
+    averageElapsedMs: number;
 }
 
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Search, RotateCcw } from 'lucide-react';
 import type { LogListRequest } from '../../types/log';
+import type { Agency, Bank } from '../../types/common';
 
 const formatLocalInput = (d: Date) => {
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -54,11 +55,13 @@ const toApiDate = (dt: string) => {
 
 interface LogFilterProps {
     onSearch: (request: LogListRequest) => void;
+    agencies: Agency[];
+    banks: Bank[];
 }
 
 type Filters = ReturnType<typeof getDefaultFilters>;
 
-const LogFilter: React.FC<LogFilterProps> = ({ onSearch }) => {
+const LogFilter: React.FC<LogFilterProps> = ({ onSearch, agencies, banks }) => {
     const [filters, setFilters] = useState<Filters>(getDefaultFilters);
 
     const set = (key: keyof Filters) => (value: string) =>
@@ -116,11 +119,11 @@ const LogFilter: React.FC<LogFilterProps> = ({ onSearch }) => {
                     className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white min-w-[120px]"
                 >
                     <option value="">전체 은행</option>
-                    <option value="004">국민은행</option>
-                    <option value="088">신한은행</option>
-                    <option value="020">우리은행</option>
-                    <option value="081">하나은행</option>
-                    <option value="011">농협은행</option>
+                    {banks.map(bank => (
+                        <option key={bank.bankCode} value={bank.bankCode}>
+                            {bank.bankName}
+                        </option>
+                    ))}
                 </select>
             </div>
 
@@ -157,8 +160,11 @@ const LogFilter: React.FC<LogFilterProps> = ({ onSearch }) => {
                     className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white min-w-[120px]"
                 >
                     <option value="">전체 기관</option>
-                    <option value="PO001">우체국</option>
-                    <option value="SB001">저축은행</option>
+                    {agencies.map(agency => (
+                        <option key={agency.agencyCode} value={agency.agencyCode}>
+                            {agency.agencyName}
+                        </option>
+                    ))}
                 </select>
             </div>
 

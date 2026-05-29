@@ -13,6 +13,6 @@ export const getLog = async (id: number): Promise<LogApiResponse> => {
 };
 
 export const getTransactionSummary = async (request: TransactionSummaryRequest): Promise<TransactionSummaryApiResponse> => {
-    const response = await axiosTokenInstance.get<TransactionSummaryApiResponse>('/monitor/transactions/summary', { params: request });
+    const response = await axiosTokenInstance.get<TransactionSummaryApiResponse>('/monitor/summary', { params: request });
     return response.data;
 };

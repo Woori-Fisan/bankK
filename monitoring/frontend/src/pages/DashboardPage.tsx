@@ -1,10 +1,12 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import LogFilter from '../components/dashboard/LogFilter';
 import MetricCard from '../components/dashboard/MetricCard';
 import LogList from '../components/dashboard/LogList';
 import { getLogList, getTransactionSummary } from '../api/log';
+import { getAgencies, getBanks } from '../api/common';
 import type { LogListRequest, SystemLog } from '../types/log';
 import type { TransactionSummaryResponse } from '../types/transaction';
+import type { Agency, Bank } from '../types/common';
 
 const PAGE_SIZE = 20;
 
@@ -15,7 +17,18 @@ const DashboardPage: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [summary, setSummary] = useState<TransactionSummaryResponse | null>(null);
+    const [agencies, setAgencies] = useState<Agency[]>([]);
+    const [banks, setBanks] = useState<Bank[]>([]);
     const lastRequestRef = useRef<LogListRequest | null>(null);
+
+    useEffect(() => {
+        getAgencies().then(res => {
+            if (res.success && res.data) setAgencies(res.data);
+        });
+        getBanks().then(res => {
+            if (res.success && res.data) setBanks(res.data);
+        });
+    }, []);
 
     const fetchLogs = async (request: LogListRequest, page: number) => {
         const res = await getLogList({ ...request, page: page - 1, size: PAGE_SIZE });
@@ -60,7 +73,7 @@ const DashboardPage: React.FC = () => {
             </div>
 
             {/* 조회 필터 */}
-            <LogFilter onSearch={handleSearch} />
+            <LogFilter onSearch={handleSearch} agencies={agencies} banks={banks} />
 
             {/* 주요 지표 카드 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -76,7 +89,7 @@ const DashboardPage: React.FC = () => {
                 />
                 <MetricCard
                     label="평균 응답시간"
-                    value={summary ? `${summary.avgElapsedMs}ms` : '-'}
+                    value={summary ? `${summary.averageElapsedMs}ms` : '-'}
                     type="latency"
                 />
                 <MetricCard
