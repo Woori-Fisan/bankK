@@ -217,7 +217,8 @@ public class LoanService {
                         .documentType(Objects.toString(terms.get("termsCode"), null))
                         .documentName(Objects.toString(terms.get("title"), null))
                         .documentUrl(Objects.toString(terms.get("termsUrl"), null))
-                        .isMandatory(Boolean.TRUE.equals(terms.get("mandatory")))
+                        .documentContent(Objects.toString(terms.get("termsContent"), null))
+                        .isMandatory(Boolean.TRUE.equals(terms.get("isMandatory")))
                         .build())
                 .toList();
         return LoanContractDocumentsResponse.builder()

@@ -45,6 +45,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
     });
     const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoanData | 'submit', string>>>({});
 
+    const [isUploading, setIsUploading] = useState(false);
     const [files, setFiles] = useState<{ id: number; name: string; file: File }[]>([]);
     const [agreedDocs, setAgreedDocs] = useState<AgreedDoc[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -182,6 +183,7 @@ ${body}
         if (!validate()) return;
 
         setFieldErrors({});
+        setIsUploading(true);
         const requestKey = crypto.randomUUID();
         const rrnPrefix = rrnFront + rrnBack;
 
@@ -238,6 +240,7 @@ ${body}
             onNext({ ...formData, rrn: `${rrnFront}-${rrnBack}` }, result.loanNo);
         } catch (err) {
             sseControllerRef.current?.abort();
+            setIsUploading(false);
             setFieldErrors({ submit: extractApiError(err) });
         }
     };
@@ -257,6 +260,28 @@ ${body}
         agreedDocs.filter((d) => d.isMandatory).some((d) => !d.agreed) ||
         !formData.userName ||
         !formData.accountNo;
+
+    if (isUploading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 bg-white border border-gray-200 rounded-3xl">
+                <div className="relative mb-6">
+                    <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-8 h-8 bg-blue-50 rounded-full" />
+                    </div>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">파일 전송 중...</h2>
+                <p className="text-sm text-gray-500 text-center max-w-xs">
+                    서류를 업로드하고 심사를 접수하고 있습니다.
+                </p>
+                <div className="flex gap-1.5 mt-6">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse delay-75" />
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse delay-150" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
