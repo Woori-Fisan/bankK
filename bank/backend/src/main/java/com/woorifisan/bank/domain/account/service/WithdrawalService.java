@@ -37,10 +37,16 @@ public class WithdrawalService {
         // 2. 출금 가능 여부 체크 (이미 해싱된 비밀번호 비교)
         validateWithdrawal(account, request.getWithdrawalPassword(), request.getAmount());
 
-        // 3. 거래 내역 생성
+        // 3. 잔액 업데이트 (낙관적 락)
+        int updatedRows = accountMapper.updateBalance(account.getId(), request.getAmount().negate(), account.getVersion());
+        if (updatedRows == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
+        }
+
+        // 4. 거래 내역 생성 및 저장 (업데이트 성공 후 기록)
         String txId = "TXW-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
         BigDecimal balanceAfter = account.getBalance().subtract(request.getAmount());
-        
+
         TransactionLedger ledger = TransactionLedger.of(
                 txId,
                 account.getId(),
@@ -53,18 +59,6 @@ public class WithdrawalService {
                 "SUCCESS"
         );
         transactionLedgerMapper.insert(ledger);
-
-        // 4. 원장 업데이트 (낙관적 락)
-        int updatedRows = accountMapper.subtractBalance(account.getId(), request.getAmount(), account.getVersion());
-        if (updatedRows == 0) {
-            Account currentAccount = accountMapper.findById(account.getId())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
-
-            if (currentAccount.getBalance().compareTo(request.getAmount()) < 0) {
-                throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-            }
-            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
-        }
 
         log.info("출금 완료: 계좌={}, 금액={}, 잔액={}", account.getAccountNo(), request.getAmount(), balanceAfter);
 

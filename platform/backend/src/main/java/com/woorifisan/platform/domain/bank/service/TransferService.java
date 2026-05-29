@@ -81,9 +81,9 @@ public class TransferService {
                 request.getDepositBankCode(),
                 request.getAmount()
         );
-        
+
         BankTransferResponse withdrawResponse = bankExternalClient.fetchTransferWithdraw(
-                request.getWithdrawalBankCode(), 
+                request.getWithdrawalBankCode(),
                 withdrawRequest
         );
         log.info("이체 Step 1 성공 [출금 완료] - 거래ID: {}", withdrawResponse.getTransactionId());

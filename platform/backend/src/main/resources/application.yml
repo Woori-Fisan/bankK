@@ -99,14 +99,14 @@ logging:
 
 bank:
   core:
-    url: ${BANK_CORE_URL:http://localhost:8081}
+    url: ${BANK_SERVER_URL:http://localhost:8081}
   urls:
     "020":
       base-url: ${WOORI_BASE_URL:http://localhost:8081/api/v1/baas}
       endpoints:
         balance: "/account/balance"
         history: "/account/transactions"
-        withdraw: "/transfer/withdraw"
+        withdraw: "/transfer/withdrawal"
         deposit: "/transfer/deposit"
         recipient: "/transfer/recipient"
         transfer: "/transfer"

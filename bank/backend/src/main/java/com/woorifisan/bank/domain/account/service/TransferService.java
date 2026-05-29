@@ -14,9 +14,9 @@ import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
-import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.response.ErrorCode;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -125,7 +125,10 @@ public class TransferService {
         }
 
         BigDecimal newBalance = sender.getBalance().subtract(request.getAmount());
-        accountMapper.updateBalance(sender.getId(), request.getAmount().negate());
+        int updatedCount = accountMapper.updateBalance(sender.getId(), request.getAmount().negate(), sender.getVersion());
+        if (updatedCount == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
+        }
 
         // 4. 원장 기록
         String txId = UUID.randomUUID().toString();
@@ -173,7 +176,10 @@ public class TransferService {
 
         // 3. 잔액 업데이트
         BigDecimal newBalance = receiver.getBalance().add(request.getAmount());
-        accountMapper.updateBalance(receiver.getId(), request.getAmount());
+        int updatedCount = accountMapper.updateBalance(receiver.getId(), request.getAmount(), receiver.getVersion());
+        if (updatedCount == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
+        }
 
         // 4. 원장 기록
         String txId = UUID.randomUUID().toString();

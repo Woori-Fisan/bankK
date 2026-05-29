@@ -9,6 +9,8 @@ import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryReques
 import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -76,7 +78,6 @@ public class AccountInquiryService {
             endDate = LocalDate.parse(end, DATE_FORMATTER);
 
         } catch (Exception e) {
-            log.error("날짜 파싱 중 오류 발생: {}", e.getMessage());
             throw new BusinessException(ErrorCode.INVALID_INPUT, "날짜 형식이 올바르지 않습니다. (yyyy-MM-dd)");
         }
 

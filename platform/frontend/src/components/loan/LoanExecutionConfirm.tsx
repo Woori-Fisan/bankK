@@ -25,8 +25,6 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({
 
     const executeMutation = useExecuteLoan();
 
-    const bankCode = loanData.bankCode ?? loanData.bank ?? '';
-
     const handleExecution = () => {
         setSubmitError(null);
         setIsPinpadOpen(true);

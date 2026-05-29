@@ -36,5 +36,7 @@ out/
 ### VS Code ###
 .vscode/
 
-# 환경변수
+# env
 .env
+.env.*
+!.env.example

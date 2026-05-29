@@ -67,6 +67,7 @@ class TransferServiceTest {
                 .balance(new BigDecimal("100000"))
                 .password("hashedPassword")
                 .status("NORMAL")
+                .version(1)
                 .build();
 
         receiver = Account.builder()
@@ -75,6 +76,7 @@ class TransferServiceTest {
                 .accountNo("222-222")
                 .balance(new BigDecimal("50000"))
                 .status("NORMAL")
+                .version(1)
                 .build();
 
         senderCustomer = Customer.builder()
