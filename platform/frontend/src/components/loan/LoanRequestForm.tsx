@@ -173,7 +173,9 @@ ${body}
     };
 
     useEffect(() => {
-        return () => { sseControllerRef.current?.abort(); };
+        // cleanup에서 abort 하지 않음 — onNext() 후 컴포넌트가 언마운트돼도
+        // SSE가 살아있어야 Bank webhook 수신 후 LoanEvaluation에 결과 전달 가능
+        return () => {};
     }, []);
 
     const handleSubmit = async () => {
