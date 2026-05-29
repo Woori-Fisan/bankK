@@ -2,6 +2,31 @@
 
 @theme {
   --font-sans: "Pretendard", "Inter", system-ui, -apple-system, sans-serif;
+  
+  @keyframes scaleIn {
+    from {
+      transform: scale(0);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes scaleOut {
+    from {
+      transform: scale(1);
+      opacity: 1;
+    }
+    to {
+      transform: scale(0);
+      opacity: 0;
+    }
+  }
+
+  --animate-scale-in: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-scale-out: scaleOut 0.25s ease-in forwards;
 }
 
 :root {
