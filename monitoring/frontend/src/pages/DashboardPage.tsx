@@ -2,8 +2,9 @@ import React, { useRef, useState } from 'react';
 import LogFilter from '../components/dashboard/LogFilter';
 import MetricCard from '../components/dashboard/MetricCard';
 import LogList from '../components/dashboard/LogList';
-import { getLogList } from '../api/log';
+import { getLogList, getTransactionSummary } from '../api/log';
 import type { LogListRequest, SystemLog } from '../types/log';
+import type { TransactionSummaryResponse } from '../types/transaction';
 
 const PAGE_SIZE = 20;
 
@@ -13,33 +14,41 @@ const DashboardPage: React.FC = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
+    const [summary, setSummary] = useState<TransactionSummaryResponse | null>(null);
     const lastRequestRef = useRef<LogListRequest | null>(null);
 
     const fetchLogs = async (request: LogListRequest, page: number) => {
-        await Promise.resolve();
+        const res = await getLogList({ ...request, page: page - 1, size: PAGE_SIZE });
+        if (res.success && res.data) {
+            setLogs(res.data.logListDTO);
+            setTotalPage(res.data.totalPage);
+            setTotalCount(res.data.pageNum * res.data.pageSize);
+        }
+    };
+
+    const fetchSummary = async (request: LogListRequest) => {
+        const res = await getTransactionSummary(request);
+        if (res.success && res.data) {
+            setSummary(res.data);
+        }
+    };
+
+    const handleSearch = async (request: LogListRequest) => {
+        lastRequestRef.current = request;
+        setCurrentPage(1);
         setIsLoading(true);
         try {
-            const res = await getLogList({ ...request, page: page - 1, size: PAGE_SIZE });
-            if (res.success && res.data) {
-                setLogs(res.data.logListDTO);
-                setTotalPage(res.data.totalPage);
-                setTotalCount(res.data.pageNum * res.data.pageSize); // 임시: API에 totalCount 없을 경우
-            }
+            await Promise.all([fetchLogs(request, 1), fetchSummary(request)]);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleSearch = (request: LogListRequest) => {
-        lastRequestRef.current = request;
-        setCurrentPage(1);
-        fetchLogs(request, 1);
-    };
-
     const handlePageChange = (page: number) => {
         if (!lastRequestRef.current) return;
         setCurrentPage(page);
-        fetchLogs(lastRequestRef.current, page);
+        setIsLoading(true);
+        fetchLogs(lastRequestRef.current, page).finally(() => setIsLoading(false));
     };
 
     return (
@@ -57,22 +66,22 @@ const DashboardPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <MetricCard
                     label="총 로그 수"
-                    value="1,284,092"
+                    value={summary ? summary.totalCount.toLocaleString() : '-'}
                     type="total"
                 />
                 <MetricCard
                     label="오류 건수"
-                    value="42"
+                    value={summary ? summary.errorCount.toLocaleString() : '-'}
                     type="error"
                 />
                 <MetricCard
                     label="평균 응답시간"
-                    value="42ms"
+                    value={summary ? `${summary.avgElapsedMs}ms` : '-'}
                     type="latency"
                 />
                 <MetricCard
                     label="처리 성공률"
-                    value="99.98%"
+                    value={summary ? `${summary.successRate.toFixed(2)}%` : '-'}
                     type="success"
                 />
             </div>

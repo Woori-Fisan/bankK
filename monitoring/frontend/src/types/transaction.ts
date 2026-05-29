@@ -1,8 +1,13 @@
+import type { ApiCommonResponse } from './common';
+
 export interface TransactionSummaryRequest {
     startDate: string;
     endDate: string;
     agencyCode?: string;
     bankCode?: string;
+    staffId?: string;
+    logType?: string;
+    httpStatus?: string;
 }
 
 export interface TransactionSummaryResponse {
@@ -12,3 +17,6 @@ export interface TransactionSummaryResponse {
     successRate: number;
     avgElapsedMs: number;
 }
+
+
+export type TransactionSummaryApiResponse = ApiCommonResponse<TransactionSummaryResponse>
