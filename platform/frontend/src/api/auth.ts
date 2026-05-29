@@ -2,6 +2,7 @@ import axios from 'axios';
 import axiosInstance from './axiosInstance';
 import { useAuthStore } from '../store/useAuthStore';
 import { refreshBankPublicKeys } from '../utils/bankCrypto';
+import { decodeJwt } from '../utils/jwt';
 
 interface LoginResponse {
     success: boolean;
@@ -38,10 +39,20 @@ export const login = async (
 
         if (responseData && responseData.accessToken) {
             // 저장소에 토큰 정보를 먼저 반영 (refreshBankPublicKeys에서 axiosInstance 사용 시 필요)
-            const { setUserId, setAccessToken } = useAuthStore.getState();
+            const { setUserId, setAccessToken, setTokenExpiry, setUserRole } = useAuthStore.getState();
             setUserId(employeeId); // 또는 responseData에서 제공하는 실제 ID
             setAccessToken(responseData.accessToken);
-            // userRole 등 추가 정보가 있다면 여기서 설정
+            
+            // 토큰 디코딩 및 추가 정보 저장
+            const decoded = decodeJwt(responseData.accessToken);
+            if (decoded) {
+                if (decoded.exp) {
+                    setTokenExpiry(decoded.exp * 1000);
+                }
+                if (decoded.role) {
+                    setUserRole(decoded.role);
+                }
+            }
             
             // 로그인 성공 시 은행 공개키 동기화
             await refreshBankPublicKeys();
@@ -87,7 +98,21 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 
             if (accessToken) {
                 // 저장소에 토큰 정보를 먼저 반영
-                useAuthStore.getState().setAccessToken(accessToken);
+                const { setAccessToken, setTokenExpiry, setUserRole, setUserId } = useAuthStore.getState();
+                setAccessToken(accessToken);
+                
+                // 토큰 디코딩 및 만료 시간 갱신
+                const decoded = decodeJwt(accessToken);
+                if (decoded) {
+                    if (decoded.exp) {
+                        setTokenExpiry(decoded.exp * 1000);
+                    }
+                    if (decoded.role) {
+                        setUserRole(decoded.role);
+                    }
+                    const userId = decoded.loginId || decoded.sub || decoded.id;
+                    if (userId) setUserId(userId);
+                }
                 
                 // 토큰 리프레시 성공 시 은행 공개키 동기화
                 await refreshBankPublicKeys();
