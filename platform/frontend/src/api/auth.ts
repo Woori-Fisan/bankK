@@ -43,12 +43,14 @@ export const login = async (
             setUserId(employeeId); // 또는 responseData에서 제공하는 실제 ID
             setAccessToken(responseData.accessToken);
             
+            // 리프레시 토큰 만료 시간 기준으로 설정 (백엔드에서 초 단위로 제공)
+            if (responseData.refreshTokenExpiresIn) {
+                setTokenExpiry(Date.now() + responseData.refreshTokenExpiresIn * 1000);
+            }
+            
             // 토큰 디코딩 및 추가 정보 저장
             const decoded = decodeJwt(responseData.accessToken);
             if (decoded) {
-                if (decoded.exp) {
-                    setTokenExpiry(decoded.exp * 1000);
-                }
                 if (decoded.role) {
                     setUserRole(decoded.role);
                 }
@@ -101,12 +103,14 @@ export const refreshAccessToken = async (): Promise<string | null> => {
                 const { setAccessToken, setTokenExpiry, setUserRole, setUserId } = useAuthStore.getState();
                 setAccessToken(accessToken);
                 
+                // 리프레시 토큰 만료 시간 기준으로 설정 (백엔드에서 초 단위로 제공)
+                if (responseData.refreshTokenExpiresIn) {
+                    setTokenExpiry(Date.now() + responseData.refreshTokenExpiresIn * 1000);
+                }
+                
                 // 토큰 디코딩 및 만료 시간 갱신
                 const decoded = decodeJwt(accessToken);
                 if (decoded) {
-                    if (decoded.exp) {
-                        setTokenExpiry(decoded.exp * 1000);
-                    }
                     if (decoded.role) {
                         setUserRole(decoded.role);
                     }
