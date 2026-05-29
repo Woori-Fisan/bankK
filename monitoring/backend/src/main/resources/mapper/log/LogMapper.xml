@@ -38,7 +38,7 @@
     </sql>
 
     <!-- 목록 조회용: 대용량 텍스트 필드(body_data, jws_signature) 및 상세 전용 필드 제외 -->
-    <select id="findLogList" parameterType="com.woorifisan.monitoring.domain.log.dto.LogRequest"
+    <select id="findLogList" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogRequest"
             resultType="com.woorifisan.monitoring.domain.log.dto.LogListDTO">
         SELECT
             id,
@@ -51,15 +51,26 @@
             target_code as targetCode,
             agency_code as agencyCode,
             http_status as httpStatus,
-            elapsed_ms as elapsedMs
+            elapsed_ms as elapsedMs,
+            http_uri as httpUri
         FROM system_logs
         <include refid="logSearchCondition" />
         ORDER BY created_at DESC
         LIMIT #{size} OFFSET #{offset}
     </select>
 
-    <select id="countLogList" parameterType="com.woorifisan.monitoring.domain.log.dto.LogRequest" resultType="long">
+    <select id="countLogList" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogRequest" resultType="long">
         SELECT COUNT(*)
+        FROM system_logs
+        <include refid="logSearchCondition" />
+    </select>
+
+    <!-- 통계 요약 조회: 총 건수, 에러 건수, 평균 응답시간 집계 -->
+    <select id="findLogSummary" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogRequest" resultType="map">
+        SELECT
+            COUNT(*) as totalCount,
+            COUNT(CASE WHEN level = 'ERROR' THEN 1 END) as errorCount,
+            IFNULL(AVG(elapsed_ms), 0) as avgElapsedMs
         FROM system_logs
         <include refid="logSearchCondition" />
     </select>

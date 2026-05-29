@@ -1,8 +1,9 @@
-package com.woorifisan.monitoring.domain.log.dto;
+package com.woorifisan.monitoring.domain.log.dto.response;
 
+import com.woorifisan.monitoring.domain.log.dto.LogListDTO;
 import lombok.Builder;
 import lombok.Getter;
-import java.time.LocalDateTime;
+
 import java.util.List;
 
 @Getter

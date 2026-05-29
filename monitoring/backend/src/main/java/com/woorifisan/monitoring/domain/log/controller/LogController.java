@@ -1,8 +1,10 @@
 package com.woorifisan.monitoring.domain.log.controller;
 
 import com.woorifisan.monitoring.domain.log.dto.LogListDTO;
-import com.woorifisan.monitoring.domain.log.dto.LogRequest;
-import com.woorifisan.monitoring.domain.log.dto.LogResponse;
+import com.woorifisan.monitoring.domain.log.dto.request.LogRequest;
+import com.woorifisan.monitoring.domain.log.dto.response.LogResponse;
+import com.woorifisan.monitoring.domain.log.dto.request.LogSummaryRequest;
+import com.woorifisan.monitoring.domain.log.dto.response.LogSummaryResponse;
 import com.woorifisan.monitoring.domain.log.service.LogService;
 import com.woorifisan.monitoring.global.config.swagger.CustomExceptionDescription;
 import com.woorifisan.monitoring.global.config.swagger.SwaggerResponseDescription;
@@ -49,6 +51,18 @@ public class LogController {
         LogListDTO response = logService.getLogDetail(id);
 
         log.info("[API 응답] 거래 로그 단건 조회 완료 - ID: {}, Trace ID: {}", response.getId(), response.getTraceId());
+
+        return ApiResponse.success(response);
+    }
+
+    @Operation(summary = "거래 로그 통계 요약", description = "조회 조건에 따른 총 로그 수, 오류 건수, 평균 응답시간, 처리 성공률을 반환합니다.")
+    @GetMapping("/summary")
+    public ApiResponse<LogSummaryResponse> getSummary(@Valid @ParameterObject @ModelAttribute LogSummaryRequest request) {
+        log.info("[API 요청] 거래 로그 통계 요약 조회 - 시작일: {}, 종료일: {}", request.getStartDate(), request.getEndDate());
+
+        LogSummaryResponse response = logService.getLogSummary(request);
+
+        log.info("[API 응답] 거래 로그 통계 요약 조회 완료 - 총 건수: {}, 성공률: {}%", response.getTotalCount(), response.getSuccessRate());
 
         return ApiResponse.success(response);
     }

@@ -19,6 +19,7 @@ public enum ErrorCode {
     INQUIRY_INVALID_DATE_RANGE("MON_002", "조회 기간을 확인해주세요.", HttpStatus.BAD_REQUEST),
     TRANSFER_PARAMETER_FAULT("MON_003", "필수 항목이 누락되었습니다.", HttpStatus.BAD_REQUEST),
     LOG_FETCH_ERROR("MON_004", "로그 데이터를 가져오는 중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+    NOT_EXIST_LOG("MON-005", "해당 로그 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
 
     // user
     LOGIN_FAILED("AUTH_001", "아이디 또는 비밀번호가 일치하지 않습니다.", HttpStatus.UNAUTHORIZED),

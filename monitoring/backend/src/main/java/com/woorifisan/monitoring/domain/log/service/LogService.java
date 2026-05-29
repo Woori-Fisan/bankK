@@ -1,8 +1,10 @@
 package com.woorifisan.monitoring.domain.log.service;
 
 import com.woorifisan.monitoring.domain.log.dto.LogListDTO;
-import com.woorifisan.monitoring.domain.log.dto.LogRequest;
-import com.woorifisan.monitoring.domain.log.dto.LogResponse;
+import com.woorifisan.monitoring.domain.log.dto.request.LogRequest;
+import com.woorifisan.monitoring.domain.log.dto.response.LogResponse;
+import com.woorifisan.monitoring.domain.log.dto.request.LogSummaryRequest;
+import com.woorifisan.monitoring.domain.log.dto.response.LogSummaryResponse;
 import com.woorifisan.monitoring.domain.log.mapper.LogMapper;
 import com.woorifisan.monitoring.global.exception.BusinessException;
 import com.woorifisan.monitoring.global.response.ErrorCode;
@@ -14,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -53,11 +56,47 @@ public class LogService {
 
         if (logDetail == null) {
             log.warn("[Service 경고] 해당 ID의 로그를 찾을 수 없음 - ID: {}", id);
-            throw new BusinessException("해당 로그 정보를 찾을 수 없습니다.", ErrorCode.INVALID_INPUT);
+            throw new BusinessException("해당 로그 정보를 찾을 수 없습니다.", ErrorCode.NOT_EXIST_LOG);
         }
 
         log.info("[Service 완료] 로그 단건 조회 결과 - ID: {}, Trace ID: {}", logDetail.getId(), logDetail.getTraceId());
         return logDetail;
+    }
+
+    public LogSummaryResponse getLogSummary(LogSummaryRequest request) {
+        log.info("[Service 시작] 거래 로그 통계 요약 로직 수행");
+
+        validateInquiryPeriod(request.getStartDate(), request.getEndDate());
+
+        Map<String, Object> summaryMap = logMapper.findLogSummary(request);
+
+        // 결과가 없거나 전체 건수가 0인 경우 예외 처리
+        if (summaryMap == null || ((Number) summaryMap.getOrDefault("totalCount", 0L)).longValue() == 0) {
+            log.warn("[Service 경고] 조회 조건에 해당하는 로그가 존재하지 않음 - 기간: {} ~ {}", request.getStartDate(), request.getEndDate());
+            throw new BusinessException("해당 조건의 로그가 존재하지 않습니다.", ErrorCode.NOT_EXIST_LOG);
+        }
+
+        long totalCount = ((Number) summaryMap.getOrDefault("totalCount", 0L)).longValue();
+        long errorCount = ((Number) summaryMap.getOrDefault("errorCount", 0L)).longValue();
+        double avgElapsedMs = ((Number) summaryMap.getOrDefault("avgElapsedMs", 0.0)).doubleValue();
+
+        double successRate = 0.0;
+        if (totalCount > 0) {
+            successRate = ((double) (totalCount - errorCount) / totalCount) * 100;
+        }
+
+        // 소수점 둘째 자리까지 반올림
+        avgElapsedMs = Math.round(avgElapsedMs * 10.0) / 10.0;
+        successRate = Math.round(successRate * 10.0) / 10.0;
+
+        log.info("[Service 완료] 통계 요약 계산 완료 - 총 건수: {}, 성공률: {}%", totalCount, successRate);
+
+        return LogSummaryResponse.builder()
+                .totalCount(totalCount)
+                .errorCount(errorCount)
+                .averageElapsedMs(avgElapsedMs)
+                .successRate(successRate)
+                .build();
     }
 
     private void validateInquiryPeriod(String start, String end) {
