@@ -192,8 +192,12 @@ public class LoanService {
         }
 
         for (MultipartFile file : files) {
-            // UUID 접두사로 파일명 충돌 방지
-            String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+            // Paths.get().getFileName()으로 경로 컴포넌트 제거 — Path Traversal(CWE-22) 방지
+            String originalFilename = file.getOriginalFilename();
+            String cleanFileName = (originalFilename != null)
+                    ? Paths.get(originalFilename).getFileName().toString()
+                    : "unnamed";
+            String fileName = UUID.randomUUID() + "_" + cleanFileName;
             Path target = loanDir.resolve(fileName);
             try {
                 Files.copy(file.getInputStream(), target);
