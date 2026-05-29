@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, RotateCcw } from 'lucide-react';
+import type { LogListRequest } from '../../types/log';
 
-const DEFAULT_FILTERS = {
-    startDate: '',
-    endDate: '',
-    bankCode: '',
-    level: '',
-    httpStatus: '',
-    agencyCode: '',
-    staffId: '',
+const formatLocalInput = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+const getDefaultFilters = () => {
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    return {
+        startDate: formatLocalInput(yesterday),
+        endDate: formatLocalInput(now),
+        bankCode: '',
+        level: '',
+        httpStatus: '',
+        agencyCode: '',
+        staffId: '',
+    };
 };
 
 interface DateTimeInputProps {
@@ -36,13 +46,48 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({ placeholder, value, onCha
     );
 };
 
-const LogFilter: React.FC = () => {
-    const [filters, setFilters] = useState(DEFAULT_FILTERS);
+// datetime-local 값(YYYY-MM-DDTHH:MM)을 API 형식(YYYY-MM-DD HH:MM:SS)으로 변환
+const toApiDate = (dt: string) => {
+    const base = dt.replace('T', ' ');
+    return base.length === 16 ? base + ':00' : base;
+};
 
-    const set = (key: keyof typeof DEFAULT_FILTERS) => (value: string) =>
+interface LogFilterProps {
+    onSearch: (request: LogListRequest) => void;
+}
+
+type Filters = ReturnType<typeof getDefaultFilters>;
+
+const LogFilter: React.FC<LogFilterProps> = ({ onSearch }) => {
+    const [filters, setFilters] = useState<Filters>(getDefaultFilters);
+
+    const set = (key: keyof Filters) => (value: string) =>
         setFilters(prev => ({ ...prev, [key]: value }));
 
-    const handleReset = () => setFilters(DEFAULT_FILTERS);
+    const handleReset = () => setFilters(getDefaultFilters());
+
+    const handleSearch = () => {
+        if (!filters.startDate || !filters.endDate) {
+            alert('시작일과 종료일을 입력해주세요.');
+            return;
+        }
+
+        const request: LogListRequest = {
+            startDate: toApiDate(filters.startDate),
+            endDate: toApiDate(filters.endDate),
+            ...(filters.bankCode && { bankCode: filters.bankCode }),
+            ...(filters.httpStatus && { httpStatus: filters.httpStatus }),
+            ...(filters.agencyCode && { agencyCode: filters.agencyCode }),
+            ...(filters.staffId && { staffId: filters.staffId }),
+        };
+
+        onSearch(request);
+    };
+
+    useEffect(() => {
+        handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-end">
@@ -71,11 +116,11 @@ const LogFilter: React.FC = () => {
                     className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white min-w-[120px]"
                 >
                     <option value="">전체 은행</option>
-                    <option value="KB">국민은행</option>
-                    <option value="SH">신한은행</option>
-                    <option value="WR">우리은행</option>
-                    <option value="HN">하나은행</option>
-                    <option value="NH">농협은행</option>
+                    <option value="004">국민은행</option>
+                    <option value="088">신한은행</option>
+                    <option value="020">우리은행</option>
+                    <option value="081">하나은행</option>
+                    <option value="011">농협은행</option>
                 </select>
             </div>
 
@@ -106,13 +151,15 @@ const LogFilter: React.FC = () => {
 
             <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-gray-500 ml-1">대행기관</label>
-                <input
-                    type="text"
-                    placeholder="기관명 입력"
+                <select
                     value={filters.agencyCode}
                     onChange={e => set('agencyCode')(e.target.value)}
-                    className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none w-[130px]"
-                />
+                    className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white min-w-[120px]"
+                >
+                    <option value="">전체 기관</option>
+                    <option value="PO001">우체국</option>
+                    <option value="SB001">저축은행</option>
+                </select>
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -127,7 +174,10 @@ const LogFilter: React.FC = () => {
             </div>
 
             <div className="flex gap-2">
-                <button className="flex items-center gap-2 px-4 py-2 bg-emerald-700 text-white rounded-lg text-sm font-bold hover:bg-emerald-800 transition-colors">
+                <button
+                    onClick={handleSearch}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-700 text-white rounded-lg text-sm font-bold hover:bg-emerald-800 transition-colors"
+                >
                     <Search size={16} />
                     조회
                 </button>

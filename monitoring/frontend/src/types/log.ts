@@ -1,3 +1,5 @@
+import type { ApiCommonResponse } from './common';
+
 export interface SystemLog {
     id: number;
     createdAt: string;
@@ -20,9 +22,23 @@ export interface SystemLog {
     errorMessage: string | null;
 }
 
+export interface LogListRequest {
+    startDate: string;
+    endDate: string;
+    agencyCode?: string;
+    bankCode?: string;
+    staffId?: string;
+    logType?: string;
+    httpStatus?: string;
+    page?: number;
+    size?: number;
+}
+
 export interface LogListDTO {
     pageNum: number;
     pageSize: number;
     totalPage: number;
     logListDTO: SystemLog[];
 }
+
+export type LogListApiResponse = ApiCommonResponse<LogListDTO>;
