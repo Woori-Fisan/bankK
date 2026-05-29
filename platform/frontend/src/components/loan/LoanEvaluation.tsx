@@ -1,38 +1,46 @@
 import React, { useEffect } from 'react';
 import { Loader2, CheckCircle2, XCircle, Info, ChevronRight } from 'lucide-react';
 import type { LoanData, EvaluationResult, LoanProduct } from '../../pages/LoanApplication';
-import { useEvaluationSSE, extractApiError } from '../../hooks/useLoan';
+import type { EvaluationStatusResponse } from '../../api/loanApi';
 import { formatAmount } from '../../utils/formatter';
 
 interface LoanEvaluationProps {
     loanData: LoanData;
-    applicationId: string;
+    sseData: EvaluationStatusResponse | null;
+    sseError: Error | null;
     onApproved: (result: EvaluationResult) => void;
     onRejected: (reason: string) => void;
 }
 
 const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
-    applicationId,
+    sseData,
+    sseError,
     onApproved,
     onRejected,
 }) => {
-    const { data, error } = useEvaluationSSE(applicationId);
+    const isRejected = sseData?.evaluationStatus === 'REJECTED' ||
+                       sseData?.evaluationStatus === 'SYSTEM_ERROR';
 
     useEffect(() => {
-        if (!data) return;
-        if (data.evaluationStatus === 'REJECTED' || data.evaluationStatus === 'FAILED') {
-            onRejected(data.rejectionMessage ?? '심사 거절');
+        if (!sseData) return;
+        if (isRejected) {
+            onRejected(
+                sseData.rejectionMessage ??
+                (sseData.evaluationStatus === 'SYSTEM_ERROR'
+                    ? '은행 내부 오류가 발생했습니다. IT 지원팀에 문의해주세요.'
+                    : '심사 거절'),
+            );
         }
-    }, [data]);
+    }, [sseData]);
 
-    if (error) {
+    if (sseError) {
         return (
             <div className="flex flex-col items-center justify-center py-20 bg-white border border-gray-200 rounded-3xl">
                 <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
                     <XCircle className="w-8 h-8 text-red-500" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 mb-2">심사 상태 조회 중 오류가 발생했습니다</h2>
-                <p className="text-sm text-red-500 mb-8">{error instanceof Error ? error.message : extractApiError(error)}</p>
+                <p className="text-sm text-red-500 mb-8">{sseError.message}</p>
                 <button
                     type="button"
                     onClick={() => onRejected('심사 상태 조회 실패')}
@@ -44,7 +52,7 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
         );
     }
 
-    if (!data || data.evaluationStatus === 'PENDING') {
+    if (!sseData) {
         return (
             <div className="flex flex-col items-center justify-center py-20 bg-white border border-gray-200 rounded-3xl">
                 <div className="relative mb-6">
@@ -56,8 +64,6 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
                 <h2 className="text-xl font-bold text-gray-900 mb-2">심사 중입니다</h2>
                 <p className="text-sm text-gray-500 text-center max-w-xs mb-6">
                     잠시만 기다려 주세요. 심사 결과를 자동으로 조회합니다.
-                    <br />
-                    <span className="text-[11px] opacity-70">Application ID: {applicationId}</span>
                 </p>
                 <div className="flex gap-1.5 mb-6">
                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
@@ -69,23 +75,29 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
         );
     }
 
-    if (data.evaluationStatus === 'REJECTED' || data.evaluationStatus === 'FAILED') {
+    if (isRejected) {
         return (
             <div className="flex flex-col items-center justify-center py-20 bg-white border border-gray-200 rounded-3xl">
                 <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
                     <XCircle className="w-8 h-8 text-red-500" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">대출 심사가 거절되었습니다</h2>
-                <p className="text-sm text-gray-500 mb-8 tracking-tight">Application ID: {applicationId}</p>
-                <div className="w-full max-w-sm bg-red-50 border border-red-100 rounded-2xl p-6 text-left">
-                    <h3 className="text-xs font-bold text-red-600 mb-3 uppercase tracking-wider">거절 사유</h3>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">
+                    {sseData!.evaluationStatus === 'SYSTEM_ERROR'
+                        ? '은행 시스템 오류가 발생했습니다'
+                        : '대출 심사가 거절되었습니다'}
+                </h2>
+                <div className="w-full max-w-sm bg-red-50 border border-red-100 rounded-2xl p-6 text-left mt-4">
+                    <h3 className="text-xs font-bold text-red-600 mb-3 uppercase tracking-wider">사유</h3>
                     <p className="text-sm text-red-800 font-medium leading-relaxed">
-                        {data.rejectionMessage ?? '심사 거절'}
+                        {sseData!.rejectionMessage ??
+                            (sseData!.evaluationStatus === 'SYSTEM_ERROR'
+                                ? '은행 내부 오류가 발생했습니다. IT 지원팀에 문의해주세요.'
+                                : '심사 거절')}
                     </p>
                 </div>
                 <button
                     type="button"
-                    onClick={() => onRejected(data.rejectionMessage ?? '심사 거절')}
+                    onClick={() => onRejected(sseData!.rejectionMessage ?? '심사 거절')}
                     className="mt-10 px-8 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors"
                 >
                     목록으로 돌아가기
@@ -100,8 +112,8 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
                 <div className="flex items-center justify-between mb-8">
                     <div>
                         <h2 className="text-xl font-bold text-gray-900">대출 심사 결과</h2>
-                        <p className="text-[11px] text-gray-500 mt-1 uppercase tracking-tight">
-                            Application ID: {applicationId}
+                        <p className="text-[11px] text-gray-500 mt-1 break-all">
+                            대출 번호: {sseData!.evaluationId ?? '-'}
                         </p>
                     </div>
                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100">
@@ -113,30 +125,24 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
                 <div className="bg-gray-50 rounded-2xl p-8 text-center mb-6 border border-gray-100">
                     <p className="text-xs text-gray-500 mb-2">최종 승인 한도</p>
                     <p className="text-4xl font-bold text-gray-900">
-                        ₩ {formatAmount(data.approvedLimit ?? 0)}
+                        ₩ {formatAmount(sseData!.approvedLimit ?? 0)}
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                     <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
                         <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">최저 금리</p>
                         <p className="text-lg font-bold text-gray-900">
-                            {data.availableProducts && data.availableProducts.length > 0
-                                ? `${Math.min(...data.availableProducts.map(p => p.interestRate))}%`
+                            {sseData!.availableProducts && sseData!.availableProducts.length > 0
+                                ? `${Math.min(...sseData!.availableProducts.map((p) => p.interestRate))}%`
                                 : '-'}
                         </p>
                         <p className="text-[10px] text-gray-500">상품별 상이 / 연</p>
                     </div>
                     <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">심사 완료</p>
-                        <p className="text-sm font-bold text-gray-900">
-                            {data.completedAt ? new Date(data.completedAt).toLocaleString('ko-KR') : '-'}
-                        </p>
-                    </div>
-                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">심사 ID</p>
-                        <p className="text-sm font-bold text-gray-900 break-all">
-                            {data.evaluationId ?? '-'}
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">추천 상품 수</p>
+                        <p className="text-lg font-bold text-gray-900">
+                            {sseData!.availableProducts?.length ?? 0}개
                         </p>
                     </div>
                 </div>
@@ -170,20 +176,21 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
                 <button
                     type="button"
                     onClick={() => {
-                        const minRate = Math.min(...(data.availableProducts ?? []).map(x => x.interestRate));
-                        const products: LoanProduct[] = (data.availableProducts ?? []).map((p, i) => ({
+                        const products: LoanProduct[] = (sseData!.availableProducts ?? []).map((p, i) => ({
                             id: i + 1,
                             loanProductCode: p.loanProductCode,
                             name: p.loanProductName,
                             rate: p.interestRate,
                             limit: p.maxAmount,
-                            tags: p.interestRate === minRate ? ['최저금리'] : [],
+                            tags: p.interestRate === Math.min(...(sseData!.availableProducts ?? []).map((x) => x.interestRate))
+                                ? ['최저금리']
+                                : [],
                             period: p.loanPeriodMonths,
                         }));
                         onApproved({
                             status: 'APPROVED',
-                            limit: data.approvedLimit ?? undefined,
-                            evaluationId: data.evaluationId ?? undefined,
+                            limit: sseData!.approvedLimit ?? undefined,
+                            evaluationId: sseData!.evaluationId ?? undefined,
                             products,
                         });
                     }}

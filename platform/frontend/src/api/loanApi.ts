@@ -18,25 +18,22 @@ export interface LoanDocument {
   agreedAt: string;
 }
 
-export interface UploadedDocumentInfo {
-  documentId: string;
-  fileName: string;
-}
-
 export interface EvaluationRequest {
+  requestKey: string;
   bankCode: string;
   customerName: string;
   customerRrnPrefix: string;
   customerPhone: string;
   depositBankCode: string;
   depositAccountNo: string;
+  requestedAmount?: number;
+  requestedPeriod?: number;
   documents: LoanDocument[];
-  uploadedDocumentIds: string[];
 }
 
 export interface EvaluationResponse {
-  applicationId: string;
-  receivedAt: string;
+  loanNo: string;
+  status: string;
 }
 
 export interface AvailableProduct {
@@ -49,13 +46,9 @@ export interface AvailableProduct {
 }
 
 export interface EvaluationStatusResponse {
-  applicationId: string;
-  evaluationStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FAILED';
-  requestedAt: string;
-  completedAt: string | null;
+  evaluationStatus: 'APPROVED' | 'REJECTED' | 'SYSTEM_ERROR';
   evaluationId: string | null;
   approvedLimit: number | null;
-  rejectionCode: string | null;
   rejectionMessage: string | null;
   availableProducts: AvailableProduct[] | null;
 }
@@ -97,17 +90,6 @@ export interface ExecutionResponse {
   maturityDate: string;
 }
 
-export const uploadLoanDocument = async (file: File): Promise<UploadedDocumentInfo> => {
-  const formData = new FormData();
-  formData.append('file', file);
-  const { data } = await axiosInstance.post<ApiResponse<UploadedDocumentInfo>>(
-    '/loan/documents',
-    formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } },
-  );
-  return data.data!;
-};
-
 export const fetchReviewDocuments = async (): Promise<ReviewDocumentsResponse> => {
   const { data } = await axiosInstance.get<ApiResponse<ReviewDocumentsResponse>>(
     '/loan/review/documents',
@@ -117,20 +99,28 @@ export const fetchReviewDocuments = async (): Promise<ReviewDocumentsResponse> =
 
 export const submitLoanEvaluation = async (
   payload: EvaluationRequest,
+  files: File[],
 ): Promise<EvaluationResponse> => {
+  const formData = new FormData();
+  formData.append(
+    'data',
+    new Blob([JSON.stringify(payload)], { type: 'application/json' }),
+  );
+  files.forEach((file) => formData.append('files', file));
   const { data } = await axiosInstance.post<ApiResponse<EvaluationResponse>>(
     '/loan/evaluation',
-    payload,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
   );
   return data.data!;
 };
 
 export const fetchContractDocuments = async (
   loanProductCode: string,
-  evaluationId: string,
+  loanNo: string,
 ): Promise<ContractDocumentsResponse> => {
   const { data } = await axiosInstance.get<ApiResponse<ContractDocumentsResponse>>(
-    `/loan/contract/documents/${loanProductCode}/${evaluationId}`,
+    `/loan/contract/documents/${loanProductCode}/${loanNo}`,
   );
   return data.data!;
 };
