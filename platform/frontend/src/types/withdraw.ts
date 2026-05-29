@@ -4,6 +4,8 @@ import type { ApiCommonResponse } from './common';
  * 출금 신청 요청 데이터 구조 (API 전송용 DTO)
  */
 export interface WithdrawalRequest {
+    encryptedKey: string;
+    jwsSignature: string;
     withdrawalBankCode: string;
     withdrawalAccountNo: string;
     withdrawalPassword: string;
