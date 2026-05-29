@@ -10,7 +10,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = () => {
-    const { userId, loginTime, tokenExpiry } = useAuth();
+    const { userId, loginTime, tokenExpiry, clearAuth } = useAuth();
     const [timeLeft, setTimeLeft] = useState<string>('00:00');
 
     useEffect(() => {
@@ -41,9 +41,23 @@ const Header: React.FC<HeaderProps> = () => {
 
     const navigate = useNavigate();
 
+    const cleanupAuth = () => {
+        clearAuth();
+        localStorage.removeItem('userId');
+        localStorage.removeItem('loginTime');
+    };
+
     const handleLogout = async () => {
-        await logout();
-        navigate('/login');
+        try {
+            const response = await logout();
+            if (response.success) {
+                cleanupAuth();
+                navigate('/login');
+            }
+        } catch {
+            cleanupAuth();
+            navigate('/login');
+        }
     };
 
     return (

@@ -3,19 +3,23 @@ import { UserRound, Lock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import LoginInput from './LoginInput';
 import { login } from '../../api/auth';
-
+import { decodeJwt } from '../../utils/jwt';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const LoginForm: React.FC = () => {
-
     const navigate = useNavigate();
+    const { setUserId, setAccessToken, setLoginTime, setTokenExpiry, clearAuth } = useAuthStore();
+
     const [employeeId, setEmployeeId] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = async (e: { preventDefault(): void }) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError('');
+        clearAuth();
+
         const trimmedId = employeeId.trim();
         if (trimmedId.length < 4 || trimmedId.length > 20) {
             setError('ID는 4~20자로 입력해주세요.');
@@ -25,10 +29,34 @@ const LoginForm: React.FC = () => {
             setError('비밀번호는 8자 이상 입력해주세요.');
             return;
         }
+
         setIsLoading(true);
         try {
             const response = await login({ loginId: employeeId, password });
             if (response.success) {
+                setUserId(employeeId);
+                localStorage.setItem('userId', employeeId);
+
+                const now = new Date();
+                const formattedTime =
+                    now.getFullYear() + '.' +
+                    String(now.getMonth() + 1).padStart(2, '0') + '.' +
+                    String(now.getDate()).padStart(2, '0') + ' ' +
+                    String(now.getHours()).padStart(2, '0') + ':' +
+                    String(now.getMinutes()).padStart(2, '0') + ':' +
+                    String(now.getSeconds()).padStart(2, '0');
+                setLoginTime(formattedTime);
+                localStorage.setItem('loginTime', formattedTime);
+
+                const accessToken = response.data?.accessToken;
+                if (accessToken) {
+                    setAccessToken(accessToken);
+                    const decoded = decodeJwt(accessToken);
+                    if (decoded?.exp) {
+                        setTokenExpiry(decoded.exp * 1000);
+                    }
+                }
+
                 navigate('/dashboard');
             } else {
                 setError(response.error?.message ?? '로그인에 실패했습니다.');
