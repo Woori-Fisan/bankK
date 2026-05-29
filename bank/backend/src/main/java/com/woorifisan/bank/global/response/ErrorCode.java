@@ -34,6 +34,7 @@ public enum ErrorCode {
 
     // 이체
     IDENTIFICATION_ERROR("TRANSFER_001", "본인 인증 정보가 일치하지 않습니다.", HttpStatus.FORBIDDEN),
+    SAME_ACCOUNT_TRANSFER("TRANSFER_002", "동일 계좌로의 이체는 불가합니다.", HttpStatus.BAD_REQUEST),
 
     // 멱등성
     DUPLICATE_REQUEST("IDEM_001", "중복 요청입니다.", HttpStatus.CONFLICT),

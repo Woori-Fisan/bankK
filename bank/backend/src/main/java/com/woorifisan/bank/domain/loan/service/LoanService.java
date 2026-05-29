@@ -302,7 +302,11 @@ public class LoanService {
                 .endDate(endDate)
                 .build();
         loanLedgerMapper.updateExecution(forUpdate);
-        accountMapper.updateBalance(account.getId(), request.getLoanAmount());
+
+        int updatedCount = accountMapper.updateBalance(account.getId(), request.getLoanAmount(), account.getVersion());
+        if (updatedCount == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
+        }
 
         // 7. 거래 원장 기록 (대출 실행 내역)
         BigDecimal balanceAfter = account.getBalance().add(request.getLoanAmount());

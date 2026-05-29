@@ -109,7 +109,7 @@ logging:
 
 bank:
   core:
-    url: ${BANK_CORE_URL:http://localhost:8081}
+    url: ${BANK_SERVER_URL:http://localhost:8081}
     endpoints:
       evaluation-terms: "/api/v1/loan/evaluation/terms"
       evaluation: "/api/v1/loan/evaluation"
