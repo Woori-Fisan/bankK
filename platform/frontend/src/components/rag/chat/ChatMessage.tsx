@@ -21,7 +21,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ role, content }) => {
                     ? 'bg-white rounded-tl-none border-gray-100 text-gray-800' 
                     : 'bg-emerald-600 rounded-tr-none border-emerald-500 text-white'
             }`}>
-                <p className="text-sm whitespace-pre-wrap">{content}</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
             </div>
         </div>
     );
