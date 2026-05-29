@@ -2,7 +2,7 @@ package com.woorifisan.bank.domain.loan.controller;
 
 import com.woorifisan.bank.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.bank.domain.loan.dto.request.LoanExecuteRequest;
-import com.woorifisan.bank.domain.loan.dto.response.LoanEvaluateResponse;
+import com.woorifisan.bank.domain.loan.dto.response.LoanAcceptResponse;
 import com.woorifisan.bank.domain.loan.dto.response.LoanEvaluationStatusResponse;
 import com.woorifisan.bank.domain.loan.dto.response.LoanExecuteResponse;
 import com.woorifisan.bank.domain.loan.dto.response.LoanProductResponse;
@@ -14,13 +14,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "대출 API", description = "은행 코어 대출 심사 및 실행")
 @RestController
@@ -30,61 +33,49 @@ public class LoanController {
 
     private final LoanService loanService;
 
-    // ── 상품 목록 ─────────────────────────────────────────────────────────────
-
-    @Operation(summary = "대출 상품 목록 조회", description = "판매 중인 대출 상품 목록을 반환합니다.")
+    @Operation(summary = "대출 상품 목록 조회")
     @GetMapping("/products")
     public ResponseEntity<ApiResponse<List<LoanProductResponse>>> getProducts() {
         return ResponseEntity.ok(ApiResponse.success(loanService.getActiveProducts()));
     }
 
-    // ── BK-B11: 심사 서류(약관) 조회 ─────────────────────────────────────────
-
-    @Operation(summary = "대출 심사 약관 조회 (BK-B11)",
-               description = "대출 심사 단계에서 고객에게 제시할 동의서 목록을 반환합니다.")
+    // 심사 단계 약관 목록 반환 (동의서 체크박스에 표시될 항목들)
+    @Operation(summary = "대출 심사 약관 조회 (BK-B11)")
     @GetMapping("/evaluation/terms")
     public ResponseEntity<ApiResponse<List<TermsResponse>>> getEvaluationTerms() {
         return ResponseEntity.ok(ApiResponse.success(loanService.getEvaluationTerms()));
     }
 
-    // ── BK-B13 ~ B19: 대출 심사 요청 ────────────────────────────────────────
-
-    @Operation(summary = "대출 심사 요청 (BK-B13~B19)",
-               description = "NICE 신용점수 조회 → 600점 컷 → DSR 40% 컷 → 한도 산출 → 금리 산출 → 추천 상품 → 결과 저장")
-    @PostMapping("/evaluation")
-    public ResponseEntity<ApiResponse<LoanEvaluateResponse>> evaluate(
-            @RequestBody @Valid LoanEvaluateRequest request) throws InterruptedException {
-        // 실제 은행 심사 처리 시간 시뮬레이션 — 트랜잭션 외부에서 대기
-        Thread.sleep(3_000L);
-        return ResponseEntity.ok(ApiResponse.success(loanService.evaluateLoan(request)));
+    // JSON + 파일을 동시에 받기 위해 multipart 로 선언
+    @Operation(summary = "대출 접수 (BK-B13~B19)",
+               description = "파일 저장 + SUBMITTED 생성 후 즉시 반환. 심사는 @Async로 백그라운드 처리 후 Platform Webhook으로 결과 통보.")
+    @PostMapping(value = "/evaluation", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<LoanAcceptResponse>> accept(
+            @RequestPart("data") @Valid LoanEvaluateRequest request,
+            @RequestPart("files") List<MultipartFile> files) {
+        return ResponseEntity.ok(ApiResponse.success(loanService.acceptLoan(request, files)));
     }
 
-    // ── 심사 상태 Polling (플랫폼 PL-B11 연계) ───────────────────────────────
-
-    @Operation(summary = "대출 심사 상태 조회",
-               description = "evaluationId로 심사 상태를 polling합니다. APPROVED / REJECTED")
+    // SSE 기반 아키텍처에서는 사용되지 않지만, 직접 상태 확인이 필요한 경우를 위해 유지
+    @Operation(summary = "대출 심사 상태 조회 (Polling)")
     @GetMapping("/evaluation/{evaluationId}/status")
     public ResponseEntity<ApiResponse<LoanEvaluationStatusResponse>> getEvaluationStatus(
             @PathVariable Long evaluationId) {
         return ResponseEntity.ok(ApiResponse.success(loanService.getEvaluationStatus(evaluationId)));
     }
 
-    // ── BK-B20: 계약 서류(약관) 조회 ─────────────────────────────────────────
-
-    @Operation(summary = "대출 계약 약관 조회 (BK-B20)",
-               description = "심사 승인 후 계약 단계에서 고객에게 제시할 약관 목록을 반환합니다. evaluationId가 APPROVED여야 합니다.")
-    @GetMapping("/contract/terms/{productId}/{evaluationId}")
+    // APPROVED 상태인 건에만 계약 약관을 내려줌
+    @Operation(summary = "대출 계약 약관 조회 (BK-B20)")
+    @GetMapping("/contract/terms/{productId}/{loanNo}")
     public ResponseEntity<ApiResponse<List<TermsResponse>>> getContractTerms(
             @PathVariable Long productId,
-            @PathVariable Long evaluationId) {
+            @PathVariable String loanNo) {
         return ResponseEntity.ok(ApiResponse.success(
-                loanService.getContractTerms(productId, evaluationId)));
+                loanService.getContractTerms(productId, loanNo)));
     }
 
-    // ── BK-B21 ~ B24, B27: 대출 실행 ────────────────────────────────────────
-
-    @Operation(summary = "대출 실행 (BK-B21~B24, B27)",
-               description = "계좌 유효성 + 비밀번호 검증 → 60일 불완전판매 방지 → 단일 트랜잭션 실행(원장갱신·잔액증가·거래기록) → 월 상환금 계산")
+    // @RequestBody: JSON 단일 객체로 받음 (파일 없음)
+    @Operation(summary = "대출 실행 (BK-B21~B24, B27)")
     @PostMapping("/execution")
     public ResponseEntity<ApiResponse<LoanExecuteResponse>> execute(
             @RequestBody @Valid LoanExecuteRequest request) {
