@@ -80,7 +80,10 @@ public class QdrantRepository {
         try {
             List<ScoredPoint> results = qdrantClient.searchAsync(searchRequest).get();
             return results.stream()
-                    .map(point -> point.getPayloadMap().get("content").getStringValue())
+                    .filter(Objects::nonNull)
+                    .map(point -> point.getPayloadMap().get("content"))
+                    .filter(Objects::nonNull)
+                    .map(Value::getStringValue)
                     .toList();
         } catch (Exception e) {
             log.error("[QdrantRepository] 검색 중 오류 발생", e);

@@ -45,6 +45,9 @@ public class RagService {
 
     public String processPdf(MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null) {
+            throw new IllegalArgumentException("파일명이 존재하지 않습니다.");
+        }
         String documentId = UUID.randomUUID().toString();
 
         log.info("PDF 문서 처리 시작. 파일: {}, ID: {}", originalFilename, documentId);
@@ -86,7 +89,12 @@ public class RagService {
 
         // 3. LLM 호출
         log.info("Gemini LLM 호출 중...");
-        String answer = chatModel.call(prompt).getResult().getOutput().getText();
+        var chatResponse = chatModel.call(prompt);
+        
+        String answer = "답변을 생성할 수 없습니다. (응답이 비어있거나 안전 정책에 의해 차단되었을 수 있습니다.)";
+        if (chatResponse != null && chatResponse.getResult() != null && chatResponse.getResult().getOutput() != null) {
+            answer = chatResponse.getResult().getOutput().getText();
+        }
 
         return RagChatResponse.builder()
                 .answer(answer)
