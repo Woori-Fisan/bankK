@@ -124,7 +124,7 @@ public class BankExternalClient {
         BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
         if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
 
-        String url = bankProperty.getUrl("withdraw");
+        String url = bankProperty.getUrl("withdrawal");
 
         return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<TransferResponse>>() {}, bankCode);
     }

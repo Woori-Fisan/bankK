@@ -43,8 +43,9 @@ public class BankExternalApiAspect {
             "executeTransfer",       "transfer",
             "fetchTransferWithdraw", "withdraw",
             "fetchDeposit",          "deposit",
+            "fetchRefund",           "refund",
             "fetchBalance",          "balance",
-            "withdraw",              "withdraw",
+            "withdraw",              "withdrawal",
             "fetchHistory",          "history"
     );
 

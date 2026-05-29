@@ -68,7 +68,7 @@ public class WithdrawalService {
                 txId,
                 account.getId(),
                 "WITHDRAW",
-                request.getAmount(),
+                request.getAmount().negate(),
                 balanceAfter,
                 null,
                 null,
