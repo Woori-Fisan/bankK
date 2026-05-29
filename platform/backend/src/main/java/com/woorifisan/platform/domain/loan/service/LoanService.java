@@ -74,6 +74,11 @@ public class LoanService {
             log.warn("[SSE] 연결 오류 - requestKey: {}", requestKey);
         });
 
+        // 연결 즉시 초기 이벤트 전송 — Nginx 등 프록시가 유휴 연결로 오인해 끊는 것을 방지
+        try {
+            emitter.send(SseEmitter.event().name("connect").data("connected"));
+        } catch (Exception ignored) {}
+
         log.info("[SSE] 구독 등록 - requestKey: {}", requestKey);
         return emitter;
     }
