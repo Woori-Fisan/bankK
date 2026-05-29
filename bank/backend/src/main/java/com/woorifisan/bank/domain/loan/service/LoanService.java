@@ -199,8 +199,8 @@ public class LoanService {
                     : "unnamed";
             String fileName = UUID.randomUUID() + "_" + cleanFileName;
             Path target = loanDir.resolve(fileName);
-            try {
-                Files.copy(file.getInputStream(), target);
+            try (var inputStream = file.getInputStream()) {
+                Files.copy(inputStream, target);
                 savedPaths.add(target);
             } catch (IOException e) {
                 // 저장 성공한 파일들 전부 삭제 후 예외
