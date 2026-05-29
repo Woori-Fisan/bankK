@@ -107,7 +107,7 @@ const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCo
                                             className={`hover:bg-emerald-50/50 transition-colors cursor-pointer ${detailLoading ? 'pointer-events-none opacity-60' : ''}`}
                                         >
                                             <td className="px-6 py-3 text-xs text-gray-600 whitespace-nowrap">
-                                                {log.createdAt.replace('T', ' ').slice(0, 19)}
+                                                {log.createdAt?.replace('T', ' ').slice(0, 19) ?? '-'}
                                             </td>
                                             <td className="px-6 py-3 text-xs text-gray-700">{getTransactionType(log.httpUri)}</td>
                                             <td className="px-6 py-3 text-xs font-bold text-gray-700">{log.logType}</td>

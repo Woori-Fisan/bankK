@@ -148,7 +148,7 @@ const LogFilter: React.FC<LogFilterProps> = ({ onSearch, agencies, banks }) => {
                     type="text"
                     placeholder="예: 200, 404"
                     value={filters.httpStatus}
-                    onChange={e => set('httpStatus')(e.target.value)}
+                    onChange={e => set('httpStatus')(e.target.value.replace(/\D/g, ''))}
                     className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none w-[120px]"
                 />
             </div>

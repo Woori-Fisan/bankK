@@ -46,7 +46,6 @@ axiosTokenInstance.interceptors.response.use(
       
       // 갱신 실패 시 로그아웃 처리
       useAuthStore.getState().clearAuth();
-      window.location.href = '/login';
     }
 
     return Promise.reject(error);
