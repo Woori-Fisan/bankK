@@ -12,7 +12,8 @@ interface LogListProps {
     onPageChange: (page: number) => void;
 }
 
-const getTransactionType = (uri: string): string => {
+const getTransactionType = (uri: string | null): string => {
+    if (!uri) return '';
     const lower = uri.toLowerCase();
     if (lower.includes('transfer')) return '이체';
     if (lower.includes('withdrawal')) return '출금';
