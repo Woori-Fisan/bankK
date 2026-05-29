@@ -1,10 +1,14 @@
 package com.woorifisan.platform.domain.rag.service;
 
+import com.woorifisan.platform.domain.rag.dto.response.RagChatResponse;
 import com.woorifisan.platform.domain.rag.repository.QdrantRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -20,6 +25,23 @@ import java.util.UUID;
 public class RagService {
 
     private final QdrantRepository qdrantRepository;
+    private final ChatModel chatModel;
+
+    private static final String RAG_PROMPT_TEMPLATE = """
+            당신은 은행 대리업 중계 플랫폼의 전문 상담 보조 AI입니다.
+            제공된 [컨텍스트]를 바탕으로 사용자의 [질문]에 대해 정확하고 친절하게 답변해 주세요.
+            
+            반드시 제공된 컨텍스트 내의 정보만을 바탕으로 답변해야 하며, 만약 컨텍스트에서 정보를 찾을 수 없다면 "제공된 문서에서 해당 정보를 찾을 수 없습니다."라고 답변해 주세요.
+            금융 관련 용어는 정확하게 사용하며, 상담원에게 도움이 될 수 있도록 전문적인 톤을 유지해 주세요.
+            
+            [컨텍스트]
+            {context}
+            
+            [질문]
+            {question}
+            
+            [답변]
+            """;
 
     public String processPdf(MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
@@ -45,6 +67,31 @@ public class RagService {
             log.error("PDF 처리 중 오류 발생", e);
             throw new RuntimeException("PDF 텍스트 추출 실패", e);
         }
+    }
+
+    public RagChatResponse ask(String question) {
+        log.info("RAG 질의 시작: {}", question);
+
+        // 1. 유사도 검색 (Context 확보)
+        List<String> contextChunks = qdrantRepository.searchSimilar(question);
+        String context = contextChunks.stream().collect(Collectors.joining("\n\n"));
+
+        // 2. 프롬프트 구성
+        PromptTemplate promptTemplate = new PromptTemplate(RAG_PROMPT_TEMPLATE);
+        Map<String, Object> model = new HashMap<>();
+        model.put("context", context);
+        model.put("question", question);
+
+        Prompt prompt = promptTemplate.create(model);
+
+        // 3. LLM 호출
+        log.info("Gemini LLM 호출 중...");
+        String answer = chatModel.call(prompt).getResult().getOutput().getText();
+
+        return RagChatResponse.builder()
+                .answer(answer)
+                .references(contextChunks)
+                .build();
     }
 
     public List<String> search(String query) {

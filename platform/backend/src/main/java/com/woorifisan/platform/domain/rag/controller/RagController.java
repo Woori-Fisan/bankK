@@ -1,5 +1,6 @@
 package com.woorifisan.platform.domain.rag.controller;
 
+import com.woorifisan.platform.domain.rag.dto.response.RagChatResponse;
 import com.woorifisan.platform.domain.rag.service.RagService;
 import com.woorifisan.platform.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -30,10 +31,15 @@ public class RagController {
         return ApiResponse.success("업로드 및 처리 완료. ID: " + documentId);
     }
 
+    @GetMapping("/ask")
+    public ApiResponse<RagChatResponse> ask(@RequestParam("question") String question) {
+        log.info("RAG 질의 요청: {}", question);
+        return ApiResponse.success(ragService.ask(question));
+    }
+
     @GetMapping("/search")
     public ApiResponse<List<String>> search(@RequestParam("query") String query) {
         log.info("RAG 검색 요청: {}", query);
-        List<List<String>> results = List.of(ragService.search(query));
-        return ApiResponse.success(results.get(0));
+        return ApiResponse.success(ragService.search(query));
     }
 }
