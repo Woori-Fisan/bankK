@@ -5,6 +5,8 @@ const LEVELS = ['INFO', 'INFO', 'INFO', 'WARN', 'ERROR'] as const;
 const STATUSES: Record<string, string> = {
     Transfer: '200', Auth: '401', Withdraw: '200', Loan: '200', Inquiry: '200',
 };
+const BANKS = ['국민은행', '신한은행', '우리은행', '하나은행', '농협은행'];
+const AGENCIES = ['핀테크A', '핀테크B', '핀테크C', '핀테크D'];
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -21,6 +23,8 @@ const generateMockLogs = (page: number) =>
             service,
             level,
             status,
+            bank: BANKS[i % BANKS.length],
+            agency: AGENCIES[i % AGENCIES.length],
         };
     });
 
@@ -51,6 +55,8 @@ const LogList: React.FC = () => {
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">서비스</th>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">레벨</th>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">트랜잭션 ID</th>
+                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">은행명</th>
+                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">대행기관</th>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">상태</th>
                             </tr>
                         </thead>
@@ -69,6 +75,8 @@ const LogList: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-3 text-xs font-mono text-gray-500">{log.id}</td>
+                                    <td className="px-6 py-3 text-xs text-gray-600">{log.bank}</td>
+                                    <td className="px-6 py-3 text-xs text-gray-600">{log.agency}</td>
                                     <td className={`px-6 py-3 text-xs font-bold ${getStatusColor(log.status)}`}>{log.status}</td>
                                 </tr>
                             ))}

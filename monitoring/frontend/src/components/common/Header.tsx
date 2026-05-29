@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { logout } from '../../api/auth';
 
 interface HeaderProps {
     currentTime: string;
@@ -37,7 +39,11 @@ const Header: React.FC<HeaderProps> = () => {
         return () => clearInterval(timerId);
     }, [tokenExpiry]);
 
-    const handleLogout = () => {
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login');
     };
 
     return (

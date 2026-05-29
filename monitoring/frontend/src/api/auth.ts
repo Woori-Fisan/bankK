@@ -11,3 +11,8 @@ export const login = async (request: LoginRequest): Promise<LoginApiResponse> =>
     const response = await axiosInstance.post<LoginApiResponse>('/user/login', request);
     return response.data;
 };
+
+export const logout = async (): Promise<ApiCommonResponse<void>> => {
+    const response = await axiosInstance.post<ApiCommonResponse<void>>('/user/logout');
+    return response.data;
+};
