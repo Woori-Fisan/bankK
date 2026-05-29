@@ -6,9 +6,10 @@ import ChatInput from './chat/ChatInput';
 interface ChatWindowProps {
     onClose: () => void;
     isClosing: boolean;
+    onAnimationEnd?: () => void;
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ onClose, isClosing }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ onClose, isClosing, onAnimationEnd }) => {
     // 테스트용 초기 메시지 상태
     const [messages] = useState([
         { id: '1', role: 'assistant' as const, content: '안녕하세요! 무엇을 도와드릴까요?' },
@@ -16,9 +17,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ onClose, isClosing }) => {
     ]);
 
     return (
-        <div className={`fixed bottom-8 right-8 w-96 h-125 bg-white rounded-2xl shadow-2xl flex flex-col border border-gray-200 z-50 overflow-hidden origin-bottom-right ${
-            isClosing ? 'animate-scale-out' : 'animate-scale-in'
-        }`}>
+        <div 
+            className={`fixed bottom-8 right-8 w-96 h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col border border-gray-200 z-50 overflow-hidden origin-bottom-right ${
+                isClosing ? 'animate-scale-out' : 'animate-scale-in'
+            }`}
+            onAnimationEnd={() => {
+                if (isClosing && onAnimationEnd) {
+                    onAnimationEnd();
+                }
+            }}
+        >
             <ChatHeader onClose={onClose} />
             
             <ChatMessageList messages={messages} />

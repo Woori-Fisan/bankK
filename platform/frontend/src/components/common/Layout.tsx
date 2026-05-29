@@ -19,11 +19,13 @@ const Layout: React.FC = () => {
 
     const handleCloseChat = () => {
         setIsClosing(true);
-        // 애니메이션 시간(0.25s) 후에 컴포넌트 제거
-        setTimeout(() => {
+    };
+
+    const handleAnimationEnd = () => {
+        if (isClosing) {
             setIsChatOpen(false);
             setIsClosing(false);
-        }, 250);
+        }
     };
 
     return (
@@ -41,7 +43,11 @@ const Layout: React.FC = () => {
             </main>
 
             {isChatOpen ? (
-                <ChatWindow onClose={handleCloseChat} isClosing={isClosing} />
+                <ChatWindow 
+                    onClose={handleCloseChat} 
+                    isClosing={isClosing} 
+                    onAnimationEnd={handleAnimationEnd}
+                />
             ) : (
                 <FloatingButton onClick={handleOpenChat} />
             )}
