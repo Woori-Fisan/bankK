@@ -19,3 +19,10 @@ export interface SystemLog {
     errorCode: string | null;
     errorMessage: string | null;
 }
+
+export interface LogListDTO {
+    pageNum: number;
+    pageSize: number;
+    totalPage: number;
+    logListDTO: SystemLog[];
+}

@@ -7,8 +7,8 @@ const LEVELS = ['INFO', 'INFO', 'INFO', 'WARN', 'ERROR'] as const;
 const STATUSES: Record<string, number> = {
     Transfer: 200, Auth: 401, Withdraw: 200, Loan: 200, Inquiry: 200,
 };
-const AGENCIES = ['핀테크A', '핀테크B', '핀테크C', '핀테크D'];
-const BANK_CODES = ['KB', 'SH', 'WR', 'HN', 'NH'];
+const AGENCIES = ['우체국', '저축은행', '핀테크', '대행대행'];
+const BANK_CODES = ['국민은행', '신한은행', '우리은행', '하나은행', '농협은행'];
 const HTTP_METHODS = ['GET', 'POST', 'POST', 'GET', 'POST'];
 
 const pad = (n: number) => String(n).padStart(2, '0');
