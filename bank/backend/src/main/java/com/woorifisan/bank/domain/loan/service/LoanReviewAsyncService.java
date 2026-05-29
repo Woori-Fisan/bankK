@@ -22,7 +22,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 @Slf4j
@@ -54,9 +53,9 @@ public class LoanReviewAsyncService {
     private final AccountMapper accountMapper;
     private final RestTemplate restTemplate;
 
-    // 비동기 심사 메인
+    // 비동기 심사 메인 — sendWebhook(HTTP 재시도 최대 3회) 중 DB 커넥션 점유를 막기 위해 @Transactional 제거
+    // 각 mapper 호출은 트랜잭션 없이 auto-commit으로 처리됨 (단일 쿼리라 원자성 유지)
     @Async("loanReviewExecutor")
-    @Transactional
     public void processReview(String loanNo, String requestKey) {
         log.info("[심사] 비동기 심사 시작 - loanNo: {}", loanNo);
         LoanLedger ledger = loanLedgerMapper.findByLoanNo(loanNo).orElse(null);
