@@ -1,0 +1,132 @@
+plugins {
+	id 'java'
+	id 'jacoco'
+	id 'org.springframework.boot' version '3.5.14'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.google.cloud.tools.jib' version '3.4.1'
+	id 'org.sonarqube' version '5.1.0.4882'
+}
+
+group = 'com.woorifisan'
+version = '0.0.1-SNAPSHOT'
+
+def buildNumber = (
+		project.findProperty("buildNumber")
+				?: System.getenv("BUILD_NUMBER")
+				?: "latest"
+).toString()
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('datasourceMicrometerVersion', "1.4.1")
+}
+
+jib {
+	from {
+		image = 'eclipse-temurin:17-jre-alpine'
+	}
+
+	to {
+		image = 'jeeneep/bank-backend'
+
+		tags = [buildNumber, 'latest'].findAll { it != null }.unique()
+	}
+
+	container {
+		ports = ['8080']
+
+		jvmFlags = [
+				'-Xms512m',
+				'-Xmx512m'
+		]
+
+		creationTime = 'USE_CURRENT_TIMESTAMP'
+
+		format = 'OCI'
+	}
+}
+
+sonar {
+	properties {
+		property "sonar.projectKey", "Bank-Backend"
+		property "sonar.projectName", "Bank-Backend"
+
+		property "sonar.host.url", System.getenv("SONAR_HOST_URL")
+		property "sonar.token", System.getenv("SONAR_TOKEN")
+
+		property "sonar.coverage.jacoco.xmlReportPaths",
+				"build/reports/jacoco/test/jacocoTestReport.xml"
+	}
+}
+
+dependencies {
+
+	// Spring Boot Starters
+	implementation 'org.springframework.boot:spring-boot-starter-actuator' // 애플리케이션 모니터링 및 상태 확인
+	implementation 'org.springframework.boot:spring-boot-starter-batch'    // 대량 데이터 처리 및 배치 작업
+	implementation 'org.springframework.boot:spring-boot-starter-data-jdbc' // JDBC 기반 DB 접근
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis' // Redis 캐시 및 세션 관리
+	implementation 'org.springframework.boot:spring-boot-starter-security'   // 인증 및 인가 (보안)
+	implementation 'org.springframework.boot:spring-boot-starter-web'        // 웹 MVC 및 RESTful API 개발
+	implementation 'org.springframework.boot:spring-boot-starter-validation' // 입력값 검증
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5' // Swagger UI 및 API 문서 자동화
+
+	// Monitoring & Observability
+	implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot' // DB 쿼리 실행 메트릭 수집
+
+	// MyBatis
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.5'
+
+	// Utilities
+	compileOnly 'org.projectlombok:lombok'              // 보일러플레이트 코드 자동 생성
+	annotationProcessor 'org.projectlombok:lombok'
+	implementation 'io.github.cdimascio:dotenv-java:3.0.0' // .env 파일 기반 환경변수 관리
+
+	// Database
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	// Flyway
+	implementation 'org.flywaydb:flyway-core'
+	implementation 'org.flywaydb:flyway-mysql'
+
+	// Tests
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'         // 스프링 부트 통합 테스트
+	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.5' // MyBatis 단위 테스트
+	testImplementation 'org.springframework.batch:spring-batch-test'               // 배치 작업 테스트
+	testImplementation 'org.springframework.security:spring-security-test'         // 보안 기능 테스트
+
+	testImplementation 'com.h2database:h2'
+
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "net.ttddyy.observation:datasource-micrometer-bom:${datasourceMicrometerVersion}"
+	}
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+
+	finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+	reports {
+		xml.required = true
+		html.required = true
+	}
+}

@@ -1,0 +1,211 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.14'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.google.cloud.tools.jib' version '3.4.1'
+
+	// SonarQube
+	id 'org.sonarqube' version '6.1.0.5360'
+
+	// Coverage
+	id 'jacoco'
+}
+
+group = 'com.woorifisan'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+repositories {
+	mavenCentral()
+	maven {
+		url 'https://repo.spring.io/milestone'
+	}
+}
+
+ext {
+	set('datasourceMicrometerVersion', "1.4.1")
+	set('springAiVersion', "1.0.0")
+}
+
+/*
+|--------------------------------------------------------------------------
+| Docker Image Strategy
+|--------------------------------------------------------------------------
+|
+| latest:
+| - 현재 운영 버전
+|
+| BUILD_NUMBER:
+| - immutable tag
+| - github.sha 기반 운영
+| - rollback 용도
+|
+*/
+
+def buildNumber =
+		project.findProperty("buildNumber")
+				?: System.getenv("BUILD_NUMBER")
+				?: "latest"
+jib {
+
+	from {
+		image = 'eclipse-temurin:17-jre-alpine'
+	}
+
+	to {
+		image = 'jeeneep/platform-backend'
+
+		tags = [buildNumber, 'latest'].unique()
+	}
+
+	container {
+
+		ports = ['8080']
+
+		jvmFlags = [
+				'-Xms512m',
+				'-Xmx512m'
+		]
+	}
+}
+
+/*
+|--------------------------------------------------------------------------
+| SonarQube
+|--------------------------------------------------------------------------
+*/
+
+sonar {
+
+	properties {
+
+		property "sonar.projectKey", "Platform-Backend"
+
+		property "sonar.projectName", "Platform-Backend"
+
+		property "sonar.coverage.jacoco.xmlReportPaths",
+				"${project.buildDir}/reports/jacoco/test/jacocoTestReport.xml"
+	}
+}
+
+/*
+|--------------------------------------------------------------------------
+| Dependencies
+|--------------------------------------------------------------------------
+*/
+
+dependencies {
+
+	//	implementation platform("org.springframework.ai:spring-ai-bom:1.0.0")
+
+	// Spring AI — Gemini + Qdrant
+//	implementation 'org.springframework.ai:spring-ai-starter-model-vertex-ai-gemini'
+//	implementation 'org.springframework.ai:spring-ai-starter-vector-store-qdrant'
+
+	// Validation
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+	// AOP
+	implementation 'org.springframework.boot:spring-boot-starter-aop'
+
+	// Swagger/OpenAPI
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
+
+	// dotenv
+	implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
+	// Web
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+	// MyBatis + MySQL
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.5'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	// Flyway
+	implementation 'org.flywaydb:flyway-core'
+	implementation 'org.flywaydb:flyway-mysql'
+
+	// Redis
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// JWT
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+	// JWS / mTLS
+	implementation 'com.nimbusds:nimbus-jose-jwt:9.40'
+
+	// Batch
+	implementation 'org.springframework.boot:spring-boot-starter-batch'
+
+	// Actuator + Prometheus + DB Metrics
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+	implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot'
+
+	// Logback JSON
+	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+
+	// Lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	// Test
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'io.projectreactor:reactor-test'
+	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.5'
+	testImplementation 'org.springframework.batch:spring-batch-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+dependencyManagement {
+
+	imports {
+
+		mavenBom "net.ttddyy.observation:datasource-micrometer-bom:${datasourceMicrometerVersion}"
+	}
+}
+
+/*
+|--------------------------------------------------------------------------
+| Test
+|--------------------------------------------------------------------------
+*/
+
+tasks.named('test') {
+
+	useJUnitPlatform()
+
+	finalizedBy jacocoTestReport
+}
+
+/*
+|--------------------------------------------------------------------------
+| JaCoCo Coverage
+|--------------------------------------------------------------------------
+*/
+
+jacocoTestReport {
+
+	dependsOn test
+
+	reports {
+
+		xml.required = true
+		html.required = true
+		csv.required = false
+	}
+}

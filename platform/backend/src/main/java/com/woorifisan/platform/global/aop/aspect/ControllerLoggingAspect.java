@@ -1,0 +1,225 @@
+package com.woorifisan.platform.global.aop.aspect;
+
+import static net.logstash.logback.argument.StructuredArguments.entries;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woorifisan.platform.global.exception.BusinessException;
+import com.woorifisan.platform.global.response.ApiResponse;
+import com.woorifisan.platform.global.response.ErrorCode;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Pointcut;
+import org.slf4j.MDC;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.multipart.MultipartFile;
+
+@Aspect
+@Component
+@Slf4j
+@RequiredArgsConstructor
+public class ControllerLoggingAspect {
+
+    private final ObjectMapper objectMapper;
+
+    private static final String MDC_STAFF_ID = "staffId";
+
+    // Client IP 추출 헤더 우선순위
+    private static final List<String> IP_HEADER_CANDIDATES = List.of(
+            "X-Forwarded-For", "Proxy-Client-IP", "WL-Proxy-Client-IP"
+    );
+    private static final String UNKNOWN_IP = "unknown";
+
+    // IPv6 로컬호스트 정규화
+    private static final String IPV6_LOCALHOST       = "0:0:0:0:0:0:0:1";
+    private static final String IPV6_SHORT_LOCALHOST = "::1";
+    private static final String LOCALHOST            = "127.0.0.1";
+
+    // 직렬화 제외 타입 (서블릿 내부 객체 · 멀티파트)
+    // Jackson으로 직렬화하려고 시도하면 순환 참조 오류가 발생하거나 직렬화 실패 예외가 발생할 수 있음
+    private static final Set<Class<?>> NON_SERIALIZABLE_TYPES = Set.of(
+            HttpServletRequest.class,
+            HttpServletResponse.class,
+            MultipartFile.class,
+            org.springframework.validation.Errors.class,       // BindingResult 포함
+            jakarta.servlet.http.HttpSession.class,
+            java.security.Principal.class,
+            org.springframework.web.context.request.WebRequest.class
+    );
+
+    @Pointcut("@within(org.springframework.web.bind.annotation.RestController)")
+    public void controllerPointcut() {}
+
+    @Around("controllerPointcut()")
+    public Object logController(ProceedingJoinPoint joinPoint) throws Throwable {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        HttpServletRequest  request  = attributes.getRequest();
+        HttpServletResponse response = attributes.getResponse();
+
+        Object[] args      = joinPoint.getArgs();
+        String   argsJson  = serialize(args);
+        String   className = joinPoint.getSignature().getDeclaringType().getSimpleName();
+        String   methodName = joinPoint.getSignature().getName();
+
+        // staffId 추출 및 MDC 적재
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            Object principal = auth.getPrincipal();
+            if (principal instanceof Long id) {
+                MDC.put(MDC_STAFF_ID, String.valueOf(id));
+            } else if (principal instanceof String s) {
+                MDC.put(MDC_STAFF_ID, s);
+            }
+        }
+
+        Map<String, Object> httpContext = new HashMap<>();
+        httpContext.put("bankKeyId", null); // 추후 구현 예정
+        httpContext.put("method", request.getMethod());
+        httpContext.put("uri", request.getRequestURI());
+        httpContext.put("clientIp", getClientIp(request));
+        httpContext.put("controller", className + "." + methodName);
+        // 요청 시점에 bankCode/targetCode를 한 번만 파싱해 httpContext에 저장
+        // → 이후 RES / ERR 로그에서도 동일한 맵을 재사용하므로 자동으로 포함됨
+        putBankCodes(args, httpContext);
+
+        log.info("[Request] Args: {}", argsJson, entries(Map.of("http", httpContext)));
+
+        long start = System.currentTimeMillis();
+        try {
+            Object result          = joinPoint.proceed();
+            long   executionTime   = System.currentTimeMillis() - start;
+
+            applyElapsedAndStatus(httpContext, executionTime, response);
+            log.info("[Response] Result: {}", serialize(result), entries(Map.of("http", httpContext)));
+            return result;
+        } catch (BusinessException e) {
+            // 예상된 비즈니스 예외 — errorCode에서 status 직접 추출, WARN 레벨로 기록
+            long executionTime = System.currentTimeMillis() - start;
+            applyElapsedAndStatus(httpContext, executionTime, e.getErrorCode().getHttpStatus().value());
+            httpContext.put("exception", e.getClass().getSimpleName());
+            // GlobalExceptionHandler가 반환할 응답 바디를 재현하여 result로 기록
+            String resultJson = serialize(ApiResponse.error(e.getErrorCode(), e.getMessage()));
+            log.warn("[Error] Result: {} | Exception: {} | Message: {}",
+                    resultJson, e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
+            throw e;
+        } catch (Throwable e) {
+            // 예상치 못한 시스템 예외 — status 500, ERROR 레벨로 기록
+            long executionTime = System.currentTimeMillis() - start;
+            applyElapsedAndStatus(httpContext, executionTime, HttpStatus.INTERNAL_SERVER_ERROR.value());
+            httpContext.put("exception", e.getClass().getSimpleName());
+            // 시스템 예외는 GlobalExceptionHandler가 INTERNAL_SERVER_ERROR로 응답
+            String resultJson = serialize(ApiResponse.error(ErrorCode.INTERNAL_SERVER_ERROR));
+            log.error("[Error] Result: {} | Exception: {} | Message: {}",
+                    resultJson, e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
+            throw e;
+        } finally {
+            MDC.remove(MDC_STAFF_ID);
+        }
+    }
+
+    /** 정상 응답 로그용 — HttpServletResponse에서 status를 읽어 httpContext에 추가한다. */
+    private void applyElapsedAndStatus(Map<String, Object> httpContext, long executionTime, HttpServletResponse response) {
+        httpContext.put("elapsedMs", executionTime);
+        if (response != null) {
+            httpContext.put("status", response.getStatus());
+        }
+    }
+
+    /** 예외 로그용 — status를 호출자가 직접 결정해 httpContext에 추가한다. (response 미작성 시점 대응) */
+    private void applyElapsedAndStatus(Map<String, Object> httpContext, long executionTime, int status) {
+        httpContext.put("elapsedMs", executionTime);
+        httpContext.put("status", status);
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String ip = IP_HEADER_CANDIDATES.stream()
+                .map(request::getHeader)
+                .filter(h -> h != null && !h.isBlank() && !UNKNOWN_IP.equalsIgnoreCase(h))
+                .findFirst()
+                .orElse(request.getRemoteAddr());
+        return normalizeIp(ip);
+    }
+
+    private String normalizeIp(String ip) {
+        if (IPV6_LOCALHOST.equals(ip) || IPV6_SHORT_LOCALHOST.equals(ip)) {
+            return LOCALHOST;
+        }
+        return ip;
+    }
+
+    // bankCode(출금/단일) → httpContext["bankCode"], depositBankCode → httpContext["targetCode"]
+    // getBankCode() 우선, 없으면 withdrawal*/source* → bankCode, deposit*/target* → targetCode 로 분류
+    private void putBankCodes(Object[] args, Map<String, Object> httpContext) {
+        for (Object arg : args) {
+            if (arg == null) continue;
+            if (NON_SERIALIZABLE_TYPES.stream().anyMatch(t -> t.isInstance(arg))) continue;
+            try {
+                java.lang.reflect.Method getter = arg.getClass().getMethod("getBankCode");
+                Object value = getter.invoke(arg);
+                if (value instanceof String s && !s.isBlank()) {
+                    httpContext.put("bankCode", s);
+                    return;
+                }
+            } catch (NoSuchMethodException ignored) {
+                String bankCode   = null;
+                String targetCode = null;
+                for (java.lang.reflect.Field field : arg.getClass().getDeclaredFields()) {
+                    String name = field.getName();
+                    if (!name.endsWith("BankCode")) continue;
+                    try {
+                        String getterName = "get" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
+                        Object value = arg.getClass().getMethod(getterName).invoke(arg);
+                        if (!(value instanceof String s) || s.isBlank()) continue;
+                        if (name.startsWith("withdrawal") || name.startsWith("source")) {
+                            bankCode = s;
+                        } else if (name.startsWith("deposit") || name.startsWith("target")) {
+                            targetCode = s;
+                        } else if (bankCode == null) {
+                            bankCode = s;
+                        }
+                    } catch (Exception ignored2) {}
+                }
+                // withdrawalBankCode 없이 depositBankCode만 있으면 bankCode로 승격
+                if (bankCode == null && targetCode != null) { bankCode = targetCode; targetCode = null; }
+                if (bankCode   != null) httpContext.put("bankCode",   bankCode);
+                if (targetCode != null) httpContext.put("targetCode", targetCode);
+                if (bankCode != null || targetCode != null) return;
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private String serialize(Object obj) {
+        if (obj == null) return "null";
+        if (obj instanceof Object[] args) {
+            try {
+                return Arrays.stream(args)
+                        .filter(arg -> arg == null ||
+                                NON_SERIALIZABLE_TYPES.stream().noneMatch(t -> t.isInstance(arg)))
+                        .map(this::serialize)
+                        .collect(Collectors.joining(", ", "[", "]"));
+            } catch (Throwable t) {
+                return String.valueOf(args);
+            }
+        }
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (Throwable t) {
+            return String.valueOf(obj);
+        }
+    }
+}
