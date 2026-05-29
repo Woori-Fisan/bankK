@@ -1,16 +1,9 @@
 import React, { useState } from 'react';
 
-const SERVICES = ['Transfer', 'Auth', 'Account', 'Payment', 'Notification'];
+const SERVICES = ['Transfer', 'Auth', 'Withdraw', 'Loan', 'Inquiry'];
 const LEVELS = ['INFO', 'INFO', 'INFO', 'WARN', 'ERROR'] as const;
-const MESSAGES: Record<string, string[]> = {
-    Transfer: ['Transfer request received', 'Transfer completed', 'Transfer failed - insufficient balance'],
-    Auth: ['Login success', 'Invalid JWT signature', 'Token refreshed'],
-    Account: ['Balance check success', 'Account not found', 'Account locked'],
-    Payment: ['Payment initiated', 'Payment approved', 'Payment declined'],
-    Notification: ['Email sent', 'SMS dispatched', 'Push notification delivered'],
-};
 const STATUSES: Record<string, string> = {
-    Transfer: '200', Auth: '401', Account: '200', Payment: '200', Notification: '200',
+    Transfer: '200', Auth: '401', Withdraw: '200', Loan: '200', Inquiry: '200',
 };
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -21,15 +14,12 @@ const generateMockLogs = (page: number) =>
         const level = LEVELS[i % LEVELS.length];
         const minutes = 20 + Math.floor(i / 2);
         const seconds = pad((i * 3) % 60);
-        const msgList = MESSAGES[service];
-        const message = msgList[i % msgList.length];
         const status = level === 'ERROR' ? (i % 2 === 0 ? '500' : '401') : STATUSES[service];
         return {
             id: `tx_${page}${pad(i + 1)}`,
             time: `2026-05-28 14:${pad(minutes)}:${seconds}`,
             service,
             level,
-            message: `Page ${page} - ${message}`,
             status,
         };
     });
@@ -61,7 +51,6 @@ const LogList: React.FC = () => {
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">서비스</th>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">레벨</th>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">트랜잭션 ID</th>
-                                <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">메시지</th>
                                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">상태</th>
                             </tr>
                         </thead>
@@ -80,7 +69,6 @@ const LogList: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-3 text-xs font-mono text-gray-500">{log.id}</td>
-                                    <td className="px-6 py-3 text-xs text-gray-600 max-w-xs truncate">{log.message}</td>
                                     <td className={`px-6 py-3 text-xs font-bold ${getStatusColor(log.status)}`}>{log.status}</td>
                                 </tr>
                             ))}

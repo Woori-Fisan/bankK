@@ -37,7 +37,7 @@ const Sidebar: React.FC = () => {
                         <Landmark className="w-6 h-6 text-emerald-600" />
                     </div>
                     <div>
-                        <h1 className="text-white text-2xl font-bold leading-tight text-left">BankBridge</h1>
+                        <h1 className="text-white text-3xl font-bold leading-tight text-left">BankK</h1>
                         <p className="text-white/60 text-[10px] text-left uppercase tracking-wider font-semibold">Monitoring System</p>
                     </div>
                 </Link>
