@@ -2,6 +2,7 @@ package com.woorifisan.monitoring.global.filter;
 
 import com.woorifisan.monitoring.global.config.JwtProvider;
 import com.woorifisan.monitoring.global.exception.BusinessException;
+import com.woorifisan.monitoring.global.response.ErrorCode;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,11 +37,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (token != null) {
             try {
+                // 1. 블랙리스트 확인 (Redis 조회 로직이 JwtProvider로 캡슐화됨)
+                if (jwtProvider.isBlacklisted(token)) {
+                    log.warn("블랙리스트에 등록된 토큰 접근 차단 - Token: {}...", token.substring(0, 10));
+                    throw new BusinessException(ErrorCode.ALREADY_LOGGED_OUT);
+                }
+
+                // 2. JWT 유효성 검증
                 jwtProvider.validateToken(token);
 
                 Long staffId = jwtProvider.extractStaffId(token);
 
-                // 역할(Role) 검증 없이 인증 여부만 판단하여 SecurityContext 설정
+                // 3. SecurityContext에 인증 정보 설정
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(staffId, null, Collections.emptyList());
 

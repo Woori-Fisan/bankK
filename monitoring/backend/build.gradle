@@ -72,6 +72,9 @@ dependencies {
 	implementation 'io.micrometer:micrometer-registry-prometheus'
 	implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot'
 
+    // Redis
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
 	// Logback JSON (Fluent Bit parsing 대상)
 	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
 

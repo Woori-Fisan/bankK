@@ -12,6 +12,12 @@ spring:
     password: ${DB_PASS:1379}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+  # Redis
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
 # ── MyBatis ──────────────────────────────────────
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
@@ -22,7 +28,7 @@ mybatis:
 
 # ── JWT ──────────────────────────────────────────
 jwt:
-  secret: ${JWT_SECRET:tempJWTkeyForBankBridgeDevelopmentEnvironment123!}
+  secret: ${JWT_SECRET:tempJWTkeyForBankKDevelopmentEnvironment123!}
   access-expiration: 900000       # 15분 (ms)
   refresh-expiration: 28800000    # 8시간 (ms)
 
@@ -41,3 +47,10 @@ management:
     tags:
       application: ${spring.application.name}
 
+# Swagger
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs

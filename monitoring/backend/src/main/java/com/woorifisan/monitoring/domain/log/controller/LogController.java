@@ -56,6 +56,7 @@ public class LogController {
     }
 
     @Operation(summary = "거래 로그 통계 요약", description = "조회 조건에 따른 총 로그 수, 오류 건수, 평균 응답시간, 처리 성공률을 반환합니다.")
+    @CustomExceptionDescription(SwaggerResponseDescription.LOG_SUMMARY)
     @GetMapping("/summary")
     public ApiResponse<LogSummaryResponse> getSummary(@Valid @ParameterObject @ModelAttribute LogSummaryRequest request) {
         log.info("[API 요청] 거래 로그 통계 요약 조회 - 시작일: {}, 종료일: {}", request.getStartDate(), request.getEndDate());

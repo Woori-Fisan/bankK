@@ -7,7 +7,8 @@ import lombok.Getter;
 @Builder
 public class AuthTokenDto {
     private String accessToken;
+    private long   accessTokenExpiresIn; // 초 단위
     private String refreshToken;
-    private long refreshTokenExpiresIn;
+    private long   refreshTokenExpiresIn; // 초 단위
     private String loginId;
 }
