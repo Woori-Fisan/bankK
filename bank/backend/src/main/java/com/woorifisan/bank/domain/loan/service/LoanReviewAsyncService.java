@@ -58,6 +58,12 @@ public class LoanReviewAsyncService {
     @Async("loanReviewExecutor")
     public void processReview(String loanNo, String requestKey) {
         log.info("[심사] 비동기 심사 시작 - loanNo: {}", loanNo);
+        try {
+            Thread.sleep(3000); // 데모용 딜레이 — "심사 중입니다" 화면이 보이도록
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
         LoanLedger ledger = loanLedgerMapper.findByLoanNo(loanNo).orElse(null);
         if (ledger == null) {
             log.error("[심사] loan_ledger 조회 실패 - loanNo: {}", loanNo);
