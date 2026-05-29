@@ -30,10 +30,14 @@ const SignupForm: React.FC = () => {
         }
 
         try {
-            await register({ name, loginId, password });
-            navigate('/login');
+            const response = await register({ name, loginId, password });
+            if (response.success) {
+                navigate('/login');
+            } else {
+                setError(response.error?.message ?? '회원가입에 실패했습니다. 다시 시도해주세요.');
+            }
         } catch {
-            setError('회원가입에 실패했습니다. 다시 시도해주세요.');
+            setError('서버 오류가 발생했습니다.');
         }
     };
 

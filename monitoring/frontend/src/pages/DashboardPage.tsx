@@ -13,7 +13,6 @@ const PAGE_SIZE = 20;
 const DashboardPage: React.FC = () => {
     const [logs, setLogs] = useState<SystemLog[]>([]);
     const [totalPage, setTotalPage] = useState(0);
-    const [totalCount, setTotalCount] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [summary, setSummary] = useState<TransactionSummaryResponse | null>(null);
@@ -35,7 +34,6 @@ const DashboardPage: React.FC = () => {
         if (res.success && res.data) {
             setLogs(res.data.logListDTO);
             setTotalPage(res.data.totalPage);
-            setTotalCount(res.data.pageNum * res.data.pageSize);
         }
     };
 
@@ -105,7 +103,7 @@ const DashboardPage: React.FC = () => {
                     logs={logs}
                     totalPage={totalPage}
                     currentPage={currentPage}
-                    totalCount={totalCount}
+                    totalCount={summary?.totalCount ?? 0}
                     isLoading={isLoading}
                     onPageChange={handlePageChange}
                 />

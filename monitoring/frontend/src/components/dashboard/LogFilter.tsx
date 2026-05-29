@@ -79,6 +79,7 @@ const LogFilter: React.FC<LogFilterProps> = ({ onSearch, agencies, banks }) => {
             startDate: toApiDate(filters.startDate),
             endDate: toApiDate(filters.endDate),
             ...(filters.bankCode && { bankCode: filters.bankCode }),
+            ...(filters.level && { level: filters.level }),
             ...(filters.httpStatus && { httpStatus: filters.httpStatus }),
             ...(filters.agencyCode && { agencyCode: filters.agencyCode }),
             ...(filters.staffId && { staffId: filters.staffId }),

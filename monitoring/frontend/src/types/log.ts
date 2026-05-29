@@ -29,6 +29,7 @@ export interface LogListRequest {
     bankCode?: string;
     staffId?: string;
     logType?: string;
+    level?: string;
     httpStatus?: string;
     page?: number;
     size?: number;

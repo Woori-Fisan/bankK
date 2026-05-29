@@ -34,7 +34,7 @@ export const refreshAccessToken = async (): Promise<string | null> => {
             });
             
             const responseData = response.data?.data || response.data;
-            return responseData.accessToken || null;
+            return responseData?.accessToken || null;
         } catch (error) {
             console.error('Token Refresh Error:', error);
             return null;
