@@ -41,6 +41,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
@@ -162,9 +164,18 @@ public class LoanService {
 
         log.info("[접수] 대출 접수 완료 - loanNo: {}, requestKey: {}", loanNo, request.getRequestKey());
 
-        // 10. 비동기 심사 시작.
-        // requestKey 는 심사 완료 후 Platform webhook 에 포함되어 SSE emitter 를 찾는 데 사용
-        loanReviewAsyncService.processReview(loanNo, request.getRequestKey());
+        // 10. 트랜잭션 커밋 후 비동기 심사 시작.
+        // @Transactional 메서드 안에서 @Async를 바로 호출하면 커밋 전에 다른 스레드가 실행되어
+        // findByLoanNo 조회 시 아직 INSERT가 반영되지 않은 상태일 수 있음 (race condition).
+        // afterCommit()으로 DB에 loan_ledger가 확정된 뒤에 심사 스레드를 시작한다.
+        final String finalLoanNo = loanNo;
+        final String finalRequestKey = request.getRequestKey();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                loanReviewAsyncService.processReview(finalLoanNo, finalRequestKey);
+            }
+        });
 
         return new LoanAcceptResponse(loanNo, "SUBMITTED");
     }
