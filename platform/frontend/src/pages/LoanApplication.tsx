@@ -141,22 +141,48 @@ const LoanApplication: React.FC = () => {
         }
     };
 
+    const stepGroups: { label: string; steps: LoanStep[] }[] = [
+        { label: '1. 서류안내', steps: ['GUIDE'] },
+        { label: '2. 신청서작성', steps: ['FORM'] },
+        { label: '3. 심사 및 상품선택', steps: ['EVALUATION', 'SELECTION'] },
+        { label: '4. 계약서확인', steps: ['CONTRACT'] },
+        { label: '5. 실행완료', steps: ['CONFIRM', 'RESULT'] },
+    ];
+
+    const currentStepIndex = stepGroups.findIndex(g => g.steps.includes(step));
+
     return (
-        <div className="p-10 max-w-5xl mx-auto min-h-full flex flex-col bg-gray-50">
-            <header className="mb-8">
-                <div className="flex items-center gap-2 text-base text-gray-500 mb-2">
-                    <span className={step === 'GUIDE' ? 'font-extrabold text-blue-600' : 'font-semibold'}>1. 서류안내</span>
-                    <span>/</span>
-                    <span className={step === 'FORM' ? 'font-extrabold text-blue-600' : 'font-semibold'}>2. 신청서작성</span>
-                    <span>/</span>
-                    <span className={['EVALUATION', 'SELECTION'].includes(step) ? 'font-extrabold text-blue-600' : 'font-semibold'}>3. 심사 및 상품선택</span>
-                    <span>/</span>
-                    <span className={step === 'CONTRACT' ? 'font-extrabold text-blue-600' : 'font-semibold'}>4. 계약서확인</span>
-                    <span>/</span>
-                    <span className={['CONFIRM', 'RESULT'].includes(step) ? 'font-extrabold text-blue-600' : 'font-semibold'}>5. 실행완료</span>
+        <div className="px-8 py-8 min-h-full flex flex-col bg-gray-50 max-w-7xl mx-auto w-full">
+            <header className="mb-10">
+                <h1 className="text-4xl font-black text-gray-900 tracking-tight">신용 대출 신청</h1>
+                <p className="text-gray-500 mt-2 font-medium">대행기관 직원을 위한 대출 신청 프로세스입니다.</p>
+
+                <div className="flex items-center mt-8">
+                    {stepGroups.map((group, i) => {
+                        const isActive = group.steps.includes(step);
+                        const isDone = i < currentStepIndex;
+                        const label = group.label.replace(/^\d+\. /, '');
+                        return (
+                            <React.Fragment key={group.label}>
+                                {i > 0 && (
+                                    <div className={`flex-1 h-0.5 mx-1 ${isDone ? 'bg-slate-700' : 'bg-gray-200'}`} />
+                                )}
+                                <div className="flex flex-col items-center gap-1.5 shrink-0">
+                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all ${
+                                        isActive ? 'bg-slate-900 text-white border-slate-900' :
+                                        isDone  ? 'bg-slate-600 text-white border-slate-600' :
+                                                  'bg-white text-gray-400 border-gray-200'
+                                    }`}>
+                                        {i + 1}
+                                    </div>
+                                    <span className={`text-xs font-bold whitespace-nowrap ${
+                                        isActive ? 'text-slate-900' : isDone ? 'text-slate-500' : 'text-gray-400'
+                                    }`}>{label}</span>
+                                </div>
+                            </React.Fragment>
+                        );
+                    })}
                 </div>
-                <h1 className="text-3xl font-black text-gray-900">신용 대출 신청</h1>
-                <p className="text-gray-500 text-base mt-2">대행기관 직원을 위한 대출 신청 프로세스입니다.</p>
             </header>
 
             <main className="flex-1">

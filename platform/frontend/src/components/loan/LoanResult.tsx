@@ -15,24 +15,24 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
 
     if (!product || evaluationResult?.status === 'REJECTED') {
         return (
-            <div className="flex flex-col items-center justify-center py-10 min-h-[600px]">
-                <div className="bg-white border border-gray-200 rounded-3xl shadow-2xl w-full max-w-xl p-12 text-center animate-in zoom-in duration-500">
-                    <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <XCircle className="w-10 h-10 text-red-500" />
+            <div>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 w-full overflow-hidden animate-in zoom-in duration-500">
+                    <div className="p-12 flex flex-col items-center text-center">
+                        <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6">
+                            <XCircle className="w-12 h-12 text-red-500" />
+                        </div>
+                        <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-3">대출 심사가 거절되었습니다</h2>
+                        <p className="text-base text-gray-500 mb-3">
+                            {evaluationResult?.reason ?? '심사 조건을 충족하지 못했습니다.'}
+                        </p>
+                        <p className="text-base text-gray-400 mb-10">신청인: {loanData.userName}</p>
+                        <button
+                            onClick={() => { onReset(); navigate('/main'); }}
+                            className="w-full max-w-sm py-5 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-slate-800 active:scale-[0.98] transition-all"
+                        >
+                            처음으로 돌아가기
+                        </button>
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">대출 심사가 거절되었습니다</h2>
-                    <p className="text-base text-gray-500 mb-8">
-                        {evaluationResult?.reason ?? '심사 조건을 충족하지 못했습니다.'}
-                    </p>
-                    <p className="text-sm text-gray-400 mb-10">
-                        신청인: {loanData.userName}
-                    </p>
-                    <button
-                        onClick={() => { onReset(); navigate('/main'); }}
-                        className="w-full py-5 bg-slate-900 text-white rounded-xl font-bold text-base hover:bg-slate-800 transition-colors"
-                    >
-                        처음으로 돌아가기
-                    </button>
                 </div>
             </div>
         );
@@ -53,51 +53,58 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
     const monthlyAmount = product ? calculateMonthly(amount, product.rate, product.period || 12) : 0;
 
     return (
-        <div className="flex flex-col items-center justify-center py-10 min-h-[600px]">
-            <div className="bg-white border border-gray-200 rounded-3xl shadow-2xl w-full max-w-xl p-12 text-center animate-in zoom-in duration-500">
-                <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+        <div>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 w-full overflow-hidden animate-in zoom-in duration-500">
+                {/* 완료 헤더 */}
+                <div className="px-12 pt-12 pb-8 flex flex-col items-center text-center border-b border-gray-100">
+                    <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-5">
+                        <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                    </div>
+                    <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-2">대출 실행이 완료되었습니다</h2>
+                    <p className="text-base text-gray-500 font-medium">요청하신 대출 내역이 성공적으로 원장에 반영되었습니다.</p>
                 </div>
 
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">대출 실행이 완료되었습니다</h2>
-                <p className="text-base text-gray-500 mb-10">요청하신 대출 내역이 성공적으로 원장에 반영되었습니다.</p>
-
-                <div className="bg-gray-50 rounded-2xl p-10 mb-8 border border-gray-100">
+                {/* 금액 강조 */}
+                <div className="px-12 py-10 border-b border-gray-100 bg-gray-50 text-center">
                     <p className="text-sm text-gray-500 mb-2 font-medium">대출금 (Loan Amount)</p>
-                    <p className="text-4xl font-bold text-gray-900">₩ {amount.toLocaleString() || '0'}</p>
+                    <p className="text-5xl font-black text-gray-900 tracking-tight">₩ {amount.toLocaleString() || '0'}</p>
                 </div>
 
-                <div className="space-y-4 px-2">
-                    <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-4">
-                        <span className="text-gray-400 font-medium">신청인</span>
-                        <span className="text-gray-900 font-bold">{loanData.userName}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-4">
-                        <span className="text-gray-400 font-medium">입금 계좌</span>
-                        <span className="text-gray-900 font-bold">{loanData.bank} {loanData.accountNo?.slice(0, 3)}-***-***{loanData.accountNo?.slice(-3)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-4">
-                        <span className="text-gray-400 font-medium">금리</span>
-                        <span className="text-gray-900 font-bold">{product?.rate || '0'}% (고정 금리)</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-4">
-                        <span className="text-gray-400 font-medium">월 상환금</span>
-                        <span className="text-gray-900 font-bold">{monthlyAmount.toLocaleString()}원</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-400 font-medium">최종 상환일</span>
-                        <span className="text-gray-900 font-bold">{maturityDateString}</span>
+                {/* 상세 정보 */}
+                <div className="px-12 py-8">
+                    <div className="grid grid-cols-2 gap-x-12 gap-y-5">
+                        <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                            <span className="text-base text-gray-400 font-medium">신청인</span>
+                            <span className="text-base text-gray-900 font-bold">{loanData.userName}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                            <span className="text-base text-gray-400 font-medium">금리</span>
+                            <span className="text-base text-gray-900 font-bold">{product?.rate || '0'}% (고정)</span>
+                        </div>
+                        <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                            <span className="text-base text-gray-400 font-medium">입금 계좌</span>
+                            <span className="text-base text-gray-900 font-bold">{loanData.bank} {loanData.accountNo?.slice(0, 3)}-***-***{loanData.accountNo?.slice(-3)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                            <span className="text-base text-gray-400 font-medium">월 상환금</span>
+                            <span className="text-base text-gray-900 font-bold">{monthlyAmount.toLocaleString()}원</span>
+                        </div>
+                        <div className="flex justify-between items-center py-3 col-span-2">
+                            <span className="text-base text-gray-400 font-medium">최종 상환일</span>
+                            <span className="text-base text-gray-900 font-bold">{maturityDateString}</span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex gap-3 mt-12">
-                    <button className="flex-1 py-5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-base hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-                        <Printer className="w-4 h-4" />
+                {/* 버튼 */}
+                <div className="px-12 pb-12 grid grid-cols-2 gap-4">
+                    <button className="py-5 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg hover:bg-gray-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                        <Printer className="w-5 h-5" />
                         영수증 출력
                     </button>
                     <button
                         onClick={() => { onReset(); navigate('/main'); }}
-                        className="flex-1 py-5 bg-slate-900 text-white rounded-xl font-bold text-base hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
+                        className="py-5 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-slate-800 active:scale-[0.98] transition-all shadow-lg shadow-slate-200"
                     >
                         메인 페이지로 돌아가기
                     </button>

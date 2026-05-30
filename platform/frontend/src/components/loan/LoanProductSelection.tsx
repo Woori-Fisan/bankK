@@ -88,7 +88,7 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, a
                         <span className="text-sm text-gray-400 font-medium">대출가능 <span className="text-emerald-500">{products.length}</span>건</span>
                     </div>
 
-                    <div className="space-y-3 h-[520px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-3 h-[620px] overflow-y-auto pr-2 custom-scrollbar">
                         {sortedProducts.map(product => (
                             <div
                                 key={product.id}
@@ -103,7 +103,7 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, a
                                     <Building className="w-6 h-6" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-gray-900 truncate">{product.name}</p>
+                                    <p className="text-base font-bold text-gray-900 truncate">{product.name}</p>
                                     <div className="flex gap-1.5 mt-1">
                                         {product.tags.map((tag) => (
                                             <span key={tag} className={`px-2 py-1 rounded text-[10px] font-bold ${tag === '최저금리' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
@@ -113,8 +113,8 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, a
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
-                                    <p className="text-xl font-bold text-gray-900 leading-none">{product.rate}%</p>
-                                    <p className="text-xs text-gray-400 mt-1">{formatAmount(product.limit)}</p>
+                                    <p className="text-2xl font-bold text-gray-900 leading-none">{product.rate}%</p>
+                                    <p className="text-sm text-gray-400 mt-1">{formatAmount(product.limit)}</p>
                                 </div>
                                 <ChevronRight className={`w-4 h-4 shrink-0 ${selectedId === product.id ? 'text-emerald-500' : 'text-gray-300'}`} />
                             </div>
@@ -124,14 +124,14 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, a
 
                 {/* 상품 상세 */}
                 <div className="space-y-4">
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">선택된 상품 상세</p>
+                    <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">선택된 상품 상세</p>
                     <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-md">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-gray-400">
                                 <Building2 className="w-7 h-7" />
                             </div>
                             <div>
-                                <h3 className="text-base font-bold text-gray-900">{selectedProduct?.name}</h3>
+                                <h3 className="text-lg font-bold text-gray-900">{selectedProduct?.name}</h3>
                                 <div className="flex gap-1.5 mt-1">
                                     {selectedProduct?.tags.map((tag) => (
                                         <span key={tag} className={`px-2 py-1 rounded text-[10px] font-bold ${tag === '최저금리' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
@@ -243,7 +243,7 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, a
                         <button
                             onClick={() => onNext({ ...selectedProduct, period, executeAmount })}
                             disabled={!!amountError || executeAmount < 1_000_000}
-                            className="w-full mt-8 py-5 bg-slate-900 text-white rounded-xl font-black text-base hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none"
+                            className="w-full mt-8 py-5 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-slate-800 active:scale-[0.98] transition-all shadow-lg shadow-slate-200 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none disabled:active:scale-100"
                         >
                             이 상품으로 계약 서류 확인 →
                         </button>
@@ -254,7 +254,7 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, a
             <div className="flex justify-between pt-6 border-t border-gray-200">
                 <button
                     onClick={onBack}
-                    className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-base hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-2 px-6 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-base hover:bg-gray-200 active:scale-[0.98] transition-all"
                 >
                     <ChevronLeft className="w-4 h-4" />
                     이전으로

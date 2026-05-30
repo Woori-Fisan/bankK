@@ -34,7 +34,7 @@ const SectionHeader: React.FC<{ step: number; icon: React.ReactNode; title: stri
             {step}
         </span>
         <span className="text-gray-400">{icon}</span>
-        <h3 className="text-base font-bold text-gray-900">{title}</h3>
+        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
     </div>
 );
 
@@ -130,7 +130,13 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
 <html>
 <head>
 <meta charset="utf-8">
-<style>html,body{margin:0;padding:0;}</style>
+<style>
+  html,body{margin:0;padding:20px 24px;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕',sans-serif;font-size:17px;line-height:1.8;color:#222;}
+  p,li,span,div,td,th,label{font-size:17px !important;line-height:1.8 !important;}
+  h1{font-size:1.4em !important;} h2{font-size:1.25em !important;} h3{font-size:1.15em !important;}
+  table{width:100%;border-collapse:collapse;font-size:17px !important;}
+  td,th{padding:8px 10px;}
+</style>
 </head>
 <body>
 ${body}
@@ -297,7 +303,7 @@ ${body}
     }
 
     return (
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="space-y-6">
 
             {/* ── Section 1: 고객 정보 + 입금 계좌 ── */}
             <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
@@ -306,13 +312,13 @@ ${body}
                 <div className="grid grid-cols-2 gap-x-8 gap-y-6">
                     {/* 성명 */}
                     <div className="col-span-1">
-                        <label htmlFor="userName" className="block text-xs font-bold text-gray-500 mb-2">
+                        <label htmlFor="userName" className="block text-sm font-bold text-gray-500 mb-2">
                             성명
                         </label>
                         <input
                             id="userName"
                             type="text"
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="예) 홍길동"
                             value={formData.userName}
                             onChange={(e) => setFormData({ ...formData, userName: e.target.value })}
@@ -323,19 +329,19 @@ ${body}
                             }}
                         />
                         {fieldErrors.userName && (
-                            <p className="mt-1.5 text-xs text-red-500">{fieldErrors.userName}</p>
+                            <p className="mt-1.5 text-sm text-red-500">{fieldErrors.userName}</p>
                         )}
                     </div>
 
                     {/* 연락처 */}
                     <div className="col-span-1">
-                        <label htmlFor="phone" className="block text-xs font-bold text-gray-500 mb-2">
+                        <label htmlFor="phone" className="block text-sm font-bold text-gray-500 mb-2">
                             연락처
                         </label>
                         <input
                             id="phone"
                             type="text"
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="010-1234-5678"
                             value={formData.phone}
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -344,7 +350,7 @@ ${body}
 
                     {/* 주민등록번호 — 전체 너비 */}
                     <div className="col-span-2">
-                        <label className="block text-xs font-bold text-gray-500 mb-2">
+                        <label className="block text-sm font-bold text-gray-500 mb-2">
                             주민등록번호
                         </label>
                         <div className="flex items-center gap-2">
@@ -364,7 +370,7 @@ ${body}
                                         setFieldErrors((p) => ({ ...p, rrn: '앞 6자리를 모두 입력해주세요.' }));
                                     else setFieldErrors((p) => ({ ...p, rrn: undefined }));
                                 }}
-                                className="w-36 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none text-center tracking-widest"
+                                className="w-36 px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none text-center tracking-widest"
                             />
                             <span className="text-gray-400 font-bold text-lg">-</span>
                             <input
@@ -382,12 +388,12 @@ ${body}
                                         setFieldErrors((p) => ({ ...p, rrn: '뒷자리는 1~4 사이 숫자입니다.' }));
                                     else setFieldErrors((p) => ({ ...p, rrn: undefined }));
                                 }}
-                                className="w-10 px-2 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none text-center"
+                                className="w-10 px-2 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none text-center"
                             />
                             <span className="text-gray-300 text-xl tracking-widest select-none">●●●●●●</span>
                         </div>
                         {fieldErrors.rrn && (
-                            <p className="mt-1.5 text-xs text-red-500">{fieldErrors.rrn}</p>
+                            <p className="mt-1.5 text-sm text-red-500">{fieldErrors.rrn}</p>
                         )}
                     </div>
 
@@ -395,18 +401,18 @@ ${body}
                     <div className="col-span-2 border-t border-dashed border-gray-100 pt-2">
                         <div className="flex items-center gap-2 mb-1">
                             <Building2 className="w-4 h-4 text-gray-400" />
-                            <p className="text-xs font-bold text-gray-500">대출금 입금 계좌</p>
+                            <p className="text-sm font-bold text-gray-500">대출금 입금 계좌</p>
                         </div>
                     </div>
 
                     {/* 은행 선택 */}
                     <div className="col-span-1">
-                        <label htmlFor="bank" className="block text-xs font-bold text-gray-500 mb-2">
+                        <label htmlFor="bank" className="block text-sm font-bold text-gray-500 mb-2">
                             은행 선택
                         </label>
                         <select
                             id="bank"
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none appearance-none"
+                            className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base outline-none appearance-none"
                             value={formData.bankCode}
                             disabled={isBankListLoading}
                             onChange={(e) => {
@@ -428,19 +434,19 @@ ${body}
                             ))}
                         </select>
                         {fieldErrors.bank && (
-                            <p className="mt-1.5 text-xs text-red-500">{fieldErrors.bank}</p>
+                            <p className="mt-1.5 text-sm text-red-500">{fieldErrors.bank}</p>
                         )}
                     </div>
 
                     {/* 예금주 */}
                     <div className="col-span-1">
-                        <label htmlFor="accountHolder" className="block text-xs font-bold text-gray-500 mb-2">
+                        <label htmlFor="accountHolder" className="block text-sm font-bold text-gray-500 mb-2">
                             예금주
                         </label>
                         <input
                             id="accountHolder"
                             type="text"
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none"
+                            className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base outline-none"
                             value={formData.accountHolder}
                             onChange={(e) =>
                                 setFormData({ ...formData, accountHolder: e.target.value })
@@ -450,13 +456,13 @@ ${body}
 
                     {/* 계좌번호 — 전체 너비 */}
                     <div className="col-span-2">
-                        <label htmlFor="accountNo" className="block text-xs font-bold text-gray-500 mb-2">
+                        <label htmlFor="accountNo" className="block text-sm font-bold text-gray-500 mb-2">
                             계좌번호
                         </label>
                         <input
                             id="accountNo"
                             type="text"
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none"
+                            className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base outline-none"
                             placeholder="숫자만 입력 (10~14자리)"
                             value={formData.accountNo}
                             onChange={(e) =>
@@ -473,7 +479,7 @@ ${body}
                                 else setFieldErrors((p) => ({ ...p, accountNo: undefined }));
                             }}
                         />
-                        <p className="mt-1.5 text-[11px] text-gray-400">
+                        <p className="mt-1.5 text-sm text-gray-400">
                             * '-' 없이 숫자만 입력해 주세요.
                         </p>
                         {fieldErrors.accountNo && (
@@ -504,7 +510,7 @@ ${body}
                                 }`}
                             />
                             <div className="min-w-0">
-                                <p className="font-medium text-xs">{doc.label}</p>
+                                <p className="font-medium text-sm">{doc.label}</p>
                                 {!doc.covered && (
                                     <p className="text-[10px] text-gray-400 mt-0.5">{doc.hint}</p>
                                 )}
@@ -513,7 +519,7 @@ ${body}
                     ))}
                 </div>
 
-                <p className="text-xs text-gray-400 mb-4">
+                <p className="text-sm text-gray-400 mb-4">
                     파일명에 위 키워드가 포함되어야 인식됩니다. (PDF, 최대 10MB)
                 </p>
 
@@ -534,14 +540,14 @@ ${body}
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-100 transition-colors">
                         <Upload className="w-8 h-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
                     </div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">클릭하거나 파일을 드래그하세요</p>
-                    <p className="text-xs text-gray-400">PDF 파일만 업로드 가능합니다</p>
+                    <p className="text-base font-medium text-gray-600 mb-1">클릭하거나 파일을 드래그하세요</p>
+                    <p className="text-sm text-gray-400">PDF 파일만 업로드 가능합니다</p>
                 </div>
 
                 {/* 업로드된 파일 목록 */}
                 {files.length > 0 && (
                     <div className="mt-6 space-y-2">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                        <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">
                             업로드된 파일 ({files.length}개)
                         </p>
                         {files.map((f) => (
@@ -552,7 +558,7 @@ ${body}
                                 <div className="w-9 h-9 bg-white border border-gray-200 rounded-lg flex items-center justify-center shrink-0">
                                     <FileType className="w-4 h-4 text-red-500" />
                                 </div>
-                                <p className="flex-1 text-sm font-medium text-gray-900 truncate">{f.name}</p>
+                                <p className="flex-1 text-base font-medium text-gray-900 truncate">{f.name}</p>
                                 <button
                                     type="button"
                                     onClick={() => handleFileDelete(f.id)}
@@ -570,7 +576,7 @@ ${body}
             <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
                 <SectionHeader step={3} icon={<FileText className="w-5 h-5" />} title="약관 동의" />
 
-                <p className="text-sm text-gray-500 mb-6">
+                <p className="text-base text-gray-500 mb-6">
                     각 항목의 <strong>내용 보기</strong>를 눌러 약관을 확인한 후 동의해주세요.
                     필수 항목에 모두 동의해야 심사 요청이 가능합니다.
                 </p>
@@ -586,7 +592,7 @@ ${body}
                             type="button"
                             onClick={handleAllAgreed}
                             disabled={!agreedDocs.every((d) => viewedDocs.has(d.documentType))}
-                            className={`w-full py-4 mb-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors ${
+                            className={`w-full py-4 mb-2 rounded-xl text-base font-bold flex items-center justify-center gap-2 transition-colors ${
                                 agreedDocs.every((d) => viewedDocs.has(d.documentType))
                                     ? 'bg-slate-900 text-white hover:bg-slate-800'
                                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -617,7 +623,7 @@ ${body}
                                     />
                                     <label
                                         htmlFor={`doc-${doc.documentType}`}
-                                        className={`flex-1 text-sm font-medium text-gray-900 ${
+                                        className={`flex-1 text-base font-medium text-gray-900 ${
                                             viewedDocs.has(doc.documentType)
                                                 ? 'cursor-pointer'
                                                 : 'cursor-not-allowed opacity-60'
@@ -637,7 +643,7 @@ ${body}
                                     <button
                                         type="button"
                                         onClick={() => openModal(doc)}
-                                        className="shrink-0 px-4 py-2 bg-white border border-gray-200 text-blue-600 text-xs font-bold rounded-lg hover:bg-blue-50 transition-colors"
+                                        className="shrink-0 px-4 py-2.5 bg-white border border-gray-200 text-blue-600 text-sm font-bold rounded-lg hover:bg-blue-50 transition-colors"
                                     >
                                         내용 보기
                                     </button>
@@ -660,7 +666,7 @@ ${body}
                 <button
                     type="button"
                     onClick={onBack}
-                    className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-2 px-6 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-base hover:bg-gray-200 active:scale-[0.98] transition-all"
                 >
                     <ChevronLeft className="w-4 h-4" />
                     이전으로
@@ -669,7 +675,7 @@ ${body}
                     type="button"
                     onClick={handleSubmit}
                     disabled={isNextDisabled}
-                    className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-md ${
+                    className={`flex items-center gap-2 px-10 py-4 rounded-2xl font-black text-base transition-all shadow-md active:scale-[0.98] ${
                         isNextDisabled
                             ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
                             : 'bg-slate-900 text-white hover:bg-slate-800'
@@ -692,42 +698,42 @@ ${body}
             {/* 심사 요청 전 최종 확인 모달 */}
             {isConfirmOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
                         {/* 경고 헤더 */}
-                        <div className="bg-amber-500 px-6 py-5 flex items-center gap-3">
-                            <AlertTriangle className="w-6 h-6 text-white shrink-0" />
+                        <div className="bg-amber-500 px-8 py-6 flex items-center gap-4">
+                            <AlertTriangle className="w-8 h-8 text-white shrink-0" />
                             <div>
-                                <h3 className="text-base font-black text-white">심사 요청 전 최종 확인</h3>
-                                <p className="text-xs text-amber-100 mt-0.5">
+                                <h3 className="text-xl font-black text-white">심사 요청 전 최종 확인</h3>
+                                <p className="text-sm text-amber-100 mt-1">
                                     아래 내용이 정확한지 확인해주세요. 심사 요청 후에는 수정이 불가합니다.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="p-6 space-y-5">
+                        <div className="p-8 space-y-6">
                             {/* 고객 정보 */}
                             <div>
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">고객 정보</p>
-                                <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
+                                <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">고객 정보</p>
+                                <div className="bg-gray-50 rounded-xl p-5 space-y-3">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs text-gray-500">성명</span>
-                                        <span className="text-sm font-bold text-gray-900">{formData.userName}</span>
+                                        <span className="text-sm text-gray-500">성명</span>
+                                        <span className="text-base font-bold text-gray-900">{formData.userName}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs text-gray-500">주민등록번호</span>
-                                        <span className="text-sm font-bold text-gray-900 tracking-widest">
+                                        <span className="text-sm text-gray-500">주민등록번호</span>
+                                        <span className="text-base font-bold text-gray-900 tracking-widest">
                                             {rrnFront}-{rrnBack}●●●●●●
                                         </span>
                                     </div>
                                     {formData.phone && (
                                         <div className="flex justify-between items-center">
-                                            <span className="text-xs text-gray-500">연락처</span>
-                                            <span className="text-sm font-bold text-gray-900">{formData.phone}</span>
+                                            <span className="text-sm text-gray-500">연락처</span>
+                                            <span className="text-base font-bold text-gray-900">{formData.phone}</span>
                                         </div>
                                     )}
-                                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                                        <span className="text-xs text-gray-500">입금 계좌</span>
-                                        <span className="text-sm font-bold text-gray-900">
+                                    <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                                        <span className="text-sm text-gray-500">입금 계좌</span>
+                                        <span className="text-base font-bold text-gray-900">
                                             {formData.bank} {formData.accountNo}
                                         </span>
                                     </div>
@@ -736,7 +742,7 @@ ${body}
 
                             {/* 첨부 서류 확인 */}
                             <div>
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                                <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">
                                     필수 서류 확인 (4종)
                                 </p>
                                 <div className="space-y-2">
@@ -747,7 +753,7 @@ ${body}
                                         return (
                                             <div
                                                 key={doc.label}
-                                                className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${
+                                                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border ${
                                                     doc.covered
                                                         ? 'bg-emerald-50 border-emerald-200'
                                                         : 'bg-red-50 border-red-200'
@@ -759,16 +765,16 @@ ${body}
                                                     <XCircle className="w-5 h-5 text-red-400 shrink-0" />
                                                 )}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className={`text-xs font-bold ${doc.covered ? 'text-emerald-800' : 'text-red-700'}`}>
+                                                    <p className={`text-sm font-bold ${doc.covered ? 'text-emerald-800' : 'text-red-700'}`}>
                                                         {doc.label}
                                                     </p>
                                                     {matchedFile && (
-                                                        <p className="text-[10px] text-emerald-600 mt-0.5 truncate">
+                                                        <p className="text-xs text-emerald-600 mt-0.5 truncate">
                                                             {matchedFile.name}
                                                         </p>
                                                     )}
                                                 </div>
-                                                <span className={`text-[10px] font-bold shrink-0 ${doc.covered ? 'text-emerald-600' : 'text-red-500'}`}>
+                                                <span className={`text-xs font-bold shrink-0 ${doc.covered ? 'text-emerald-600' : 'text-red-500'}`}>
                                                     {doc.covered ? '확인' : '미첨부'}
                                                 </span>
                                             </div>
@@ -779,18 +785,18 @@ ${body}
                         </div>
 
                         {/* 버튼 */}
-                        <div className="px-6 pb-6 flex gap-3">
+                        <div className="px-8 pb-8 grid grid-cols-2 gap-3">
                             <button
                                 type="button"
                                 onClick={() => setIsConfirmOpen(false)}
-                                className="flex-1 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors"
+                                className="py-4 bg-gray-100 text-gray-600 rounded-2xl font-black text-base hover:bg-gray-200 active:scale-[0.98] transition-all"
                             >
                                 취소 (수정하기)
                             </button>
                             <button
                                 type="button"
                                 onClick={handleActualSubmit}
-                                className="flex-[2] py-3 bg-slate-900 text-white rounded-xl font-black text-sm hover:bg-slate-800 transition-colors shadow-lg"
+                                className="py-4 bg-slate-900 text-white rounded-2xl font-black text-base hover:bg-slate-800 active:scale-[0.98] transition-all shadow-lg"
                             >
                                 확인 후 심사 요청
                             </button>
@@ -802,39 +808,39 @@ ${body}
             {/* 약관 모달 */}
             {isModalOpen && activeDoc && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden">
-                        <div className="bg-slate-900 text-white px-6 py-5 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-slate-400" />
-                                <h3 className="text-sm font-bold">{activeDoc.documentName}</h3>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden">
+                        <div className="bg-slate-900 text-white px-8 py-6 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <FileText className="w-6 h-6 text-slate-400" />
+                                <h3 className="text-base font-bold">{activeDoc.documentName}</h3>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setIsModalOpen(false)}
                                 className="text-slate-400 hover:text-white transition-colors"
                             >
-                                <X className="w-6 h-6" />
+                                <X className="w-7 h-7" />
                             </button>
                         </div>
                         <iframe
                             ref={iframeRef}
                             srcDoc={buildTermsSrcDoc(activeDoc.documentContent)}
-                            className="w-full h-[480px] border-0 bg-white"
+                            className="w-full h-[600px] border-0 bg-white"
                             sandbox="allow-scripts"
                             title={activeDoc.documentName}
                         />
-                        <div className="px-6 pt-3 pb-1 border-t border-gray-100">
+                        <div className="px-8 pt-3 pb-2 border-t border-gray-100">
                             {!hasScrolledToBottom && (
-                                <p className="text-xs text-amber-600 text-center font-medium">
+                                <p className="text-sm text-amber-600 text-center font-medium">
                                     약관을 끝까지 스크롤해야 동의할 수 있습니다.
                                 </p>
                             )}
                         </div>
-                        <div className="px-6 pb-6 flex justify-end gap-3">
+                        <div className="px-8 pb-6 flex justify-end gap-3">
                             <button
                                 type="button"
                                 onClick={() => setIsModalOpen(false)}
-                                className="px-5 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-sm"
+                                className="px-6 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-base"
                             >
                                 닫기
                             </button>
@@ -842,7 +848,7 @@ ${body}
                                 type="button"
                                 onClick={handleModalAgree}
                                 disabled={!hasScrolledToBottom}
-                                className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-colors ${
+                                className={`px-8 py-3 rounded-xl font-bold text-base transition-colors ${
                                     hasScrolledToBottom
                                         ? 'bg-slate-900 text-white hover:bg-slate-800'
                                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
