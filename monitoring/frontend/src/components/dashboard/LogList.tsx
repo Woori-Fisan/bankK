@@ -15,8 +15,8 @@ interface LogListProps {
 const getTransactionType = (uri: string | null): string => {
     if (!uri) return '';
     const lower = uri.toLowerCase();
-    if (lower.includes('transfer')) return '이체';
     if (lower.includes('withdrawal')) return '출금';
+    if (lower.includes('transfer')) return '이체';
     if (lower.includes('loan')) return '대출';
     return '';
 };
