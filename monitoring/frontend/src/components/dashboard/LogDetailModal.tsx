@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, FileDown } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import type { SystemLog } from '../../types/log';
 
 interface Props {
@@ -45,6 +47,88 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 );
 
 const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
+    const exportToPdf = () => {
+        const doc = new jsPDF();
+
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('BankK - Log Detail', 14, 16);
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Log ID: #${log.id}  |  Level: ${log.level}  |  Exported: ${new Date().toLocaleString('en-US')}`, 14, 23);
+
+        let y = 30;
+
+        const section = (title: string, rows: [string, string][]) => {
+            autoTable(doc, {
+                startY: y,
+                head: [[title, '']],
+                body: rows,
+                styles: { fontSize: 8.5, cellPadding: 2.5 },
+                headStyles: { fillColor: [15, 118, 110], fontStyle: 'bold', fontSize: 9 },
+                columnStyles: { 0: { cellWidth: 45, fontStyle: 'bold', fillColor: [245, 250, 249] } },
+                alternateRowStyles: { fillColor: [255, 255, 255] },
+                margin: { left: 14, right: 14 },
+            });
+            y = (doc as any).lastAutoTable.finalY + 6;
+        };
+
+        section('Basic Info', [
+            ['Created At', log.createdAt ?? '-'],
+            ['Log Type', log.logType ?? '-'],
+        ]);
+
+        section('Tracking / Identity', [
+            ['Trace ID', log.traceId ?? '-'],
+            ['Staff ID', log.staffId ?? '-'],
+            ['Bank Code', log.bankCode ?? '-'],
+            ['Target Code', log.targetCode ?? '-'],
+            ['Agency Code', log.agencyCode ?? '-'],
+            ['Bank Key ID', log.bankKeyId ?? '-'],
+        ]);
+
+        section('HTTP', [
+            ['Method', log.httpMethod ?? '-'],
+            ['Status Code', String(log.httpStatus ?? '-')],
+            ['Elapsed (ms)', log.elapsedMs != null ? `${log.elapsedMs} ms` : '-'],
+            ['Client IP', log.clientIp ?? '-'],
+            ['Request URI', log.httpUri ?? '-'],
+        ]);
+
+        if (log.errorCode || log.errorMessage) {
+            section('Error', [
+                ['Error Code', log.errorCode ?? '-'],
+                ['Error Message', log.errorMessage ?? '-'],
+            ]);
+        }
+
+        if (log.jwsSignature) {
+            autoTable(doc, {
+                startY: y,
+                head: [['JWS Signature']],
+                body: [[log.jwsSignature]],
+                styles: { fontSize: 7, cellPadding: 2.5, font: 'courier' },
+                headStyles: { fillColor: [15, 118, 110], fontStyle: 'bold', fontSize: 9, font: 'helvetica' },
+                margin: { left: 14, right: 14 },
+            });
+            y = (doc as any).lastAutoTable.finalY + 6;
+        }
+
+        if (log.bodyData) {
+            autoTable(doc, {
+                startY: y,
+                head: [['Body Data']],
+                body: [[log.bodyData]],
+                styles: { fontSize: 7, cellPadding: 2.5, font: 'courier' },
+                headStyles: { fillColor: [15, 118, 110], fontStyle: 'bold', fontSize: 9, font: 'helvetica' },
+                margin: { left: 14, right: 14 },
+            });
+        }
+
+        doc.save(`bankk-log-${log.id}-${new Date().toISOString().slice(0, 10)}.pdf`);
+    };
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
@@ -71,12 +155,21 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
                             {log.level}
                         </span>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                    >
-                        <X size={16} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={exportToPdf}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors"
+                        >
+                            <FileDown className="w-3.5 h-3.5" />
+                            PDF 저장
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* 본문 */}
