@@ -3,13 +3,14 @@ import { Send } from 'lucide-react';
 
 interface ChatInputProps {
     onSend?: (message: string) => void;
+    disabled?: boolean;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSend }) => {
+const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
     const [inputValue, setInputValue] = React.useState('');
 
     const handleSend = () => {
-        if (inputValue.trim() && onSend) {
+        if (!disabled && inputValue.trim() && onSend) {
             onSend(inputValue);
             setInputValue('');
         }
@@ -22,8 +23,11 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend }) => {
                     type="text" 
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    placeholder="메시지를 입력하세요..."
-                    className="flex-1 bg-gray-100 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
+                    placeholder={disabled ? "답변을 생성 중입니다..." : "메시지를 입력하세요..."}
+                    disabled={disabled}
+                    className={`flex-1 bg-gray-100 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 transition-all outline-none ${
+                        disabled ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                     onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                             handleSend();
@@ -32,7 +36,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend }) => {
                 />
                 <button 
                     onClick={handleSend}
-                    className="bg-emerald-700 hover:bg-emerald-800 text-white p-2 rounded-xl transition-colors shadow-md"
+                    disabled={disabled || !inputValue.trim()}
+                    className={`bg-emerald-700 hover:bg-emerald-800 text-white p-2 rounded-xl transition-colors shadow-md ${
+                        (disabled || !inputValue.trim()) ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                 >
                     <Send className="w-4 h-4" />
                 </button>

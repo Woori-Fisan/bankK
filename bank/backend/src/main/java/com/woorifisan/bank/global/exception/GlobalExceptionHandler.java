@@ -18,9 +18,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
         log.warn("비즈니스 예외 발생: {}", e.getMessage());
         ErrorCode errorCode = e.getErrorCode();
-        return ResponseEntity
-                .status(errorCode.getHttpStatus())
-                .body(ApiResponse.error(errorCode));
+        // 커스텀 메시지가 있으면 그대로 클라이언트에 전달
+        String message = e.getMessage();
+        ApiResponse<Void> body = message.equals(errorCode.getMessage())
+                ? ApiResponse.error(errorCode)
+                : ApiResponse.error(errorCode, message);
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(body);
     }
 
     // @Valid 유효성 검사 실패
