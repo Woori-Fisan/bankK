@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ChatHeader from './chat/ChatHeader';
 import ChatMessageList from './chat/ChatMessageList';
 import ChatInput from './chat/ChatInput';
@@ -16,8 +16,28 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ onClose, isClosing, onAnimation
     const { messages, addMessage, updateMessage, removeMessage, clearMessages } = useRagStore();
     const [isTyping, setIsTyping] = useState(false);
 
+    // 타이머와 현재 작업 중인 메시지 정보를 저장할 Ref
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const fullTextRef = useRef<string>('');
+    const activeIdRef = useRef<string | null>(null);
+
+    // 컴포넌트 언마운트 시 처리
+    useEffect(() => {
+        return () => {
+            // 1. 타이머 정지
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+            }
+            
+            // 2. 만약 타이핑 중이었다면, 스토어의 해당 메시지를 전체 텍스트로 즉시 완성
+            if (activeIdRef.current && fullTextRef.current) {
+                updateMessage(activeIdRef.current, { content: fullTextRef.current });
+            }
+        };
+    }, [updateMessage]);
+
     const handleSend = async (content: string) => {
-        if (!content.trim()) return;
+        if (!content.trim() || isTyping) return;
 
         // 1. 사용자 메시지 추가
         const userMsg: Message = { id: Date.now().toString(), role: 'user', content };
@@ -36,21 +56,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ onClose, isClosing, onAnimation
             removeMessage(loadingId);
             
             const assistantMsgId = Date.now().toString();
+            const fullText = response.answer || '답변을 생성할 수 없습니다.';
+            
+            // Ref 업데이트 (언마운트 시 즉시 완성을 위해)
+            fullTextRef.current = fullText;
+            activeIdRef.current = assistantMsgId;
+            
             addMessage({ id: assistantMsgId, role: 'assistant', content: '' });
             
             // 5. 타이핑 효과 구현
             let currentText = '';
-            const fullText = response.answer || '답변을 생성할 수 없습니다.';
             let index = 0;
 
-            const timer = setInterval(() => {
+            if (timerRef.current) clearInterval(timerRef.current);
+
+            timerRef.current = setInterval(() => {
                 if (index < fullText.length) {
                     currentText += fullText[index];
                     updateMessage(assistantMsgId, { content: currentText });
                     index++;
                 } else {
-                    clearInterval(timer);
-                    setIsTyping(false);
+                    stopTyping();
                 }
             }, 30); // 타이핑 속도 조절
 
@@ -66,6 +92,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ onClose, isClosing, onAnimation
         }
     };
 
+    const stopTyping = () => {
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+        setIsTyping(false);
+        activeIdRef.current = null;
+        fullTextRef.current = '';
+    };
+
+    const handleReset = () => {
+        stopTyping();
+        clearMessages();
+    };
+
     return (
         <div 
             className={`fixed bottom-8 right-8 w-96 h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col border border-gray-200 z-50 overflow-hidden origin-bottom-right ${
@@ -77,7 +118,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ onClose, isClosing, onAnimation
                 }
             }}
         >
-            <ChatHeader onClose={onClose} onReset={clearMessages} />
+            <ChatHeader onClose={onClose} onReset={handleReset} />
             
             <ChatMessageList messages={messages} />
 

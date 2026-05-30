@@ -31,8 +31,14 @@ public class RagController {
             @RequestPart("file") MultipartFile file) {
         log.info("PDF 업로드 요청: {}", file.getOriginalFilename());
 
-        if (file.isEmpty() || file.getOriginalFilename() == null || !file.getOriginalFilename().toLowerCase().endsWith(".pdf")) {
-            throw new IllegalArgumentException("올바른 PDF 파일을 업로드해주세요.");
+        // 파일 검증 강화: 확장자 및 MIME 타입 체크
+        boolean isValidExtension = file.getOriginalFilename() != null && 
+                                   file.getOriginalFilename().toLowerCase().endsWith(".pdf");
+        boolean isValidMimeType = "application/pdf".equals(file.getContentType());
+
+        if (file.isEmpty() || !isValidExtension || !isValidMimeType) {
+            log.warn("유효하지 않은 파일 업로드 시도: name={}, type={}", file.getOriginalFilename(), file.getContentType());
+            throw new IllegalArgumentException("올바른 PDF 파일(application/pdf)을 업로드해주세요.");
         }
 
         String documentId = ragService.processPdf(file);
