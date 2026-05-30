@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Receipt, Info, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
 import type { LoanProduct, LoanData } from '../../pages/LoanApplication';
 import { useContractDocuments, extractApiError } from '../../hooks/useLoan';
@@ -29,6 +29,22 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeDoc, setActiveDoc] = useState<AgreedContractDoc | null>(null);
     const [viewedDocs, setViewedDocs] = useState<Set<string>>(new Set());
+    const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+
+    useEffect(() => {
+        if (!isModalOpen) return;
+        const handler = (e: MessageEvent) => {
+            if (
+                e.data === 'terms-scrolled-to-bottom' &&
+                e.source === iframeRef.current?.contentWindow
+            ) {
+                setHasScrolledToBottom(true);
+            }
+        };
+        window.addEventListener('message', handler);
+        return () => window.removeEventListener('message', handler);
+    }, [isModalOpen]);
 
     useEffect(() => {
         if (data?.documents) {
@@ -42,9 +58,36 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
         );
     };
 
+    const buildTermsSrcDoc = (content: string | undefined): string => {
+        const body = content ?? '<p style="padding:16px;font-family:sans-serif;color:#555">내용을 불러올 수 없습니다.</p>';
+        const origin = window.location.origin;
+        return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>html,body{margin:0;padding:0;}</style>
+</head>
+<body>
+${body}
+<script>
+(function(){
+  function check(){
+    var scrolled=window.scrollY+window.innerHeight;
+    var total=document.documentElement.scrollHeight;
+    if(scrolled>=total-5){window.parent.postMessage('terms-scrolled-to-bottom','${origin}');}
+  }
+  window.addEventListener('scroll',check);
+  window.addEventListener('load',check);
+})();
+</` + `script>
+</body>
+</html>`;
+    };
+
     const openModal = (doc: AgreedContractDoc) => {
         setViewedDocs(prev => new Set([...prev, doc.documentType]));
         setActiveDoc(doc);
+        setHasScrolledToBottom(false);
         setIsModalOpen(true);
     };
 
@@ -260,12 +303,20 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                             </button>
                         </div>
                         <iframe
-                            srcDoc={activeDoc.documentContent ?? '<p style="padding:16px;font-family:sans-serif;color:#555">내용을 불러올 수 없습니다.</p>'}
+                            ref={iframeRef}
+                            srcDoc={buildTermsSrcDoc(activeDoc.documentContent)}
                             className="w-full h-[500px] border-0 bg-white"
                             sandbox="allow-scripts"
                             title={activeDoc.documentName}
                         />
-                        <div className="p-5 border-t border-gray-100 flex justify-end gap-3">
+                        <div className="px-5 pt-3 pb-1 border-t border-gray-100">
+                            {!hasScrolledToBottom && (
+                                <p className="text-xs text-amber-600 text-center font-medium">
+                                    약관을 끝까지 스크롤해야 동의할 수 있습니다.
+                                </p>
+                            )}
+                        </div>
+                        <div className="px-5 pb-5 flex justify-end gap-3">
                             <button
                                 type="button"
                                 onClick={() => setIsModalOpen(false)}
@@ -276,7 +327,12 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                             <button
                                 type="button"
                                 onClick={handleModalAgree}
-                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800"
+                                disabled={!hasScrolledToBottom}
+                                className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-colors ${
+                                    hasScrolledToBottom
+                                        ? 'bg-slate-900 text-white hover:bg-slate-800'
+                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                }`}
                             >
                                 동의하고 닫기
                             </button>
