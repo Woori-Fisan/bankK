@@ -17,6 +17,16 @@ spring:
           options:
             model: gemini-embedding-001
 
+  mvc:
+    async:
+      # SSE 연결이 최대 60초 유지되므로 그보다 긴 65초로 설정.
+      request-timeout: 65000
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   # DB
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:platform_db}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
@@ -117,6 +127,15 @@ logging:
 bank:
   core:
     url: ${BANK_SERVER_URL:http://localhost:8081}
+    endpoints:
+      evaluation-terms: "/api/v1/loan/evaluation/terms"
+      evaluation: "/api/v1/loan/evaluation"
+      contract-terms: "/api/v1/loan/contract/terms"
+      execution: "/api/v1/loan/execution"
+  webhook:
+    # [신규] Bank → Platform 콜백 요청 헤더(X-Webhook-Secret)의 인증 비밀키.
+    # Bank와 Platform 양쪽에서 동일한 WEBHOOK_SECRET 환경변수를 설정해야 검증이 통과된다.
+    secret: ${WEBHOOK_SECRET:dev-secret}
   urls:
     "020":
       base-url: ${WOORI_BASE_URL:http://localhost:8081/api/v1/baas}

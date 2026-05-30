@@ -1,9 +1,12 @@
 package com.woorifisan.platform.domain.loan.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woorifisan.platform.domain.bank.external.client.BankLoanClient;
+import com.woorifisan.platform.domain.bank.external.dto.BankLoanEvaluateRequest;
+import com.woorifisan.platform.domain.bank.external.dto.BankLoanExecuteRequest;
 import com.woorifisan.platform.domain.bank.mapper.BankMapper;
 import com.woorifisan.platform.domain.bank.model.Bank;
+import com.woorifisan.platform.domain.loan.dto.request.LoanCallbackRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
 import com.woorifisan.platform.domain.loan.dto.response.AvailableProductDto;
@@ -15,322 +18,222 @@ import com.woorifisan.platform.domain.loan.dto.response.LoanRequiredDocumentsRes
 import com.woorifisan.platform.domain.loan.dto.response.TermsDocumentDto;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
 import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class LoanService {
 
-    private static final String LOAN_GUID_PREFIX = "LN-";
-    private static final String REDIS_EVAL_GUID_KEY = "loan:eval:%s:guid";
-    private static final String REDIS_APP_GUID_KEY = "loan:app:%s:guid";
-    private static final String REDIS_APP_EVAL_KEY = "loan:app:%s:evalId";
-    private static final String REDIS_APP_RESULT_KEY = "loan:app:%s:result"; // 실제 심사 결과 캐싱용
-    private static final String REDIS_LOAN_NO_ID_MAP = "loan:loanNo:%s:id"; // loanNo -> evaluationId 매핑용
-    private static final long GUID_TTL_HOURS = 24L;
-    private static final long SSE_MOCK_DELAY_MS = 2_000L;
+    // SSE 연결을 60초 유지. Bank 비동기 심사가 이 안에 끝나야 프론트에 결과 전달 가능
+    private static final long SSE_TIMEOUT_MS = 60_000L;
 
-    private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper;
-    private final Executor sseTaskExecutor;
-    private final WebClient bankWebClient;
+    // requestKey → SseEmitter 매핑 테이블.
+    // static: 인스턴스가 여러 개여도(멀티스레드 환경) 동일한 Map을 공유해야 하기 때문
+    // ConcurrentHashMap: 여러 스레드(HTTP 요청 스레드, Webhook 수신 스레드)가 동시에 put/remove해도 안전
+    private static final ConcurrentHashMap<String, SseEmitter> pendingEmitters = new ConcurrentHashMap<>();
+
+    @Value("${bank.webhook.secret}")
+    private String webhookSecret;
+
+    private final BankLoanClient bankLoanClient;
     private final BankMapper bankMapper;
+    private final ObjectMapper objectMapper;
 
-    public LoanService(StringRedisTemplate redisTemplate,
-                       ObjectMapper objectMapper,
-                       @Qualifier("sseTaskExecutor") Executor sseTaskExecutor,
-                       WebClient bankWebClient,
-                       BankMapper bankMapper,
-                       @Value("${bank.core.url}") String bankCoreUrl) {
-        this.redisTemplate = redisTemplate;
-        this.objectMapper = objectMapper;
-        this.sseTaskExecutor = sseTaskExecutor;
-        this.bankMapper = bankMapper;
-        this.bankWebClient = bankWebClient.mutate()
-                .baseUrl(bankCoreUrl)
-                .build();
-    }
+    // SSE 구독
+    public SseEmitter subscribe(String requestKey) {
+        // SSE_TIMEOUT_MS 후 자동 만료되는 emitter 생성
+        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
+        // 프론트가 /subscribe 호출 → emitter를 Map에 등록
+        pendingEmitters.put(requestKey, emitter);
 
-    /**
-     * Step 1 — 심사 서류 조회 (BK-B11 연동)
-     */
-    public LoanRequiredDocumentsResponse getRequiredDocuments(Long staffId) {
-        String guid = generateGuid();
-        log.info("[{}] 심사 서류 조회 요청 - staffId: {}", guid, staffId);
+        // 60초가 지나도 Bank webhook이 안 오면 timeout 이벤트 전송 후 연결 종료
+        emitter.onTimeout(() -> {
+            pendingEmitters.remove(requestKey);
+            try {
+                emitter.send(SseEmitter.event().name("timeout").data("{\"status\":\"TIMEOUT\"}"));
+            } catch (Exception ignored) {}
+            emitter.complete();
+        });
+        // handleCallback()에서 emitter.complete() 호출 시 Map에서 제거
+        emitter.onCompletion(() -> pendingEmitters.remove(requestKey));
+        // 브라우저가 탭을 닫거나 네트워크 오류 시 Map에서 제거
+        emitter.onError(e -> {
+            pendingEmitters.remove(requestKey);
+            log.warn("[SSE] 연결 오류 - requestKey: {}", requestKey);
+        });
 
+        // 연결 즉시 초기 이벤트 전송 — Nginx 등 프록시가 유휴 연결로 오인해 끊는 것을 방지
         try {
-            // 은행 코어의 /api/v1/loan/evaluation/terms 호출
-            com.woorifisan.platform.global.response.ApiResponse<List<Map<String, Object>>> bankResponse = bankWebClient.get()
-                    .uri("/api/v1/loan/evaluation/terms")
-                    .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<com.woorifisan.platform.global.response.ApiResponse<List<Map<String, Object>>>>() {})
-                    .block(Duration.ofSeconds(5));
+            emitter.send(SseEmitter.event().name("connect").data("connected"));
+        } catch (Exception ignored) {}
 
-            if (bankResponse == null || bankResponse.getData() == null) {
-                throw new BusinessException(ErrorCode.BANK_API_ERROR);
-            }
-
-            // 은행 응답을 플랫폼 DTO로 변환
-            List<TermsDocumentDto> documents = bankResponse.getData().stream()
-                    .map(terms -> TermsDocumentDto.builder()
-                            .documentType(Objects.toString(terms.get("termsCode"), null))
-                            .documentName(Objects.toString(terms.get("title"), null))
-                            .documentUrl(Objects.toString(terms.get("termsUrl"), null))
-                            .documentContent(terms.get("termsContent") != null ? String.valueOf(terms.get("termsContent")) : null)
-                            .isMandatory(Boolean.TRUE.equals(terms.get("isMandatory")))
-                            .build())
-                    .toList();
-
-            log.info("[{}] 심사 서류 조회 완료 - count: {}", guid, documents.size());
-            return LoanRequiredDocumentsResponse.builder().documents(documents).build();
-        } catch (Exception e) {
-            log.error("[{}] 은행 API 연동 중 오류 발생 (심사 서류)", guid, e);
-            throw new BusinessException(ErrorCode.LOAN_BANK_ROUTING_ERROR);
-        }
+        log.info("[SSE] 구독 등록 - requestKey: {}", requestKey);
+        return emitter;
     }
 
-    /**
-     * Step 2 — 서류 제출 및 심사 요청 (BK-B12~B19 연동)
-     */
-    public LoanEvaluateResponse evaluateLoan(LoanEvaluateRequest request, Long staffId) {
-        // 플랫폼 bank 테이블(DB)에서 은행 코드 검증
+    // 심사 서류 조회
+    public LoanRequiredDocumentsResponse getRequiredDocuments(Long staffId) {
+        log.info("[심사서류] 조회 요청 - staffId: {}", staffId);
+        List<TermsDocumentDto> documents = bankLoanClient.getEvaluationTerms().stream()
+                .map(terms -> TermsDocumentDto.builder()
+                        .documentType(Objects.toString(terms.get("termsCode"), null))
+                        .documentName(Objects.toString(terms.get("title"), null))
+                        .documentUrl(Objects.toString(terms.get("termsUrl"), null))
+                        .documentContent(Objects.toString(terms.get("termsContent"), null))
+                        .isMandatory(Boolean.TRUE.equals(terms.get("isMandatory")))
+                        .build())
+                .toList();
+        return LoanRequiredDocumentsResponse.builder().documents(documents).build();
+    }
+
+    // 심사 신청
+    public LoanEvaluateResponse evaluateLoan(LoanEvaluateRequest request,
+                                             List<MultipartFile> files,
+                                             Long staffId) {
+        // 1. 요청한 은행코드가 활성화된 은행인지 확인
         Bank bank = bankMapper.findByBankCode(request.getBankCode())
                 .filter(Bank::isActive)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
 
+        // 2. 입금 계좌 은행코드가 심사 신청 은행과 동일한지 확인 (타행 계좌로 입금 불가)
         if (!bank.getBankCode().equals(request.getDepositBankCode())) {
             throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH);
         }
 
-        String guid = generateGuid();
-        String applicationId = generateApplicationId();
-        LocalDateTime receivedAt = LocalDateTime.now();
+        log.info("[심사신청] 은행 API 전달 시작 - requestKey: {}, staffId: {}, bankCode: {}",
+                request.getRequestKey(), staffId, request.getBankCode());
 
-        log.info("[{}] 대출 심사 요청 시작 - staffId: {}, bankCode: {}, customerName: {}, applicationId: {}",
-                guid, staffId, request.getBankCode(), maskName(request.getCustomerName()), applicationId);
+        // 3. Platform DTO → Bank 전용 DTO 변환
+        BankLoanEvaluateRequest bankData = BankLoanEvaluateRequest.builder()
+                .requestKey(request.getRequestKey())
+                .customerName(request.getCustomerName())
+                .customerRrnPrefix(request.getCustomerRrnPrefix())
+                .depositBankCode(request.getDepositBankCode())
+                .depositAccountNo(request.getDepositAccountNo())
+                // 프론트에서 금액/기간을 안 보낸 경우 기본값 적용 (1억 / 60개월)
+                .requestedAmount(request.getRequestedAmount() != null
+                        ? request.getRequestedAmount() : new BigDecimal("100000000"))
+                .requestedPeriod(request.getRequestedPeriod() != null
+                        ? request.getRequestedPeriod() : 60)
+                .creditInfoAgreed(hasAgreed(request, "CREDIT_INFO_AGREE"))
+                .productTermsAgreed(hasAgreed(request, "NICE_CREDIT_INQUIRY"))
+                .documentCollected(hasAgreed(request, "DOCUMENT_COLLECT"))
+                .build();
 
-        // 3. 은행 API 규격에 맞게 데이터 변환 (Mapping)
-        Map<String, Object> bankRequest = new HashMap<>();
-        bankRequest.put("customerName", request.getCustomerName());
-        bankRequest.put("customerRrnPrefix", request.getCustomerRrnPrefix());
-        bankRequest.put("depositBankCode", request.getDepositBankCode());
-        bankRequest.put("depositAccountNo", request.getDepositAccountNo());
-        // 현재 화면에서 금액 입력을 안 받으므로 한도 조회를 위해 임의의 큰 금액 전달
-        bankRequest.put("requestedAmount", new BigDecimal("100000000"));
-        bankRequest.put("requestedPeriod", 60);
-        bankRequest.put("isCreditInfoAgreed", hasAgreed(request, "CREDIT_INFO_AGREE"));
-        bankRequest.put("isProductTermsAgreed", hasAgreed(request, "NICE_CREDIT_INQUIRY"));
-        bankRequest.put("isDocumentCollected", hasAgreed(request, "DOCUMENT_COLLECT"));
+        // 4. Bank API 호출 (multipart pass-through — 파일은 메모리에서 직접 전달, 디스크 저장 없음)
+        Map<String, Object> data = bankLoanClient.submitEvaluation(bankData, files);
+        String loanNo = Objects.toString(data.get("loanNo"), null);
+        String status = Objects.toString(data.get("status"), "SUBMITTED");
+        log.info("[심사신청] 접수 완료 - loanNo: {}, requestKey: {}", loanNo, request.getRequestKey());
+        // 프론트에는 loanNo + SUBMITTED 만 반환. 심사 결과는 SSE로 별도 수신
+        return new LoanEvaluateResponse(loanNo, status);
+    }
+
+    // Webhook 수신 처리
+    public void handleCallback(LoanCallbackRequest callback, String secret) {
+        // 1. X-Webhook-Secret 헤더 검증 — 위조 요청 차단
+        if (!webhookSecret.equals(secret)) {
+            log.warn("[Webhook] 인증 실패 - requestKey: {}", callback.getRequestKey());
+            throw new BusinessException(ErrorCode.LOAN_WEBHOOK_SECRET_INVALID);
+        }
+
+        String requestKey = callback.getRequestKey();
+        if (requestKey == null) {
+            log.warn("[Webhook] requestKey 누락 - loanNo: {}", callback.getLoanNo());
+            return;
+        }
+        // 2. Map에서 emitter 꺼내기 (이후 중복 webhook이 와도 처리 안 함)
+        SseEmitter emitter = pendingEmitters.remove(requestKey);
+        if (emitter == null) {
+            // 60초 타임아웃으로 이미 만료된 경우 — 정상적인 케이스이므로 에러 아님
+            log.warn("[Webhook] SSE 에미터 없음 (이미 만료) - requestKey: {}", requestKey);
+            return;
+        }
 
         try {
-            com.woorifisan.platform.global.response.ApiResponse<Map<String, Object>> bankResponse = bankWebClient.post()
-                    .uri("/api/v1/loan/evaluation")
-                    .bodyValue(bankRequest)
-                    .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<com.woorifisan.platform.global.response.ApiResponse<Map<String, Object>>>() {})
-                    .block(Duration.ofSeconds(5));
-
-            if (bankResponse == null || bankResponse.getData() == null) {
-                throw new BusinessException(ErrorCode.BANK_API_ERROR);
-            }
-
-            Map<String, Object> evalData = bankResponse.getData();
-            Object evalIdObj = evalData.get("evaluationId");
-            Object loanNoObj = evalData.get("loanNo");
-            if (evalIdObj == null || loanNoObj == null) {
-                throw new BusinessException(ErrorCode.BANK_API_ERROR);
-            }
-            String evaluationId = String.valueOf(evalIdObj); // 은행 내부 ID (Long)
-            String loanNo = String.valueOf(loanNoObj);       // 플랫폼용 식별자 (LN-XXX)
-
-            // Redis 상태 저장 (SSE 및 다음 단계에서 사용)
-            redisTemplate.opsForValue().set(String.format(REDIS_APP_GUID_KEY, applicationId), guid, GUID_TTL_HOURS, TimeUnit.HOURS);
-            redisTemplate.opsForValue().set(String.format(REDIS_APP_EVAL_KEY, applicationId), loanNo, GUID_TTL_HOURS, TimeUnit.HOURS);
-            redisTemplate.opsForValue().set(String.format(REDIS_EVAL_GUID_KEY, loanNo), guid, GUID_TTL_HOURS, TimeUnit.HOURS);
-            redisTemplate.opsForValue().set(String.format(REDIS_LOAN_NO_ID_MAP, loanNo), evaluationId, GUID_TTL_HOURS, TimeUnit.HOURS);
-
-            // 4. 심사 결과를 Redis에 캐싱하여 SSE에서 즉시 응답하도록 함
-            redisTemplate.opsForValue().set(String.format(REDIS_APP_RESULT_KEY, applicationId),
-                    objectMapper.writeValueAsString(evalData), GUID_TTL_HOURS, TimeUnit.HOURS);
-
-            log.info("[{}] 대출 심사 접수 및 결과 캐싱 완료 - loanNo: {}", guid, loanNo);
-            return LoanEvaluateResponse.builder()
-                    .applicationId(applicationId)
-                    .receivedAt(receivedAt.toString())
-                    .build();
-
-        } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
-            log.warn("[{}] 은행 API 오류 응답 (심사 신청) - status: {}, body: {}", guid, e.getStatusCode(), e.getResponseBodyAsString());
-            String bankMsg = extractBankErrorMessage(e);
-            throw new BusinessException(ErrorCode.LOAN_BANK_ROUTING_ERROR, bankMsg);
+            // 3. Webhook 데이터를 프론트 형식으로 변환
+            LoanEvaluationResultResponse result = buildSseResult(callback);
+            // 4. SSE result 이벤트로 프론트에 심사 결과 전송
+            emitter.send(SseEmitter.event().name("result")
+                    .data(objectMapper.writeValueAsString(result)));
+            // 5. 연결 종료 → onCompletion 콜백이 Map 정리
+            emitter.complete();
+            log.info("[Webhook] SSE 전송 완료 - loanNo: {}, status: {}", callback.getLoanNo(), callback.getStatus());
         } catch (Exception e) {
-            log.error("[{}] 은행 API 연동 중 오류 발생 (심사 신청)", guid, e);
-            throw new BusinessException(ErrorCode.LOAN_BANK_ROUTING_ERROR);
+            log.error("[Webhook] SSE 전송 실패 - requestKey: {}", requestKey, e);
+            emitter.completeWithError(e);
         }
     }
 
-    private boolean hasAgreed(LoanEvaluateRequest request, String type) {
-        if (request.getDocuments() == null) return false;
-        return request.getDocuments().stream().anyMatch(d -> type.equals(d.getDocumentType()));
-    }
+    // Bank webhook 데이터 → 프론트 SSE 응답 DTO 변환
+    private LoanEvaluationResultResponse buildSseResult(LoanCallbackRequest callback) {
+        var builder = LoanEvaluationResultResponse.builder()
+                .evaluationStatus(callback.getStatus())
+                .evaluationId(callback.getLoanNo());
 
-    /**
-     * Step 3 — 심사 결과 스트리밍 (SSE)
-     */
-    public SseEmitter streamEvaluationResult(String applicationId, Long staffId) {
-        String guid = resolveGuidForApp(applicationId);
-        String loanNo = resolveEvaluationIdForApp(applicationId); // 사용하지 않던 로직 활용
-        log.info("[{}] SSE 심사 결과 스트림 시작 - staffId: {}, loanNo: {}, applicationId: {}", guid, staffId, loanNo, applicationId);
-
-        SseEmitter emitter = new SseEmitter(30_000L);
-        emitter.onTimeout(emitter::complete);
-        emitter.onError(e -> log.warn("[{}] SSE 연결 오류", guid));
-
-        CompletableFuture.runAsync(() -> {
-            try {
-                // 1) PENDING 상태 먼저 전송
-                sendSse(emitter, guid, "status", LoanEvaluationResultResponse.builder()
-                        .applicationId(applicationId)
-                        .evaluationStatus("PENDING")
-                        .requestedAt(LocalDateTime.now().toString()).build());
-
-                Thread.sleep(SSE_MOCK_DELAY_MS); // UI 체감을 위한 약간의 지연
-
-                // 2) Redis에 저장된 실제 심사 결과 꺼내기
-                String resultJson = redisTemplate.opsForValue().get(String.format(REDIS_APP_RESULT_KEY, applicationId));
-                if (resultJson == null) throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
-
-                Map<String, Object> evalData = objectMapper.readValue(resultJson, new TypeReference<>() {});
-                String status = String.valueOf(evalData.get("status"));
-                
-                LoanEvaluationResultResponse result;
-                if ("APPROVED".equals(status)) {
-                    // 은행 코어의 AvailableProductDto 필드명(productId, productName, minLimit, maxLimit, minRate)에 맞춰 매핑 수정
-                    @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> bankProducts = (List<Map<String, Object>>) evalData.get("availableProducts");
-                    List<AvailableProductDto> products = (bankProducts != null ? bankProducts : List.<Map<String, Object>>of()).stream()
-                            .map(p -> {
-                                Object minLimit = p.get("minLimit");
-                                Object maxLimit = p.get("maxLimit");
-                                Object minRate = p.get("minRate");
-                                return AvailableProductDto.builder()
-                                        .loanProductCode(String.valueOf(p.get("productId")))
-                                        .loanProductName(String.valueOf(p.get("productName")))
-                                        .minAmount(minLimit != null ? new BigDecimal(minLimit.toString()) : BigDecimal.ZERO)
-                                        .maxAmount(maxLimit != null ? new BigDecimal(maxLimit.toString()) : BigDecimal.ZERO)
-                                        .interestRate(minRate != null ? new BigDecimal(minRate.toString()) : BigDecimal.ZERO)
-                                        .loanPeriodMonths(36).build();
-                            }).toList();
-
-                    result = LoanEvaluationResultResponse.builder()
-                            .applicationId(applicationId)
-                            .evaluationStatus("APPROVED")
-                            .evaluationId(String.valueOf(evalData.get("loanNo")))
-                            .approvedLimit(new BigDecimal(String.valueOf(evalData.get("approvedLimit"))))
-                            .availableProducts(products).build();
-                } else {
-                    result = LoanEvaluationResultResponse.builder()
-                            .applicationId(applicationId)
-                            .evaluationStatus("REJECTED")
-                            .rejectionMessage(String.valueOf(evalData.get("rejectReason"))).build();
-                }
-
-                sendSse(emitter, guid, "status", result);
-                log.info("[{}] SSE 심사 결과 전송 완료 - loanNo: {}, status: {}", guid, loanNo, status);
-                emitter.complete();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.warn("[{}] SSE 스레드 중단", guid);
-                emitter.complete();
-            } catch (Exception e) {
-                log.error("[{}] SSE 처리 중 예외 발생", guid, e);
-                emitter.completeWithError(e);
-            }
-        }, sseTaskExecutor);
-
-        return emitter;
-    }
-
-    private void sendSse(SseEmitter emitter, String guid, String name, Object data) {
-        try {
-            emitter.send(SseEmitter.event().name(name).data(objectMapper.writeValueAsString(data)));
-        } catch (AsyncRequestNotUsableException e) {
-            log.warn("[{}] SSE 이미 종료된 연결에 대한 전송 시도 (AsyncRequestNotUsableException)", guid);
-        } catch (java.io.IOException e) {
-            log.warn("[{}] SSE 클라이언트 연결 중단 (IOException): {}", guid, e.getMessage());
-        } catch (Exception e) {
-            log.error("[{}] SSE 전송 중 예외 발생", guid, e);
-            throw new RuntimeException(e);
+        if ("APPROVED".equals(callback.getStatus())) {
+            // APPROVED: 승인 한도 + 선택 가능한 상품 목록 포함
+            List<AvailableProductDto> products = callback.getAvailableProducts() == null
+                    ? List.of()
+                    : callback.getAvailableProducts().stream()
+                            .map(p -> AvailableProductDto.builder()
+                                    .loanProductCode(Objects.toString(p.get("productId"), null))
+                                    .loanProductName(Objects.toString(p.get("productName"), null))
+                                    .minAmount(toBigDecimal(p.get("minLimit")))
+                                    .maxAmount(toBigDecimal(p.get("maxLimit")))
+                                    .interestRate(toBigDecimal(p.get("minRate")))
+                                    .loanPeriodMonths(36)
+                                    .build())
+                            .toList();
+            builder.approvedLimit(callback.getApprovedLimit())
+                   .availableProducts(products);
+        } else {
+            // REJECTED / SYSTEM_ERROR: 거절 사유 포함
+            builder.rejectionMessage(callback.getRejectReason());
         }
+
+        return builder.build();
     }
 
-    /**
-     * Step 5 — 계약 서류 조회 (BK-B20 연동)
-     */
-    public LoanContractDocumentsResponse getContractDocuments(String loanProductCode, String evaluationId, Long staffId) {
-        String guid = resolveGuidForEval(evaluationId);
-        log.info("[{}] 계약 서류 조회 시작 - staffId: {}, loanNo: {}, productId: {}", guid, staffId, evaluationId, loanProductCode);
-
-        // Redis에서 은행 내부 ID(Long) 조회
-        String bankInternalId = redisTemplate.opsForValue().get(String.format(REDIS_LOAN_NO_ID_MAP, evaluationId));
-        if (bankInternalId == null) throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
-
-        try {
-            com.woorifisan.platform.global.response.ApiResponse<List<Map<String, Object>>> bankResponse = bankWebClient.get()
-                    .uri("/api/v1/loan/contract/terms/{productId}/{evaluationId}", loanProductCode, bankInternalId)
-                    .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<com.woorifisan.platform.global.response.ApiResponse<List<Map<String, Object>>>>() {})
-                    .block(Duration.ofSeconds(5));
-
-            if (bankResponse == null || bankResponse.getData() == null) throw new BusinessException(ErrorCode.BANK_API_ERROR);
-
-            List<TermsDocumentDto> documents = bankResponse.getData().stream()
-                    .map(terms -> TermsDocumentDto.builder()
-                            .documentType(Objects.toString(terms.get("termsCode"), null))
-                            .documentName(Objects.toString(terms.get("title"), null))
-                            .documentUrl(Objects.toString(terms.get("termsUrl"), null))
-                            .documentContent(terms.get("termsContent") != null ? String.valueOf(terms.get("termsContent")) : null)
-                            .isMandatory(Boolean.TRUE.equals(terms.get("isMandatory"))).build()).toList();
-
-            log.info("[{}] 계약 서류 조회 완료 - count: {}", guid, documents.size());
-            return LoanContractDocumentsResponse.builder()
-                    .loanProductCode(loanProductCode)
-                    .loanProductName("심사 승인 상품")
-                    .documents(documents).build();
-        } catch (Exception e) {
-            log.error("[{}] 은행 API 연동 중 오류 발생 (계약 서류)", guid, e);
-            throw new BusinessException(ErrorCode.LOAN_BANK_ROUTING_ERROR);
-        }
+    // 계약 서류 조회
+    public LoanContractDocumentsResponse getContractDocuments(String loanProductCode,
+                                                               String loanNo,
+                                                               Long staffId) {
+        log.info("[계약서류] 조회 - staffId: {}, loanNo: {}, productCode: {}", staffId, loanNo, loanProductCode);
+        List<TermsDocumentDto> documents = bankLoanClient.getContractTerms(loanProductCode, loanNo).stream()
+                .map(terms -> TermsDocumentDto.builder()
+                        .documentType(Objects.toString(terms.get("termsCode"), null))
+                        .documentName(Objects.toString(terms.get("title"), null))
+                        .documentUrl(Objects.toString(terms.get("termsUrl"), null))
+                        .documentContent(Objects.toString(terms.get("termsContent"), null))
+                        .isMandatory(Boolean.TRUE.equals(terms.get("isMandatory")))
+                        .build())
+                .toList();
+        return LoanContractDocumentsResponse.builder()
+                .loanProductCode(loanProductCode)
+                .loanProductName("심사 승인 상품")
+                .documents(documents)
+                .build();
     }
 
-    /**
-     * Step 6 — 대출 실행 (BK-B21~B23 연동)
-     */
+    // 대출 실행
     public LoanExecuteResponse executeLoan(LoanExecuteRequest request, Long staffId) {
-        String guid = resolveGuidForEval(request.getEvaluationId());
-        log.info("[{}] 대출 실행 요청 시작 - staffId: {}, loanNo: {}, executeAmount: {}", 
-                guid, staffId, request.getEvaluationId(), request.getExecuteAmount());
+        log.info("[대출실행] 요청 - staffId: {}, loanNo: {}, amount: {}",
+                staffId, request.getEvaluationId(), request.getExecuteAmount());
 
+        // loanProductCode는 프론트에서 String으로 넘어오지만, Bank API는 Long productId를 기대함
         long productId;
         try {
             productId = Long.parseLong(request.getLoanProductCode());
@@ -338,92 +241,47 @@ public class LoanService {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
-        Map<String, Object> bankRequest = new HashMap<>();
-        bankRequest.put("loanNo", request.getEvaluationId());
-        bankRequest.put("productId", productId);
-        bankRequest.put("loanAmount", request.getExecuteAmount());
-        bankRequest.put("repaymentPeriod", request.getRepaymentPeriod());
-        bankRequest.put("repaymentType", "원리금균등");
-        bankRequest.put("accountPassword", request.getAccountPassword());
+        // Platform DTO → Bank 전용 DTO 변환
+        BankLoanExecuteRequest bankRequest = BankLoanExecuteRequest.builder()
+                .loanNo(request.getEvaluationId())
+                .productId(productId)
+                .loanAmount(request.getExecuteAmount())
+                .repaymentPeriod(request.getRepaymentPeriod())
+                .repaymentType("원리금균등")
+                .accountPassword(request.getAccountPassword())
+                .build();
 
-        try {
-            com.woorifisan.platform.global.response.ApiResponse<Map<String, Object>> bankResponse = bankWebClient.post()
-                    .uri("/api/v1/loan/execution")
-                    .bodyValue(bankRequest)
-                    .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<com.woorifisan.platform.global.response.ApiResponse<Map<String, Object>>>() {})
-                    .block(Duration.ofSeconds(5));
+        Map<String, Object> data = bankLoanClient.executeLoan(bankRequest);
+        log.info("[대출실행] 완료 - loanNo: {}", data.get("loanNo"));
 
-            if (bankResponse == null || bankResponse.getData() == null) throw new BusinessException(ErrorCode.BANK_API_ERROR);
-
-            Map<String, Object> execData = bankResponse.getData();
-            Object loanAmountObj   = execData.get("loanAmount");
-            Object interestRateObj = execData.get("interestRate");
-            Object repaymentObj    = execData.get("repaymentPeriod");
-            Object monthlyObj      = execData.get("monthlyPayment");
-            if (loanAmountObj == null || interestRateObj == null || repaymentObj == null || monthlyObj == null) {
-                throw new BusinessException(ErrorCode.BANK_API_ERROR);
-            }
-            log.info("[{}] 대출 실행 완료 - loanNo: {}", guid, execData.get("loanNo"));
-
-            return LoanExecuteResponse.builder()
-                    .loanId(Objects.toString(execData.get("loanNo"), null))
-                    .borrowerName(Objects.toString(execData.get("customerName"), null))
-                    .depositTransactionId("TXN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase())
-                    .loanBalance(new BigDecimal(loanAmountObj.toString()))
-                    .executeAmount(new BigDecimal(loanAmountObj.toString()))
-                    .interestRate(new BigDecimal(interestRateObj.toString()))
-                    .repaymentPeriod(Integer.parseInt(repaymentObj.toString()))
-                    .monthlyPayment(new BigDecimal(monthlyObj.toString()))
-                    .repaymentStartDate(Objects.toString(execData.get("startDate"), null))
-                    .maturityDate(Objects.toString(execData.get("endDate"), null)).build();
-
-        } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
-            log.warn("[{}] 은행 API 오류 응답 (대출 실행) - status: {}, body: {}", guid, e.getStatusCode(), e.getResponseBodyAsString());
-            String bankMsg = extractBankErrorMessage(e);
-            throw new BusinessException(ErrorCode.LOAN_BANK_ROUTING_ERROR, bankMsg);
-        } catch (Exception e) {
-            log.error("[{}] 은행 API 연동 중 오류 발생 (대출 실행)", guid, e);
-            throw new BusinessException(ErrorCode.LOAN_BANK_ROUTING_ERROR);
-        }
+        // Bank 응답 → Platform 응답 DTO 변환
+        return LoanExecuteResponse.builder()
+                .loanId(Objects.toString(data.get("loanNo"), null))
+                .borrowerName(Objects.toString(data.get("customerName"), null))
+                // 입금 거래번호: Bank가 별도 제공하지 않아 Platform에서 임의 생성
+                .depositTransactionId("TXN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase())
+                .loanBalance(toBigDecimal(data.get("loanAmount")))
+                .executeAmount(toBigDecimal(data.get("loanAmount")))
+                .interestRate(toBigDecimal(data.get("interestRate")))
+                .repaymentPeriod(data.get("repaymentPeriod") != null
+                        ? Integer.parseInt(data.get("repaymentPeriod").toString()) : 0)
+                .monthlyPayment(toBigDecimal(data.get("monthlyPayment")))
+                .repaymentStartDate(Objects.toString(data.get("startDate"), null))
+                .maturityDate(Objects.toString(data.get("endDate"), null))
+                .build();
     }
 
-    // --- Private helpers ---
-    private String extractBankErrorMessage(org.springframework.web.reactive.function.client.WebClientResponseException e) {
-        try {
-            Map<String, Object> body = objectMapper.readValue(e.getResponseBodyAsString(), new TypeReference<>() {});
-            @SuppressWarnings("unchecked")
-            Map<String, Object> err = (Map<String, Object>) body.get("error");
-            if (err != null && err.get("message") != null) {
-                return String.valueOf(err.get("message"));
-            }
-        } catch (Exception ignored) {}
-        return null;
+    // Helpers
+    // documents 리스트에서 특정 documentType 동의 여부 확인
+    private boolean hasAgreed(LoanEvaluateRequest request, String type) {
+        if (request.getDocuments() == null) return false;
+        return request.getDocuments().stream().anyMatch(d -> type.equals(d.getDocumentType()));
     }
 
-    private String generateGuid() { return LOAN_GUID_PREFIX + UUID.randomUUID().toString().toUpperCase(); }
-    private String generateApplicationId() { return "APP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase(); }
-    
-    private String resolveGuidForApp(String applicationId) {
-        String guid = redisTemplate.opsForValue().get(String.format(REDIS_APP_GUID_KEY, applicationId));
-        if (guid == null) throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
-        return guid;
+    // Bank가 Object로 반환한 숫자 값을 BigDecimal로 안전하게 변환
+    private BigDecimal toBigDecimal(Object value) {
+        if (value == null) return BigDecimal.ZERO;
+        try { return new BigDecimal(value.toString()); } catch (NumberFormatException e) { return BigDecimal.ZERO; }
     }
 
-    private String resolveEvaluationIdForApp(String applicationId) {
-        String evaluationId = redisTemplate.opsForValue().get(String.format(REDIS_APP_EVAL_KEY, applicationId));
-        if (evaluationId == null) throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
-        return evaluationId;
-    }
-
-    private String resolveGuidForEval(String evaluationId) {
-        String guid = redisTemplate.opsForValue().get(String.format(REDIS_EVAL_GUID_KEY, evaluationId));
-        if (guid == null) throw new BusinessException(ErrorCode.LOAN_EVALUATION_NOT_FOUND);
-        return guid;
-    }
-
-    private String maskName(String name) {
-        if (name == null || name.length() < 2) return "**";
-        return name.charAt(0) + "*".repeat(name.length() - 1);
-    }
 }

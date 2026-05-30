@@ -6,6 +6,7 @@ import LoanProductSelection from '../components/loan/LoanProductSelection';
 import LoanContractForm from '../components/loan/LoanContractForm';
 import LoanExecutionConfirm from '../components/loan/LoanExecutionConfirm';
 import LoanResult from '../components/loan/LoanResult';
+import type { EvaluationStatusResponse } from '../api/loanApi';
 
 export type LoanStep = 'GUIDE' | 'FORM' | 'EVALUATION' | 'SELECTION' | 'CONTRACT' | 'CONFIRM' | 'RESULT';
 
@@ -41,7 +42,8 @@ export interface LoanData {
 const LoanApplication: React.FC = () => {
     const [step, setStep] = useState<LoanStep>('GUIDE');
     const [loanData, setLoanData] = useState<LoanData>({});
-    const [applicationId, setApplicationId] = useState<string | null>(null);
+    const [sseData, setSseData] = useState<EvaluationStatusResponse | null>(null);
+    const [sseError, setSseError] = useState<Error | null>(null);
     const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null);
     const [evaluationId, setEvaluationId] = useState<string | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<LoanProduct | null>(null);
@@ -60,18 +62,20 @@ const LoanApplication: React.FC = () => {
             case 'FORM':
                 return (
                     <LoanRequestForm
-                        onNext={(data, appId) => {
-                            setApplicationId(appId);
+                        onNext={(data, _loanNo) => {
                             handleNext('EVALUATION', data);
                         }}
                         onBack={() => setStep('GUIDE')}
+                        onSseMessage={setSseData}
+                        onSseError={setSseError}
                     />
                 );
             case 'EVALUATION':
                 return (
                     <LoanEvaluation
                         loanData={loanData}
-                        applicationId={applicationId!}
+                        sseData={sseData}
+                        sseError={sseError}
                         onApproved={(result) => {
                             setEvaluationResult(result);
                             setEvaluationId(result.evaluationId ?? null);
@@ -124,7 +128,8 @@ const LoanApplication: React.FC = () => {
                         onReset={() => {
                             setStep('GUIDE');
                             setLoanData({});
-                            setApplicationId(null);
+                            setSseData(null);
+                            setSseError(null);
                             setEvaluationResult(null);
                             setEvaluationId(null);
                             setSelectedProduct(null);
