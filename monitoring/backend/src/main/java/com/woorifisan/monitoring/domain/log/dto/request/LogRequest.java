@@ -35,10 +35,12 @@ public class LogRequest {
 
     @Schema(description = "조회 시작일 (yyyy-MM-dd HH:mm:ss)", example = "2026-05-29 00:00:00")
     @NotBlank(message = "조회 시작일은 필수입니다.")
+    @jakarta.validation.constraints.Pattern(regexp = "^\\\\d{4}-\\\\d{2}-\\\\d{2} \\\\d{2}:\\\\d{2}:\\\\d{2}$", message = "날짜 형식은 yyyy-MM-dd HH:mm:ss 이어야 합니다.")
     private String startDate;
 
     @Schema(description = "조회 종료일 (yyyy-MM-dd HH:mm:ss)", example = "2026-05-29 23:59:59")
     @NotBlank(message = "조회 종료일은 필수입니다.")
+    @jakarta.validation.constraints.Pattern(regexp = "^\\\\d{4}-\\\\d{2}-\\\\d{2} \\\\d{2}:\\\\d{2}:\\\\d{2}$", message = "날짜 형식은 yyyy-MM-dd HH:mm:ss 이어야 합니다.")
     private String endDate;
 
     // Pagination
