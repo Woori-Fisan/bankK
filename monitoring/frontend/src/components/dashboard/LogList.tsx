@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { SystemLog } from '../../types/log';
 import LogDetailModal from './LogDetailModal';
 import { getLog } from '../../api/log';
@@ -40,10 +41,11 @@ const getStatusColor = (status: number) => {
     return 'text-emerald-600';
 };
 
+const PAGE_GROUP = 5;
+
 const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCount, isLoading, onPageChange }) => {
     const [selectedLog, setSelectedLog] = useState<SystemLog | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
-
     const handleRowClick = async (id: number) => {
         setDetailLoading(true);
         try {
@@ -54,11 +56,11 @@ const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCo
         }
     };
 
-    const pageNumbers = Array.from({ length: Math.min(totalPage, 5) }, (_, i) => {
-        const half = 2;
-        const start = Math.max(1, Math.min(currentPage - half, totalPage - 4));
-        return start + i;
-    });
+    const groupStart = Math.floor((currentPage - 1) / PAGE_GROUP) * PAGE_GROUP + 1;
+    const groupEnd = Math.min(groupStart + PAGE_GROUP - 1, totalPage);
+    const pageNumbers = Array.from({ length: groupEnd - groupStart + 1 }, (_, i) => groupStart + i);
+    const hasPrev = groupStart > 1;
+    const hasNext = groupEnd < totalPage;
 
     return (
         <>
@@ -137,7 +139,15 @@ const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCo
 
                 {totalPage > 1 && (
                     <div className="px-6 py-4 bg-gray-50/30 border-t border-gray-100 flex justify-center">
-                        <nav className="flex gap-1">
+                        <nav className="flex items-center gap-1">
+                            <button
+                                onClick={() => onPageChange(groupStart - PAGE_GROUP)}
+                                disabled={!hasPrev}
+                                className="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 bg-white text-gray-400 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+
                             {pageNumbers.map((n) => (
                                 <button
                                     key={n}
@@ -151,6 +161,14 @@ const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCo
                                     {n}
                                 </button>
                             ))}
+
+                            <button
+                                onClick={() => onPageChange(groupEnd + 1)}
+                                disabled={!hasNext}
+                                className="w-8 h-8 rounded-lg flex items-center justify-center border border-gray-200 bg-white text-gray-400 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
                         </nav>
                     </div>
                 )}
