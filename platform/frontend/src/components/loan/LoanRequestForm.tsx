@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
     User, Building2, Upload, FileText, X, ChevronLeft, ChevronRight,
-    FileType, CheckCircle2, Loader2,
+    FileType, CheckCircle2, Loader2, AlertTriangle, XCircle,
 } from 'lucide-react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import type { LoanData } from '../../pages/LoanApplication';
@@ -62,6 +62,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
     const [activeDoc, setActiveDoc] = useState<AgreedDoc | null>(null);
     const [viewedDocs, setViewedDocs] = useState<Set<string>>(new Set());
     const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
     const { data: docsData, isLoading: isDocsLoading } = useReviewDocuments();
     const { data: bankList, isLoading: isBankListLoading } = useBankList();
@@ -187,9 +188,13 @@ ${body}
         return () => {};
     }, []);
 
-    const handleSubmit = async () => {
+    const handleSubmit = () => {
         if (!validate()) return;
+        setIsConfirmOpen(true);
+    };
 
+    const handleActualSubmit = async () => {
+        setIsConfirmOpen(false);
         setFieldErrors({});
         setIsUploading(true);
         const requestKey = crypto.randomUUID();
@@ -683,6 +688,116 @@ ${body}
                     )}
                 </button>
             </div>
+
+            {/* 심사 요청 전 최종 확인 모달 */}
+            {isConfirmOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+                        {/* 경고 헤더 */}
+                        <div className="bg-amber-500 px-6 py-5 flex items-center gap-3">
+                            <AlertTriangle className="w-6 h-6 text-white shrink-0" />
+                            <div>
+                                <h3 className="text-base font-black text-white">심사 요청 전 최종 확인</h3>
+                                <p className="text-xs text-amber-100 mt-0.5">
+                                    아래 내용이 정확한지 확인해주세요. 심사 요청 후에는 수정이 불가합니다.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="p-6 space-y-5">
+                            {/* 고객 정보 */}
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">고객 정보</p>
+                                <div className="bg-gray-50 rounded-xl p-4 space-y-2.5">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-gray-500">성명</span>
+                                        <span className="text-sm font-bold text-gray-900">{formData.userName}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-gray-500">주민등록번호</span>
+                                        <span className="text-sm font-bold text-gray-900 tracking-widest">
+                                            {rrnFront}-{rrnBack}●●●●●●
+                                        </span>
+                                    </div>
+                                    {formData.phone && (
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs text-gray-500">연락처</span>
+                                            <span className="text-sm font-bold text-gray-900">{formData.phone}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                                        <span className="text-xs text-gray-500">입금 계좌</span>
+                                        <span className="text-sm font-bold text-gray-900">
+                                            {formData.bank} {formData.accountNo}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 첨부 서류 확인 */}
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                                    필수 서류 확인 (4종)
+                                </p>
+                                <div className="space-y-2">
+                                    {coveredDocs.map((doc) => {
+                                        const matchedFile = files.find((f) =>
+                                            doc.keywords.some((kw) => f.name.toLowerCase().includes(kw))
+                                        );
+                                        return (
+                                            <div
+                                                key={doc.label}
+                                                className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${
+                                                    doc.covered
+                                                        ? 'bg-emerald-50 border-emerald-200'
+                                                        : 'bg-red-50 border-red-200'
+                                                }`}
+                                            >
+                                                {doc.covered ? (
+                                                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                                                ) : (
+                                                    <XCircle className="w-5 h-5 text-red-400 shrink-0" />
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className={`text-xs font-bold ${doc.covered ? 'text-emerald-800' : 'text-red-700'}`}>
+                                                        {doc.label}
+                                                    </p>
+                                                    {matchedFile && (
+                                                        <p className="text-[10px] text-emerald-600 mt-0.5 truncate">
+                                                            {matchedFile.name}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <span className={`text-[10px] font-bold shrink-0 ${doc.covered ? 'text-emerald-600' : 'text-red-500'}`}>
+                                                    {doc.covered ? '확인' : '미첨부'}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 버튼 */}
+                        <div className="px-6 pb-6 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setIsConfirmOpen(false)}
+                                className="flex-1 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors"
+                            >
+                                취소 (수정하기)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleActualSubmit}
+                                className="flex-[2] py-3 bg-slate-900 text-white rounded-xl font-black text-sm hover:bg-slate-800 transition-colors shadow-lg"
+                            >
+                                확인 후 심사 요청
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* 약관 모달 */}
             {isModalOpen && activeDoc && (
