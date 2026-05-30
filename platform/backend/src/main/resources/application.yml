@@ -3,6 +3,19 @@ spring:
     active: local
   application:
     name: agency-platform
+  ai:
+    google:
+      genai:
+        project-id: ${GOOGLE_CLOUD_PROJECT_ID}
+        api-key: ${GOOGLE_AI_API_KEY}
+        chat:
+          options:
+            model: gemini-3.1-flash-lite-preview
+        embedding:
+          project-id: ${GOOGLE_CLOUD_PROJECT_ID}
+          api-key: ${GOOGLE_AI_API_KEY}
+          options:
+            model: gemini-embedding-001
 
   mvc:
     async:
@@ -102,6 +115,10 @@ springdoc:
     operations-sorter: alpha
   api-docs:
     path: /v3/api-docs
+
+qdrant:
+  host: localhost
+  port: 6334
 
 # 로깅
 logging:
