@@ -14,7 +14,8 @@ interface ChatMessageListProps {
 
 const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages }) => {
     return (
-        <div className="flex-1 p-4 overflow-y-auto bg-gray-50 flex flex-col gap-4">
+        <div className="flex-1 p-4 overflow-y-auto bg-gray-50 flex flex-col gap-4 
+            scrollbar-thin scrollbar-thumb-emerald-200 scrollbar-track-transparent hover:scrollbar-thumb-emerald-300">
             {messages.map((msg) => (
                 <ChatMessage key={msg.id} role={msg.role} content={msg.content} isLoading={msg.isLoading} />
             ))}
