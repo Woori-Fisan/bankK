@@ -3,6 +3,22 @@ server:
 
 bank:
   code: ${BANK_CODE:020} # 우리은행
+  document:
+    storage:
+      # 고객 서류(PDF) 저장할 온프레미스 경로
+      # 환경번수 DOCUMENT_STORAGE_PATH 미설정 시 /data/documents 사용
+      # 실제 저장 위치: {path}/{loanNo}/파일명.pdf
+      path: ${DOCUMENT_STORAGE_PATH:/data/documents}
+
+platform:
+  callback:
+    # 비동가 심사 끝나면 결과 전달할 Platform Webhook URL
+    # 환경변수 PLATFORM_CALLBACK_URL 미설정 시 localhost:8080 사용
+    url: ${PLATFORM_CALLBACK_URL:http://localhost:8080}
+  webhook:
+    # Webhook 요청의 인증 비밀키
+    # 환경변수 WEBHOOK_SECRET 미설정 시 dev-secret 사용
+    secret: ${WEBHOOK_SECRET:dev-secret}
 
 spring:
   application:
