@@ -142,21 +142,21 @@ const LoanApplication: React.FC = () => {
     };
 
     return (
-        <div className="p-8 max-w-7xl mx-auto min-h-full flex flex-col bg-gray-50">
+        <div className="p-10 max-w-5xl mx-auto min-h-full flex flex-col bg-gray-50">
             <header className="mb-8">
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                    <span className={step === 'GUIDE' ? 'font-bold text-blue-600' : ''}>1. 서류안내</span>
+                <div className="flex items-center gap-2 text-base text-gray-500 mb-2">
+                    <span className={step === 'GUIDE' ? 'font-extrabold text-blue-600' : 'font-semibold'}>1. 서류안내</span>
                     <span>/</span>
-                    <span className={step === 'FORM' ? 'font-bold text-blue-600' : ''}>2. 신청서작성</span>
+                    <span className={step === 'FORM' ? 'font-extrabold text-blue-600' : 'font-semibold'}>2. 신청서작성</span>
                     <span>/</span>
-                    <span className={['EVALUATION', 'SELECTION'].includes(step) ? 'font-bold text-blue-600' : ''}>3. 심사 및 상품선택</span>
+                    <span className={['EVALUATION', 'SELECTION'].includes(step) ? 'font-extrabold text-blue-600' : 'font-semibold'}>3. 심사 및 상품선택</span>
                     <span>/</span>
-                    <span className={step === 'CONTRACT' ? 'font-bold text-blue-600' : ''}>4. 계약서확인</span>
+                    <span className={step === 'CONTRACT' ? 'font-extrabold text-blue-600' : 'font-semibold'}>4. 계약서확인</span>
                     <span>/</span>
-                    <span className={['CONFIRM', 'RESULT'].includes(step) ? 'font-bold text-blue-600' : ''}>5. 실행완료</span>
+                    <span className={['CONFIRM', 'RESULT'].includes(step) ? 'font-extrabold text-blue-600' : 'font-semibold'}>5. 실행완료</span>
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900">신용 대출 신청</h1>
-                <p className="text-gray-500 text-sm mt-1">대행기관 직원을 위한 대출 신청 프로세스입니다.</p>
+                <h1 className="text-3xl font-black text-gray-900">신용 대출 신청</h1>
+                <p className="text-gray-500 text-base mt-2">대행기관 직원을 위한 대출 신청 프로세스입니다.</p>
             </header>
 
             <main className="flex-1">

@@ -32,27 +32,27 @@ const LoanGuide: React.FC<LoanGuideProps> = ({ onNext }) => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="space-y-6">
                         {/* 필수 서류 */}
-                        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                            <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-                                <FileCheck className="w-5 h-5 text-gray-400" />
-                                <h3 className="text-sm font-bold text-gray-900">필수 제출 서류</h3>
+                        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+                            <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
+                                <FileCheck className="w-6 h-6 text-gray-400" />
+                                <h3 className="text-base font-bold text-gray-900">필수 제출 서류</h3>
                             </div>
-                            <div className="p-4 space-y-3">
+                            <div className="p-6 space-y-3">
                                 {mandatoryDocs.length > 0
                                     ? mandatoryDocs.map((doc, idx) => (
                                           <div
                                               key={doc.documentType}
-                                              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                                              className="flex items-center gap-3 p-5 bg-gray-50 rounded-lg"
                                           >
-                                              <div className="w-6 h-6 flex items-center justify-center bg-blue-50 text-blue-600 text-xs font-bold rounded-full shrink-0">
+                                              <div className="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-600 text-sm font-bold rounded-full shrink-0">
                                                   {idx + 1}
                                               </div>
                                               <div className="flex-1">
-                                                  <p className="text-sm font-medium text-gray-900">
+                                                  <p className="text-base font-medium text-gray-900">
                                                       {doc.documentName}
                                                   </p>
                                               </div>
-                                              <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded">
+                                              <span className="px-2 py-1 bg-red-50 text-red-600 text-xs font-bold rounded">
                                                   필수
                                               </span>
                                           </div>
@@ -66,16 +66,16 @@ const LoanGuide: React.FC<LoanGuideProps> = ({ onNext }) => {
                                               ].map((doc) => (
                                                   <div
                                                       key={doc.id}
-                                                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                                                      className="flex items-center gap-3 p-5 bg-gray-50 rounded-lg"
                                                   >
-                                                      <div className="w-6 h-6 flex items-center justify-center bg-blue-50 text-blue-600 text-xs font-bold rounded-full shrink-0">
+                                                      <div className="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-600 text-sm font-bold rounded-full shrink-0">
                                                           {doc.id}
                                                       </div>
                                                       <div className="flex-1">
-                                                          <p className="text-sm font-medium text-gray-900">{doc.name}</p>
-                                                          <p className="text-xs text-gray-500">{doc.desc}</p>
+                                                          <p className="text-base font-medium text-gray-900">{doc.name}</p>
+                                                          <p className="text-sm text-gray-500">{doc.desc}</p>
                                                       </div>
-                                                      <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded">
+                                                      <span className="px-2 py-1 bg-red-50 text-red-600 text-xs font-bold rounded">
                                                           필수
                                                       </span>
                                                   </div>
@@ -86,27 +86,27 @@ const LoanGuide: React.FC<LoanGuideProps> = ({ onNext }) => {
                         </div>
 
                         {/* 선택 서류 */}
-                        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                            <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-                                <FilePlus className="w-5 h-5 text-gray-400" />
-                                <h3 className="text-sm font-bold text-gray-900">선택 제출 서류</h3>
+                        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+                            <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
+                                <FilePlus className="w-6 h-6 text-gray-400" />
+                                <h3 className="text-base font-bold text-gray-900">선택 제출 서류</h3>
                             </div>
-                            <div className="p-4 space-y-3">
+                            <div className="p-6 space-y-3">
                                 {optionalDocs.length > 0
                                     ? optionalDocs.map((doc, idx) => (
                                           <div
                                               key={doc.documentType}
-                                              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                                              className="flex items-center gap-3 p-5 bg-gray-50 rounded-lg"
                                           >
-                                              <div className="w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-600 text-xs font-bold rounded-full shrink-0">
+                                              <div className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 text-sm font-bold rounded-full shrink-0">
                                                   {idx + 1}
                                               </div>
                                               <div className="flex-1">
-                                                  <p className="text-sm font-medium text-gray-900">
+                                                  <p className="text-base font-medium text-gray-900">
                                                       {doc.documentName}
                                                   </p>
                                               </div>
-                                              <span className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded">
+                                              <span className="px-2 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded">
                                                   선택
                                               </span>
                                           </div>
@@ -119,16 +119,16 @@ const LoanGuide: React.FC<LoanGuideProps> = ({ onNext }) => {
                                               ].map((doc) => (
                                                   <div
                                                       key={doc.id}
-                                                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                                                      className="flex items-center gap-3 p-5 bg-gray-50 rounded-lg"
                                                   >
-                                                      <div className="w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-600 text-xs font-bold rounded-full shrink-0">
+                                                      <div className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 text-sm font-bold rounded-full shrink-0">
                                                           {doc.id}
                                                       </div>
                                                       <div className="flex-1">
-                                                          <p className="text-sm font-medium text-gray-900">{doc.name}</p>
-                                                          <p className="text-xs text-gray-500">{doc.desc}</p>
+                                                          <p className="text-base font-medium text-gray-900">{doc.name}</p>
+                                                          <p className="text-sm text-gray-500">{doc.desc}</p>
                                                       </div>
-                                                      <span className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded">
+                                                      <span className="px-2 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded">
                                                           선택
                                                       </span>
                                                   </div>
@@ -140,12 +140,12 @@ const LoanGuide: React.FC<LoanGuideProps> = ({ onNext }) => {
                     </div>
 
                     <div className="space-y-6">
-                        <div className="bg-white border border-gray-200 rounded-xl p-6">
+                        <div className="bg-white border border-gray-200 rounded-2xl p-8">
                             <div className="flex items-center gap-2 mb-4">
-                                <Info className="w-5 h-5 text-gray-400" />
-                                <h3 className="text-sm font-bold text-gray-900">심사 안내</h3>
+                                <Info className="w-6 h-6 text-gray-400" />
+                                <h3 className="text-base font-bold text-gray-900">심사 안내</h3>
                             </div>
-                            <ul className="space-y-3 text-xs text-gray-600 leading-relaxed">
+                            <ul className="space-y-3 text-sm text-gray-600 leading-relaxed">
                                 <li className="flex gap-2">
                                     <span className="text-gray-400">•</span>
                                     <span>
@@ -174,10 +174,10 @@ const LoanGuide: React.FC<LoanGuideProps> = ({ onNext }) => {
 
                             <div className="mt-6 p-4 bg-emerald-50 rounded-xl">
                                 <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs mb-1">
-                                    <ShieldCheck className="w-4 h-4" />
+                                    <ShieldCheck className="w-5 h-5" />
                                     NICE 신용점수 조회 동의 필요
                                 </div>
-                                <p className="text-[10px] text-emerald-600">
+                                <p className="text-xs text-emerald-600">
                                     다음 단계에서 신용정보조회 동의서에 서명이 필요합니다.
                                 </p>
                             </div>
@@ -189,10 +189,10 @@ const LoanGuide: React.FC<LoanGuideProps> = ({ onNext }) => {
             <div className="flex justify-end pt-6 border-t border-gray-200">
                 <button
                     onClick={onNext}
-                    className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors"
+                    className="flex items-center gap-2 px-10 py-4 bg-slate-900 text-white rounded-xl font-bold text-base hover:bg-slate-800 transition-colors"
                 >
                     서류 제출하기
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-5 h-5" />
                 </button>
             </div>
         </div>
