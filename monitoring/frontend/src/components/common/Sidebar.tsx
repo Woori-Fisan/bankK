@@ -33,12 +33,12 @@ const Sidebar: React.FC = () => {
         <aside className="w-60 bg-slate-900 flex flex-col flex-shrink-0">
             <div className="p-6 pb-8">
                 <Link to="/" className="flex items-center gap-3 cursor-pointer group">
-                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center transition-transform group-hover:scale-105 shadow-sm">
-                        <Landmark className="w-6 h-6 text-emerald-600" />
+                    <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 shadow-md flex-shrink-0">
+                        <Landmark className="w-6 h-6 text-slate-900" />
                     </div>
                     <div>
-                        <h1 className="text-white text-3xl font-bold leading-tight text-left">BankK</h1>
-                        <p className="text-white/60 text-[10px] text-left uppercase tracking-wider font-semibold">Monitoring System</p>
+                        <h1 className="text-white text-xl font-bold leading-none text-left tracking-tight mb-0.5">BankK</h1>
+                        <p className="text-white/50 text-[11px] text-left tracking-wide -mt-0.5">Monitoring System</p>
                     </div>
                 </Link>
             </div>
