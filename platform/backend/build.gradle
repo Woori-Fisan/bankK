@@ -100,12 +100,19 @@ sonar {
 */
 
 dependencies {
+	implementation enforcedPlatform('io.grpc:grpc-bom:1.70.0')
 
 	//	implementation platform("org.springframework.ai:spring-ai-bom:1.0.0")
 
-	// Spring AI — Gemini + Qdrant
-//	implementation 'org.springframework.ai:spring-ai-starter-model-vertex-ai-gemini'
-//	implementation 'org.springframework.ai:spring-ai-starter-vector-store-qdrant'
+	// Spring AI 의존성
+	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
+	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai-embedding'
+
+	// Qdrant
+	implementation 'io.qdrant:client:1.8.0'
+
+	// PDF Box
+	implementation 'org.apache.pdfbox:pdfbox:2.0.27'
 
 	// Validation
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -177,6 +184,7 @@ dependencyManagement {
 	imports {
 
 		mavenBom "net.ttddyy.observation:datasource-micrometer-bom:${datasourceMicrometerVersion}"
+		mavenBom "org.springframework.ai:spring-ai-bom:1.1.4"
 	}
 }
 
