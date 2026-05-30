@@ -49,19 +49,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # ── Qdrant Setup (Auto Collection Creation) ──────
-  qdrant-setup:
-    image: curlimages/curl:latest
-    container_name: platform-qdrant-setup
-    depends_on:
-      qdrant:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      curl -X PUT \"http://qdrant:6333/collections/agency-docs\" \
+    command: >
+      sh -c "
+      ./qdrant &
+      until curl -s http://localhost:6333/healthz > /dev/null; do
+        echo 'Waiting for Qdrant API...'
+        sleep 2
+      done;
+      echo 'Qdrant is ready. Creating collection if not exists...'
+      curl -X PUT \"http://localhost:6333/collections/agency-docs\" \
       -H \"Content-Type: application/json\" \
-      -d '{\"vectors\": {\"size\": 3072, \"distance\": \"Cosine\"}}'
+      -d '{\"vectors\": {\"size\": 3072, \"distance\": \"Cosine\"}}';
+      wait
       "
 
 volumes:
