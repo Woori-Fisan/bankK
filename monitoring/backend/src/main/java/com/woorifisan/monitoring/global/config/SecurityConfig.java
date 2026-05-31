@@ -2,6 +2,7 @@ package com.woorifisan.monitoring.global.config;
 
 import com.woorifisan.monitoring.global.filter.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -25,10 +26,14 @@ public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
 
+    @Value("${cors.allowed-origins}")
+    private List<String> allowedOrigins;
+
     private static final String[] PUBLIC_URLS = {
             "/user/login",
             "/user/register",
             "/user/refresh",
+            "/user/logout",
             "/actuator/**",
             "/swagger-ui/**",
             "/v3/api-docs/**"
@@ -57,7 +62,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedOriginPatterns(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

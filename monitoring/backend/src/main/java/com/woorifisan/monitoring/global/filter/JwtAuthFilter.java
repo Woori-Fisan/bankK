@@ -43,10 +43,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     throw new BusinessException(ErrorCode.ALREADY_LOGGED_OUT);
                 }
 
-                // 2. JWT 유효성 검증
-                jwtProvider.validateToken(token);
+                // 2. JWT 유효성 검증 및 데이터 추출 (1회 파싱)
+                io.jsonwebtoken.Claims claims = jwtProvider.getClaims(token);
 
-                Long staffId = jwtProvider.extractStaffId(token);
+                Long staffId = Long.parseLong(claims.getSubject());
 
                 // 3. SecurityContext에 인증 정보 설정
                 UsernamePasswordAuthenticationToken authentication =
