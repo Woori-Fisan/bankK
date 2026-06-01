@@ -26,10 +26,9 @@
             <fieldNames>
                 <version>[ignore]</version>
                 <levelValue>[ignore]</levelValue>
+                <logger>[ignore]</logger>
+                <thread>[ignore]</thread>
             </fieldNames>
-            <!-- 서비스 식별용 필드 -->
-            <customFields>{"service":"agency-platform"}</customFields>
-            
             <!-- MDC 설정을 통해 구조화된 데이터 지원 -->
             <includeMdc>true</includeMdc>
             <excludeMdcKeyName>password</excludeMdcKeyName>

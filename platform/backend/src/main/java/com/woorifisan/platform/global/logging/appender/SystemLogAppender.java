@@ -2,7 +2,6 @@ package com.woorifisan.platform.global.logging.appender;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woorifisan.platform.global.logging.SpringContextHolder;
 import com.woorifisan.platform.global.logging.mapper.SystemLogMapper;
 import com.woorifisan.platform.global.logging.model.SystemLog;
@@ -34,9 +33,6 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
 
     // ── bank_code NOT NULL 기본값 (controller 레벨에서는 bankCode 없음) ────
     private static final String UNKNOWN_BANK = "UNKNOWN";
-
-    // ── body JSON 파싱용 — Appender는 Spring Bean이 아니므로 자체 인스턴스 사용 ──
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     // 리플렉션 비용 절감을 위해 클래스 로드 시 1회 추출. 실패 시 null 유지.
     private static final Field MAP_ENTRIES_FIELD;
@@ -83,29 +79,18 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
     // ControllerLoggingAspect 로그 빌더
     // ═══════════════════════════════════════════════════════════════════════
 
-    // REQ/RES: body_data = args[0], ERR: body_data = null + error_code/message 파싱.
-    // 알 수 없는 접두어면 null 반환.
     private SystemLog buildControllerLog(ILoggingEvent event) {
         String logType = resolveControllerLogType(event.getMessage());
         if (logType == null) return null;
 
-        Map<String, String> mdc         = event.getMDCPropertyMap();
+        Map<String, String> mdc        = event.getMDCPropertyMap();
         Map<String, Object> httpContext = extractNestedContext(event, "http");
-        Object[]            args        = event.getArgumentArray();
 
-        // args[0] = argsJson(REQ) / resultJson(RES) / ApiResponse.error JSON(ERR)
-        String rawBody = (args != null && args.length > 0) ? String.valueOf(args[0]) : null;
-        boolean isError = "CONTROLLER_ERR".equals(logType);
-        boolean isReq   = "CONTROLLER_REQ".equals(logType);
-
-        // REQ: Aspect가 파라미터를 [elem1, elem2, ...] 배열로 직렬화 → 단일 원소면 벗겨냄
-        String processedBody = isReq ? unwrapSingleElementArray(rawBody) : rawBody;
-        String bodyData      = isError ? null : processedBody;
-        String errorCode     = isError ? parseApiErrorField(rawBody, "code")    : null;
-        String errorMessage  = isError ? parseApiErrorField(rawBody, "message") : null;
-
-        // bankCode/targetCode: REQ 시점에 ControllerLoggingAspect가 httpContext에 저장 → RES/ERR도 동일 맵 재사용
-        String bankCode = firstNonNull(getStr(httpContext, "bankCode"), UNKNOWN_BANK);
+        String bodyData = switch (logType) {
+            case "CONTROLLER_REQ" -> getStr(httpContext, "request");
+            case "CONTROLLER_RES" -> getStr(httpContext, "response");
+            default               -> null;
+        };
 
         return SystemLog.builder()
                 .createdAt(toLocalDateTime(event.getTimeStamp()))
@@ -113,7 +98,7 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
                 .logType(logType)
                 .traceId(mdc.get("traceId"))
                 .staffId(mdc.get("staffId"))
-                .bankCode(bankCode)
+                .bankCode(firstNonNull(getStr(httpContext, "bankCode"), UNKNOWN_BANK))
                 .targetCode(getStr(httpContext, "targetCode"))
                 .httpMethod(getStr(httpContext, "method"))
                 .httpUri(getStr(httpContext, "uri"))
@@ -121,8 +106,8 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
                 .elapsedMs(getInt(httpContext, "elapsedMs"))
                 .clientIp(getStr(httpContext, "clientIp"))
                 .bodyData(bodyData)
-                .errorCode(errorCode)
-                .errorMessage(errorMessage)
+                .errorCode(getStr(httpContext, "errorCode"))
+                .errorMessage(getStr(httpContext, "errorMessage"))
                 .build();
     }
 
@@ -180,39 +165,6 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
             case "BANK_RES" -> getStr(bankContext, "response");
             default         -> null;
         };
-    }
-
-    // {"success":false,"error":{"code":"...","message":"..."}} 구조에서 fieldName 값 추출
-    private String parseApiErrorField(String bodyJson, String fieldName) {
-        if (bodyJson == null) return null;
-        try {
-            return OBJECT_MAPPER.readTree(bodyJson).path("error").path(fieldName).asText(null);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    // [elem1, elem2, ...] 배열에서 JSON 오브젝트만 추출. 1개면 그대로, 여러 개면 배열, 0개면 원본 반환.
-    // ex) [1, {"bankCode":"020","amount":10}] → {"bankCode":"020","amount":10}
-    private String unwrapSingleElementArray(String json) {
-        if (json == null) return null;
-        try {
-            var node = OBJECT_MAPPER.readTree(json);
-            if (!node.isArray()) return json;
-
-            var objectNodes = new java.util.ArrayList<com.fasterxml.jackson.databind.JsonNode>();
-            for (var elem : node) {
-                if (elem.isObject()) objectNodes.add(elem);
-            }
-
-            if (objectNodes.size() == 1) {
-                return OBJECT_MAPPER.writeValueAsString(objectNodes.get(0));
-            }
-            if (objectNodes.size() > 1) {
-                return OBJECT_MAPPER.writeValueAsString(objectNodes);
-            }
-        } catch (Exception ignored) {}
-        return json;
     }
 
     private String resolveBankLogType(String message) {

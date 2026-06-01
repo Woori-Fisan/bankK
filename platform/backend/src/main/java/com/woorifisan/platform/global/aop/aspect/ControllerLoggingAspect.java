@@ -4,7 +4,6 @@ import static net.logstash.logback.argument.StructuredArguments.entries;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woorifisan.platform.global.exception.BusinessException;
-import com.woorifisan.platform.global.response.ApiResponse;
 import com.woorifisan.platform.global.response.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -93,43 +92,39 @@ public class ControllerLoggingAspect {
         httpContext.put("uri", request.getRequestURI());
         httpContext.put("clientIp", getClientIp(request));
         httpContext.put("controller", className + "." + methodName);
-        // 요청 시점에 bankCode/targetCode를 한 번만 파싱해 httpContext에 저장
-        // → 이후 RES / ERR 로그에서도 동일한 맵을 재사용하므로 자동으로 포함됨
+        httpContext.put("request", argsJson);
         putBankCodes(args, httpContext);
 
         httpContext.put("logType", "CONTROLLER_REQ");
-        log.info("[Request] Args: {}", argsJson, entries(Map.of("http", httpContext)));
+        log.info("[Request] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
 
         long start = System.currentTimeMillis();
         try {
-            Object result          = joinPoint.proceed();
-            long   executionTime   = System.currentTimeMillis() - start;
+            Object result        = joinPoint.proceed();
+            long   executionTime = System.currentTimeMillis() - start;
 
             applyElapsedAndStatus(httpContext, executionTime, response);
+            httpContext.put("response", serialize(result));
             httpContext.put("logType", "CONTROLLER_RES");
-            log.info("[Response] Result: {}", serialize(result), entries(Map.of("http", httpContext)));
+            log.info("[Response] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
             return result;
         } catch (BusinessException e) {
-            // 예상된 비즈니스 예외 — errorCode에서 status 직접 추출, WARN 레벨로 기록
             long executionTime = System.currentTimeMillis() - start;
             applyElapsedAndStatus(httpContext, executionTime, e.getErrorCode().getHttpStatus().value());
             httpContext.put("exception", e.getClass().getSimpleName());
+            httpContext.put("errorCode", e.getErrorCode().getCode());
+            httpContext.put("errorMessage", e.getMessage());
             httpContext.put("logType", "CONTROLLER_ERR");
-            // GlobalExceptionHandler가 반환할 응답 바디를 재현하여 result로 기록
-            String resultJson = serialize(ApiResponse.error(e.getErrorCode(), e.getMessage()));
-            log.warn("[Error] Result: {} | Exception: {} | Message: {}",
-                    resultJson, e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
+            log.warn("[Error] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
             throw e;
         } catch (Throwable e) {
-            // 예상치 못한 시스템 예외 — status 500, ERROR 레벨로 기록
             long executionTime = System.currentTimeMillis() - start;
             applyElapsedAndStatus(httpContext, executionTime, HttpStatus.INTERNAL_SERVER_ERROR.value());
             httpContext.put("exception", e.getClass().getSimpleName());
+            httpContext.put("errorCode", ErrorCode.INTERNAL_SERVER_ERROR.getCode());
+            httpContext.put("errorMessage", e.getMessage());
             httpContext.put("logType", "CONTROLLER_ERR");
-            // 시스템 예외는 GlobalExceptionHandler가 INTERNAL_SERVER_ERROR로 응답
-            String resultJson = serialize(ApiResponse.error(ErrorCode.INTERNAL_SERVER_ERROR));
-            log.error("[Error] Result: {} | Exception: {} | Message: {}",
-                    resultJson, e.getClass().getSimpleName(), e.getMessage(), entries(Map.of("http", httpContext)));
+            log.error("[Error] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
             throw e;
         } finally {
             MDC.remove(MDC_STAFF_ID);
@@ -211,11 +206,14 @@ public class ControllerLoggingAspect {
         if (obj == null) return "null";
         if (obj instanceof Object[] args) {
             try {
-                return Arrays.stream(args)
-                        .filter(arg -> arg == null ||
+                List<String> elements = Arrays.stream(args)
+                        .filter(arg -> arg != null &&
                                 NON_SERIALIZABLE_TYPES.stream().noneMatch(t -> t.isInstance(arg)))
                         .map(this::serialize)
-                        .collect(Collectors.joining(", ", "[", "]"));
+                        .collect(Collectors.toList());
+                if (elements.isEmpty()) return null;
+                if (elements.size() == 1) return elements.get(0);
+                return elements.stream().collect(Collectors.joining(", ", "[", "]"));
             } catch (Throwable t) {
                 return String.valueOf(args);
             }
