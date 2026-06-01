@@ -2,6 +2,7 @@ package com.woorifisan.monitoring.domain.log.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.woorifisan.monitoring.domain.log.dto.BizLogInsertDTO;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -41,8 +42,29 @@ public class BizLogRequest {
 
     }
 
+    public BizLogInsertDTO toInsertDTO() {
+        return BizLogInsertDTO.builder()
+                .level(level)
+                .logType(http.getLogType())
+                .traceId(traceId)
+                .staffId(staffId)
+                .bankCode(http.getBankCode())
+                .targetCode(http.getTargetCode())
+                .bankKeyId(http.getBankKeyId())
+                .httpMethod(http.getHttpMethod())
+                .httpUri(http.getHttpUri())
+                .httpStatus(http.getHttpStatus())
+                .elapsedMs(http.getElapsedMs())
+                .clientIp(http.getClientIp())
+                .jwsSignature(http.getJwsSignature())
+                .bodyData(resolveBodyData())
+                .errorCode(http.getErrorCode())
+                .errorMessage(http.getErrorMessage())
+                .build();
+    }
+
     // ERR 로그는 null, RES 로그는 response, REQ 로그는 request를 body_data로 저장
-    public String resolveBodyData() {
+    private String resolveBodyData() {
         if (http == null) return null;
         String logType = http.logType;
         if (logType == null) return null;

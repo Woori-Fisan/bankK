@@ -1,24 +1,21 @@
 package com.woorifisan.monitoring.domain.log.service;
 
-import com.woorifisan.monitoring.domain.log.dto.BizLogInsertDTO;
 import com.woorifisan.monitoring.domain.log.dto.LogListDTO;
-import com.woorifisan.monitoring.domain.log.dto.request.BizLogRequest;
 import com.woorifisan.monitoring.domain.log.dto.request.LogRequest;
-import com.woorifisan.monitoring.domain.log.dto.response.LogResponse;
 import com.woorifisan.monitoring.domain.log.dto.request.LogSummaryRequest;
+import com.woorifisan.monitoring.domain.log.dto.response.LogResponse;
 import com.woorifisan.monitoring.domain.log.dto.response.LogSummaryResponse;
 import com.woorifisan.monitoring.domain.log.mapper.LogMapper;
 import com.woorifisan.monitoring.global.exception.BusinessException;
 import com.woorifisan.monitoring.global.response.ErrorCode;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -99,35 +96,6 @@ public class LogService {
                 .averageElapsedMs(avgElapsedMs)
                 .successRate(successRate)
                 .build();
-    }
-
-    @Transactional
-    public void saveBizLogs(List<BizLogRequest> logs) {
-        for (BizLogRequest req : logs) {
-            if (req.getHttp() == null || req.getHttp().getLogType() == null) {
-                continue;
-            }
-            BizLogInsertDTO dto = BizLogInsertDTO.builder()
-                    .level(req.getLevel())
-                    .logType(req.getHttp().getLogType())
-                    .traceId(req.getTraceId())
-                    .staffId(req.getStaffId())
-                    .bankCode(req.getHttp().getBankCode())
-                    .targetCode(req.getHttp().getTargetCode())
-                    .bankKeyId(req.getHttp().getBankKeyId())
-                    .httpMethod(req.getHttp().getHttpMethod())
-                    .httpUri(req.getHttp().getHttpUri())
-                    .httpStatus(req.getHttp().getHttpStatus())
-                    .elapsedMs(req.getHttp().getElapsedMs())
-                    .clientIp(req.getHttp().getClientIp())
-                    .jwsSignature(req.getHttp().getJwsSignature())
-                    .bodyData(req.resolveBodyData())
-                    .errorCode(req.getHttp().getErrorCode())
-                    .errorMessage(req.getHttp().getErrorMessage())
-                    .build();
-            logMapper.insertBizLog(dto);
-        }
-        log.debug("[BizLog 저장 완료] {} 건", logs.size());
     }
 
     private void validateInquiryPeriod(String start, String end) {

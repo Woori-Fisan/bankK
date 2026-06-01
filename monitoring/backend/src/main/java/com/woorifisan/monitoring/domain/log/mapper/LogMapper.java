@@ -14,5 +14,5 @@ public interface LogMapper {
     long countLogList(LogRequest request);
     LogListDTO findById(Long id);
     Map<String, Object> findLogSummary(LogSummaryRequest request);
-    void insertBizLog(BizLogInsertDTO dto);
+    void insertBizLogs(List<BizLogInsertDTO> dtos);
 }

@@ -103,7 +103,7 @@
     </select>
 
 
-    <insert id="insertBizLog" parameterType="com.woorifisan.monitoring.domain.log.dto.BizLogInsertDTO">
+    <insert id="insertBizLogs" parameterType="java.util.List">
         INSERT INTO system_logs (
             created_at,
             level, log_type, trace_id, staff_id,
@@ -111,14 +111,17 @@
             http_method, http_uri, http_status,
             elapsed_ms, client_ip, jws_signature,
             body_data, error_code, error_message
-        ) VALUES (
-            NOW(),
-            #{level}, #{logType}, #{traceId}, #{staffId},
-            #{bankCode}, #{targetCode}, #{bankKeyId},
-            #{httpMethod}, #{httpUri}, #{httpStatus},
-            #{elapsedMs}, #{clientIp}, #{jwsSignature},
-            #{bodyData}, #{errorCode}, #{errorMessage}
-        )
+        ) VALUES
+        <foreach collection="list" item="dto" separator=",">
+            (
+                NOW(),
+                #{dto.level}, #{dto.logType}, #{dto.traceId}, #{dto.staffId},
+                #{dto.bankCode}, #{dto.targetCode}, #{dto.bankKeyId},
+                #{dto.httpMethod}, #{dto.httpUri}, #{dto.httpStatus},
+                #{dto.elapsedMs}, #{dto.clientIp}, #{dto.jwsSignature},
+                #{dto.bodyData}, #{dto.errorCode}, #{dto.errorMessage}
+            )
+        </foreach>
     </insert>
 
 </mapper>
