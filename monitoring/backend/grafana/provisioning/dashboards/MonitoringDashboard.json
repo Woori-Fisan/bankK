@@ -18,7 +18,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
   "links": [],
   "panels": [
     {
@@ -107,7 +106,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "sum by (logType) (count_over_time(\n  {job=\"platform-backend\"} | json | logType =~ \"BIZ_.*\" [1m]\n))",
+          "expr": "sum by (http_logType) (count_over_time(\n  {job=\"platform-backend\"} | json | http_logType =~ \"BANK_REQ|BANK_RES|BANK_ERR|CONTROLLER_REQ|CONTROLLER_RES|CONTROLLER_ERR\" [1m]\n))",
           "queryType": "range",
           "refId": "A"
         }
@@ -144,7 +143,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "{job=\"platform-backend\"} | json | logType =~ \"BIZ_.*\"",
+          "expr": "{job=\"platform-backend\"} | json | http_logType =~ \"BANK_RES|BANK_REQ|BANK_ERR|CONTROLLER_REQ|CONTROLLER_RES|CONTROLLER_ERR\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -358,7 +357,7 @@
     "list": []
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-1h",
     "to": "now"
   },
   "timeRangeUpdatedDuringEditOrView": false,
@@ -366,6 +365,6 @@
   "timezone": "browser",
   "title": "Monitoring Dashboard",
   "uid": "dfnt2zaw0xmgwf",
-  "version": 8,
+  "version": 1,
   "weekStart": ""
 }
