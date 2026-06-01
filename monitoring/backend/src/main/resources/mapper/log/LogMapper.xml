@@ -28,6 +28,9 @@
             <if test="httpStatus != null and httpStatus != ''">
                 AND http_status = #{httpStatus}
             </if>
+            <if test="errorCode != null and errorCode != ''">
+                AND error_code = #{errorCode}
+            </if>
             <if test="startDate != null and startDate != ''">
                 AND created_at &gt;= #{startDate}
             </if>
@@ -50,9 +53,11 @@
             bank_code as bankCode,
             target_code as targetCode,
             agency_code as agencyCode,
+            http_method as httpMethod,
             http_status as httpStatus,
             elapsed_ms as elapsedMs,
-            http_uri as httpUri
+            http_uri as httpUri,
+            error_code as errorCode
         FROM system_logs
         <include refid="logSearchCondition" />
         ORDER BY created_at DESC
@@ -66,7 +71,7 @@
     </select>
 
     <!-- 통계 요약 조회: 총 건수, 에러 건수, 평균 응답시간 집계 -->
-    <select id="findLogSummary" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogRequest" resultType="map">
+    <select id="findLogSummary" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogSummaryRequest" resultType="map">
         SELECT
             COUNT(*) as totalCount,
             COUNT(CASE WHEN level = 'ERROR' THEN 1 END) as errorCount,
@@ -77,7 +82,7 @@
 
     <!-- 단건 상세 조회용: 암호화 페이로드(body_data) 및 서명(jws_signature) 등 모든 필드 포함 -->
     <select id="findById" parameterType="long"
-            resultType="com.woorifisan.monitoring.domain.log.dto.LogListDTO">
+            resultType="com.woorifisan.monitoring.domain.log.dto.LogDetailDTO">
         SELECT
             id,
             created_at as createdAt,

@@ -58,11 +58,12 @@ public class UserController {
         return ApiResponse.success(loginResponse);
     }
 
-    @Operation(summary = "로그아웃", description = "현재 세션을 종료하고 Refresh Token 쿠키 및 Redis 세션을 삭제합니다.")
+    @Operation(summary = "로그아웃", description = "현재 세션을 종료하고 Refresh Token 쿠키 및 Redis 세션을 삭제합니다. 토큰이 만료된 상태에서도 처리가 가능합니다.")
     @PostMapping("/logout")
     public ApiResponse<Void> logout(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
+            @Parameter(hidden = true) @CookieValue(value = "refreshToken", required = false) String refreshToken,
+            @Parameter(hidden = true) @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
             @Parameter(hidden = true) HttpServletResponse response
     ) {
         String accessToken = null;
@@ -70,11 +71,9 @@ public class UserController {
             accessToken = authHeader.substring(7);
         }
 
-        if (userId != null) {
-            userService.logout(userId, accessToken);
-        }
+        userService.logout(userId, refreshToken, accessToken);
 
-        // 쿠키 삭제
+        // 쿠키 삭제 (응답에 포함)
         ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
                 .secure(true)
@@ -100,7 +99,7 @@ public class UserController {
     @CustomExceptionDescription(SwaggerResponseDescription.AUTH_REFRESH)
     @PostMapping("/refresh")
     public ApiResponse<TokenRefreshResponse> refresh(
-            @CookieValue(value = "refreshToken") String refreshToken,
+            @Parameter(hidden = true) @CookieValue(value = "refreshToken") String refreshToken,
             @Parameter(hidden = true) HttpServletResponse response
     ) {
         AuthTokenDto tokenDto = userService.refresh(refreshToken);

@@ -1,5 +1,6 @@
 package com.woorifisan.monitoring.domain.log.service;
 
+import com.woorifisan.monitoring.domain.log.dto.LogDetailDTO;
 import com.woorifisan.monitoring.domain.log.dto.LogListDTO;
 import com.woorifisan.monitoring.domain.log.dto.request.LogRequest;
 import com.woorifisan.monitoring.domain.log.dto.request.LogSummaryRequest;
@@ -48,10 +49,10 @@ public class LogService {
                 .build();
     }
 
-    public LogListDTO getLogDetail(Long id) {
+    public LogDetailDTO getLogDetail(Long id) {
         log.info("[Service 시작] 거래 로그 단건 조회 로직 수행 - ID: {}", id);
 
-        LogListDTO logDetail = logMapper.findById(id);
+        LogDetailDTO logDetail = logMapper.findById(id);
 
         if (logDetail == null) {
             log.warn("[Service 경고] 해당 ID의 로그를 찾을 수 없음 - ID: {}", id);
@@ -70,7 +71,7 @@ public class LogService {
         Map<String, Object> summaryMap = logMapper.findLogSummary(request);
 
         // 결과가 없거나 전체 건수가 0인 경우 예외 처리
-        if (summaryMap == null || ((Number) summaryMap.getOrDefault("totalCount", 0L)).longValue() == 0) {
+        if (summaryMap == null) {
             log.warn("[Service 경고] 조회 조건에 해당하는 로그가 존재하지 않음 - 기간: {} ~ {}", request.getStartDate(), request.getEndDate());
             throw new BusinessException("해당 조건의 로그가 존재하지 않습니다.", ErrorCode.NOT_EXIST_LOG);
         }
@@ -99,9 +100,6 @@ public class LogService {
     }
 
     private void validateInquiryPeriod(String start, String end) {
-        if (start == null || end == null || start.isBlank() || end.isBlank()) {
-            throw new BusinessException("날짜 형식이 올바르지 않습니다. (yyyy-MM-dd HH:mm:ss)", ErrorCode.INVALID_INPUT);
-        }
 
         LocalDateTime startDate;
         LocalDateTime endDate;
