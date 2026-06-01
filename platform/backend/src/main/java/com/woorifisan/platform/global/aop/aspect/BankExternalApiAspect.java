@@ -106,8 +106,8 @@ public class BankExternalApiAspect {
 
             bankContext.put("elapsedMs", stopWatch.getTotalTimeMillis());
             bankContext.put("httpStatus", e.getBankHttpStatus());
-            bankContext.put("bankErrorCode", e.getBankErrorCode());
-            bankContext.put("bankErrorMessage", e.getBankErrorMessage());
+            bankContext.put("errorCode", e.getBankErrorCode());
+            bankContext.put("errorMessage", e.getBankErrorMessage());
             bankContext.put("logType", "BANK_ERR");
             log.warn("[BankAPI][BusinessError] {}", apiType, entries(Map.of("http", bankContext)));
 
