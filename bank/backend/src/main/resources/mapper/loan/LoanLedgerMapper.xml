@@ -10,10 +10,12 @@
         SELECT * FROM loan_ledger WHERE loan_no = #{loanNo}
     </select>
 
+    <!-- DSR 계산 시 기존 부채 합산용 -->
     <select id="findActiveByCustomerId" resultType="LoanLedger">
         SELECT * FROM loan_ledger WHERE customer_id = #{customerId} AND status = 'ACTIVE'
     </select>
 
+    <!-- useGeneratedKeys: INSERT 후 DB 채번 id를 loanLedger.id에 자동 주입 -->
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO loan_ledger (
             loan_no, customer_id, linked_account_id,
@@ -30,21 +32,44 @@
         )
     </insert>
 
-    <update id="updateExecution">
+    <!-- @Async 심사 완료 후 결과 기록 -->
+    <update id="updateReviewResult">
         UPDATE loan_ledger SET
-            product_id          = #{productId},
-            loan_amount         = #{loanAmount},
-            current_loan_balance = #{loanAmount},
-            interest_rate       = #{interestRate},
-            repayment_type      = #{repaymentType},
-            repayment_period    = #{repaymentPeriod},
-            start_date          = #{startDate},
-            end_date            = #{endDate},
-            status              = 'ACTIVE'
+            applied_credit_score = #{appliedCreditScore},
+            applied_dsr          = #{appliedDsr},
+            approved_limit       = #{approvedLimit},
+            interest_rate        = #{interestRate},
+            reject_reason        = #{rejectReason},
+            reviewed_at          = #{reviewedAt},
+            status               = #{status}
         WHERE loan_no = #{loanNo}
     </update>
 
-    <!-- BK-B24: 동일 고객·상품의 60일 내 ACTIVE 대출 존재 여부 -->
+    <!-- 중복 신청 방지: SUBMITTED 상태 건 존재 여부 -->
+    <select id="existsPendingByCustomerId" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1 FROM loan_ledger
+            WHERE customer_id = #{customerId}
+              AND status = 'SUBMITTED'
+        )
+    </select>
+
+    <!-- 대출 실행 후 확정 정보 기록. status는 항상 ACTIVE로 고정 -->
+    <update id="updateExecution">
+        UPDATE loan_ledger SET
+            product_id           = #{productId},
+            loan_amount          = #{loanAmount},
+            current_loan_balance = #{loanAmount},
+            interest_rate        = #{interestRate},
+            repayment_type       = #{repaymentType},
+            repayment_period     = #{repaymentPeriod},
+            start_date           = #{startDate},
+            end_date             = #{endDate},
+            status               = 'ACTIVE'
+        WHERE loan_no = #{loanNo}
+    </update>
+
+    <!-- 불완전판매 방지(BK-B24): 동일 고객·상품 60일 내 ACTIVE 대출 존재 여부 -->
     <select id="existsRecentActiveByCustomerAndProduct" resultType="boolean">
         SELECT EXISTS (
             SELECT 1 FROM loan_ledger

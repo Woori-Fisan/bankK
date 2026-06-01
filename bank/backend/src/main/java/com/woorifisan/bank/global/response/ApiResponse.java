@@ -28,4 +28,9 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> error(ErrorCode errorCode) {
         return new ApiResponse<>(false, null, ErrorResponse.of(errorCode));
     }
+
+    // 커스텀 메시지 에러 응답
+    public static <T> ApiResponse<T> error(ErrorCode errorCode, String customMessage) {
+        return new ApiResponse<>(false, null, ErrorResponse.of(errorCode, customMessage));
+    }
 }

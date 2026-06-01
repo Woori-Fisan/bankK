@@ -11,8 +11,8 @@ import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
-import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.exception.BusinessException;
+import com.woorifisan.bank.global.response.ErrorCode;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -58,6 +58,11 @@ public class TransferService {
         Account sender = accountMapper.findByAccountNoPlain(request.getWithdrawalAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
 
+        // 출금 계좌와 입금 계좌가 동일한지 검증
+        if (request.getWithdrawalAccountNo().equals(request.getDepositAccountNo())) {
+            throw new BusinessException(ErrorCode.SAME_ACCOUNT_TRANSFER);
+        }
+
         // 3. 본인 인증 검증 (주민번호 앞자리)
         verifyCustomerIdentification(sender.getCustomerId(), request.getCustomerRrnPrefix());
 
@@ -92,8 +97,15 @@ public class TransferService {
         BigDecimal receiverNewBalance = receiver.getBalance().add(request.getAmount());
 
         // 매퍼가 balance = balance + #{amount} 형식이므로 출금은 음수를, 입금은 양수를 전달
-        accountMapper.updateBalance(sender.getId(), request.getAmount().negate());
-        accountMapper.updateBalance(receiver.getId(), request.getAmount());
+        int updatedSender = accountMapper.updateBalance(sender.getId(), request.getAmount().negate(), sender.getVersion());
+        if (updatedSender == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
+        }
+
+        int updatedReceiver = accountMapper.updateBalance(receiver.getId(), request.getAmount(), receiver.getVersion());
+        if (updatedReceiver == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
+        }
 
         // 9. 거래 원장 생성 및 저장 (출금/입금 양방향)
         String txId = UUID.randomUUID().toString();
@@ -189,7 +201,10 @@ public class TransferService {
 
         // 7. 잔액 차감 및 업데이트 (매퍼의 가산 방식에 맞춰 차액만 전달)
         BigDecimal newBalance = sender.getBalance().subtract(request.getAmount());
-        accountMapper.updateBalance(sender.getId(), request.getAmount().negate());
+        int updatedCount = accountMapper.updateBalance(sender.getId(), request.getAmount().negate(), sender.getVersion());
+        if (updatedCount == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
+        }
 
         // 7. 원장 기록 (출금 정보만 기록)
         String txId = UUID.randomUUID().toString();
@@ -225,7 +240,10 @@ public class TransferService {
 
         // 3. 잔액 증액 및 업데이트 (매퍼의 가산 방식에 맞춰 차액만 전달)
         BigDecimal newBalance = receiver.getBalance().add(request.getAmount());
-        accountMapper.updateBalance(receiver.getId(), request.getAmount());
+        int updatedCount = accountMapper.updateBalance(receiver.getId(), request.getAmount(), receiver.getVersion());
+        if (updatedCount == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
+        }
 
         // 4. 원장 기록 (입금 정보만 기록)
         String txId = UUID.randomUUID().toString();

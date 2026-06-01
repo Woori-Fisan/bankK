@@ -42,8 +42,6 @@ public class TransferService {
      */
     @Transactional(readOnly = true)
     public TransferRecipientResponse getRecipient(TransferRecipientRequest request) {
-        log.info("수취인 조회 요청 수신 - 은행코드: {}, 계좌번호: {}", 
-                request.getDepositBankCode(), request.getDepositAccountNo());
 
         // 1. 은행 코어에 전달할 요청 DTO 생성
         BankRecipientRequest bankRequest = BankRecipientRequest.of(
@@ -73,9 +71,6 @@ public class TransferService {
      */
     @Transactional
     public TransferResponse executeTransfer(TransferRequest request) {
-        log.info("이체 실행 요청 수신 - 출금은행: {}, 출금계좌: {}, 입금은행: {}, 입금계좌: {}, 금액: {}", 
-                request.getWithdrawalBankCode(), request.getWithdrawalAccountNo(),
-                request.getDepositBankCode(), request.getDepositAccountNo(), request.getAmount());
 
         // 출금 은행과 입금 은행이 같은지 확인하여 당행/타행 이체 구분
         if (request.getWithdrawalBankCode().equals(request.getDepositBankCode())) {
@@ -89,8 +84,7 @@ public class TransferService {
      * 당행 이체 처리 (출금은행 == 입금은행)
      */
     private TransferResponse processInternalTransfer(TransferRequest request) {
-        log.info("당행 이체 프로세스 시작 - 은행코드: {}", request.getWithdrawalBankCode());
-        
+
         // 1. 은행 코어에 전달할 요청 DTO 생성
         BankTransferRequest bankRequest = BankTransferRequest.of(
                 request.getWithdrawalAccountNo(),
@@ -112,7 +106,7 @@ public class TransferService {
         try {
             if (bankResponse.getTransactionDate() != null) {
                 // 은행 코어는 "yyyy-MM-dd HH:mm:ss" 포맷으로 준다고 가정
-                LocalDateTime bankDate = LocalDateTime.parse(bankResponse.getTransactionDate(), 
+                LocalDateTime bankDate = LocalDateTime.parse(bankResponse.getTransactionDate(),
                         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                 formattedDate = bankDate.format(DATE_FORMATTER);
             }
@@ -132,8 +126,6 @@ public class TransferService {
      * Saga 패턴의 오케스트레이션 방식을 적용하여 원자성을 보장합니다.
      */
     private TransferResponse processExternalTransfer(TransferRequest request) {
-        log.info("타행 이체 프로세스 시작 - 출금은행: {}, 입금은행: {}", 
-                request.getWithdrawalBankCode(), request.getDepositBankCode());
 
         // 1. [Step 1: 출금] 출금 은행 API 호출
         BankTransferWithdrawRequest withdrawRequest = BankTransferWithdrawRequest.of(
@@ -146,12 +138,11 @@ public class TransferService {
                 request.getDepositAccountNo(),
                 request.getAmount()
         );
-        
+
         BankTransferResponse withdrawResponse = bankExternalClient.fetchTransferWithdraw(
-                request.getWithdrawalBankCode(), 
+                request.getWithdrawalBankCode(),
                 withdrawRequest
         );
-        log.info("타행 이체 Step 1 성공 [출금 완료] - 거래ID: {}", withdrawResponse.getTransactionId());
 
         try {
             // 2. [Step 2: 입금] 입금 은행 API 호출
@@ -166,7 +157,6 @@ public class TransferService {
                     request.getDepositBankCode(),
                     depositRequest
             );
-            log.info("타행 이체 Step 2 성공 [입금 완료] - 거래ID: {}", depositResponse.getTransactionId());
 
             // 3. 최종 응답 반환
             return TransferResponse.builder()
@@ -177,8 +167,7 @@ public class TransferService {
 
         } catch (Exception e) {
             // 4. [Step 3: 보상 트랜잭션] 입금 실패 시 출금 은행으로 자금 복구(환불) 호출
-            log.error("타행 이체 Step 2 실패 [입금 에러]. 보상 트랜잭션(환불)을 시작합니다. 에러: {}", e.getMessage());
-            
+
             try {
                 // 출금 은행에 다시 입금(환불) 요청 전송
                 BankDepositRequest refundRequest = BankDepositRequest.of(
@@ -189,7 +178,6 @@ public class TransferService {
                 );
 
                 bankExternalClient.fetchDeposit(request.getWithdrawalBankCode(), refundRequest);
-                log.info("보상 트랜잭션 성공 [자금 복구 완료] - 출금 계좌로 금액이 환불되었습니다.");
             } catch (Exception refundError) {
                 // 보상 트랜잭션까지 실패한 경우 (매우 위험한 상태 - 수동 개입 필요)
                 log.error("!!! [심각] 보상 트랜잭션 실패 !!! 자금 불일치 발생 가능성. 수동 확인이 필요합니다. 에러: {}", refundError.getMessage());

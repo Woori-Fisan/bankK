@@ -9,6 +9,7 @@
         SELECT id,
                agency_id,
                login_id,
+               agency_employee_num AS agencyEmployeeNum,
                password_hash,
                role,
                failed_login_count,

@@ -4,3 +4,6 @@
 Thumbs.db
 platform/build/
 history/
+platform/backend/uploads/
+
+coverage/

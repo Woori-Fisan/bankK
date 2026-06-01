@@ -4,4 +4,9 @@
     <select id="findById" resultType="CommonDocument">
         SELECT * FROM common_document WHERE id = #{id}
     </select>
+
+    <insert id="insertDocument" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO common_document (loan_id, account_id, document_type, original_file_name, file_path)
+        VALUES (#{loanId}, #{accountId}, #{documentType}, #{originalFileName}, #{filePath})
+    </insert>
 </mapper>

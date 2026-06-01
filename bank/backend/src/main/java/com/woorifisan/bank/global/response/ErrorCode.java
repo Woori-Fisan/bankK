@@ -34,6 +34,7 @@ public enum ErrorCode {
 
     // 이체
     IDENTIFICATION_ERROR("TRANSFER_001", "본인 인증 정보가 일치하지 않습니다.", HttpStatus.FORBIDDEN),
+    SAME_ACCOUNT_TRANSFER("TRANSFER_002", "동일 계좌로의 이체는 불가합니다.", HttpStatus.BAD_REQUEST),
 
     // 멱등성
     DUPLICATE_REQUEST("IDEM_001", "중복 요청입니다.", HttpStatus.CONFLICT),
@@ -52,6 +53,9 @@ public enum ErrorCode {
     LOAN_CUSTOMER_IDENTITY_MISMATCH("LOAN_011", "고객 본인 확인에 실패했습니다.", HttpStatus.FORBIDDEN),
     LOAN_ACCOUNT_LOCKED("LOAN_012", "입금 계좌가 잠겨있습니다.", HttpStatus.FORBIDDEN),
     LOAN_DEPOSIT_BANK_MISMATCH("LOAN_013", "입금 계좌의 은행이 선택한 은행과 일치하지 않습니다.", HttpStatus.BAD_REQUEST),
+    LOAN_MISSING_REQUIRED_DOCUMENTS("LOAN_014", "필수 서류가 누락되었습니다.", HttpStatus.BAD_REQUEST),
+    LOAN_STORAGE_ERROR("LOAN_015", "서류 파일 저장에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+    LOAN_DUPLICATE_PENDING("LOAN_016", "이미 접수된 대출 신청 건이 있습니다.", HttpStatus.CONFLICT),
 
     //조회
     INQUIRY_ACCOUNT_NOTFOUND("INQUIRY_001", "계좌 정보를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
