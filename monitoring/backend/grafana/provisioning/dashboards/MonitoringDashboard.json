@@ -38,7 +38,7 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 10,
+            "fillOpacity": 0,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -85,7 +85,7 @@
         "x": 0,
         "y": 0
       },
-      "id": 5,
+      "id": 2,
       "options": {
         "legend": {
           "calcs": [],
@@ -106,50 +106,13 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "sum by (http_logType) (count_over_time(\n  {job=\"platform-backend\"} | json | http_logType =~ \"BANK_REQ|BANK_RES|BANK_ERR|CONTROLLER_REQ|CONTROLLER_RES|CONTROLLER_ERR\" [1m]\n))",
+          "expr": "sum(count_over_time({job=\"platform-backend\"}[1m]))",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "BIZ 로그 건수",
+      "title": "전체 로그 타임라인",
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 8
-      },
-      "id": 4,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": true,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
-          "editorMode": "code",
-          "expr": "{job=\"platform-backend\"} | json | http_logType =~ \"BANK_RES|BANK_REQ|BANK_ERR|CONTROLLER_REQ|CONTROLLER_RES|CONTROLLER_ERR\"",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "BIZ 로그",
-      "type": "logs"
     },
     {
       "datasource": {
@@ -181,8 +144,8 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 16
+        "x": 12,
+        "y": 0
       },
       "id": 3,
       "options": {
@@ -222,6 +185,81 @@
         "type": "loki",
         "uid": "P8E80F9AEF21F6940"
       },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 1,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "editorMode": "code",
+          "expr": "{job=\"platform-backend\"} | json",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "전체 로그 리스트",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "id": 4,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "editorMode": "code",
+          "expr": "{job=\"platform-backend\"} | json | http_logType =~ \"BANK_RES|BANK_REQ|BANK_ERR|CONTROLLER_REQ|CONTROLLER_RES|CONTROLLER_ERR\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "BIZ 로그",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -235,7 +273,7 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 0,
+            "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -279,10 +317,10 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 24
+        "x": 12,
+        "y": 15
       },
-      "id": 2,
+      "id": 5,
       "options": {
         "legend": {
           "calcs": [],
@@ -303,51 +341,13 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({job=\"platform-backend\"}[1m]))",
+          "expr": "sum by (http_logType) (count_over_time(\n  {job=\"platform-backend\"} | json | http_logType =~ \"BANK_REQ|BANK_RES|BANK_ERR|CONTROLLER_REQ|CONTROLLER_RES|CONTROLLER_ERR\" [1m]\n))",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "전체 로그 타임라인",
+      "title": "BIZ 로그 건수",
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 32
-      },
-      "id": 1,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": true,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": true
-      },
-      "pluginVersion": "11.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
-          "editorMode": "code",
-          "expr": "{job=\"platform-backend\"} | json",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "전체 로그 리스트",
-      "type": "logs"
     }
   ],
   "refresh": "10s",
@@ -365,6 +365,6 @@
   "timezone": "browser",
   "title": "Monitoring Dashboard",
   "uid": "dfnt2zaw0xmgwf",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
