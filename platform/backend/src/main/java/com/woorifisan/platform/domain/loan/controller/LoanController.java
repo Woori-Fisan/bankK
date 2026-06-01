@@ -3,6 +3,7 @@ package com.woorifisan.platform.domain.loan.controller;
 import com.woorifisan.platform.global.response.ApiResponse;
 import com.woorifisan.platform.domain.loan.dto.request.LoanCallbackRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanEvaluateRequest;
+import com.woorifisan.platform.domain.loan.dto.request.LoanReceiptRequest;
 import com.woorifisan.platform.domain.loan.dto.response.LoanContractDocumentsResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluateResponse;
 import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
@@ -15,6 +16,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -112,5 +115,27 @@ public class LoanController {
             @Valid @RequestBody LoanExecuteRequest request,
             @AuthenticationPrincipal Long staffId) {
         return ApiResponse.success(loanService.executeLoan(request, staffId));
+    }
+
+    // 대출 실행 확인서 PDF 발급
+    @Operation(summary = "대출 실행 확인서 PDF 발급", description = "대출 실행 완료 후 확인서를 PDF로 생성하여 반환합니다.")
+    @PostMapping("/receipt")
+    public ResponseEntity<byte[]> generateReceipt(
+            @Valid @RequestBody LoanReceiptRequest request,
+            @AuthenticationPrincipal Long staffId) {
+
+        // 서비스에서 PDF를 바이트 배열로 생성 — 디스크 저장 없이 메모리에서 즉시 생성
+        byte[] pdf = loanService.generateReceiptPdf(request);
+
+        // 한글 파일명을 RFC 5987 형식(UTF-8'')으로 인코딩
+        // filename= 만 쓰면 한글이 깨지므로 filename*=UTF-8'' 형식을 사용해야 크롬/엣지에서 올바른 파일명으로 저장됨
+        String filename = URLEncoder.encode("대출실행확인서_" + request.getLoanId() + ".pdf", StandardCharsets.UTF_8);
+
+        return ResponseEntity.ok()
+                // 브라우저가 PDF 파일로 인식하도록 MIME 타입 지정
+                .contentType(MediaType.APPLICATION_PDF)
+                // attachment: 브라우저에서 열지 않고 파일로 다운로드하도록 지시
+                .header("Content-Disposition", "attachment; filename*=UTF-8''" + filename)
+                .body(pdf);
     }
 }

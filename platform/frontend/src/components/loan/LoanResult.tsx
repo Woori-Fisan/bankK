@@ -1,17 +1,21 @@
-import React from 'react';
-import { CheckCircle2, XCircle, Printer } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, XCircle, FileDown, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { LoanData, LoanProduct, EvaluationResult } from '../../pages/LoanApplication';
+import type { ExecutionResponse } from '../../api/loanApi';
+import { downloadLoanReceipt } from '../../api/loanApi';
 
 interface LoanResultProps {
     loanData: LoanData;
     product: LoanProduct | null;
     evaluationResult: EvaluationResult | null;
+    executeResponse: ExecutionResponse | null;
     onReset: () => void;
 }
 
-const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationResult, onReset }) => {
+const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationResult, executeResponse, onReset }) => {
     const navigate = useNavigate();
+    const [isDownloading, setIsDownloading] = useState(false);
 
     if (!product || evaluationResult?.status === 'REJECTED') {
         return (
@@ -49,8 +53,44 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
         return Math.floor(numerator / denominator);
     };
 
-    const amount = product?.executeAmount ?? product?.limit ?? 0;
-    const monthlyAmount = product ? calculateMonthly(amount, product.rate, product.period || 12) : 0;
+    const amount = executeResponse?.executeAmount ?? product?.executeAmount ?? product?.limit ?? 0;
+    const monthlyAmount = executeResponse?.monthlyPayment
+        ?? (product ? calculateMonthly(amount, product.rate, product.period || 12) : 0);
+    const displayMaturityDate = executeResponse?.maturityDate ?? maturityDateString;
+    const displayRate = executeResponse?.interestRate ?? product?.rate ?? 0;
+
+    const handleDownloadPdf = async () => {
+        if (!executeResponse) return;
+        setIsDownloading(true);
+        try {
+            const blob = await downloadLoanReceipt({
+                loanId: executeResponse.loanId,
+                borrowerName: executeResponse.borrowerName,
+                depositTransactionId: executeResponse.depositTransactionId,
+                executeAmount: executeResponse.executeAmount,
+                interestRate: executeResponse.interestRate,
+                repaymentPeriod: executeResponse.repaymentPeriod,
+                monthlyPayment: executeResponse.monthlyPayment,
+                repaymentStartDate: executeResponse.repaymentStartDate ?? '',
+                maturityDate: executeResponse.maturityDate ?? '',
+                loanProductName: product?.name ?? '',
+                depositBankName: loanData.bank ?? '',
+                depositAccountNo: loanData.accountNo ?? '',
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `대출실행확인서_${executeResponse.loanId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch {
+            // silent fail — user can retry
+        } finally {
+            setIsDownloading(false);
+        }
+    };
 
     return (
         <div>
@@ -79,7 +119,7 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
                         </div>
                         <div className="flex justify-between items-center py-3 border-b border-gray-100">
                             <span className="text-base text-gray-400 font-medium">금리</span>
-                            <span className="text-base text-gray-900 font-bold">{product?.rate || '0'}% (고정)</span>
+                            <span className="text-base text-gray-900 font-bold">{displayRate}% (고정)</span>
                         </div>
                         <div className="flex justify-between items-center py-3 border-b border-gray-100">
                             <span className="text-base text-gray-400 font-medium">입금 계좌</span>
@@ -91,16 +131,29 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
                         </div>
                         <div className="flex justify-between items-center py-3 col-span-2">
                             <span className="text-base text-gray-400 font-medium">최종 상환일</span>
-                            <span className="text-base text-gray-900 font-bold">{maturityDateString}</span>
+                            <span className="text-base text-gray-900 font-bold">{displayMaturityDate}</span>
                         </div>
                     </div>
                 </div>
 
                 {/* 버튼 */}
                 <div className="px-12 pb-12 grid grid-cols-2 gap-4">
-                    <button className="py-5 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg hover:bg-gray-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                        <Printer className="w-5 h-5" />
-                        영수증 출력
+                    <button
+                        onClick={handleDownloadPdf}
+                        disabled={isDownloading || !executeResponse}
+                        className="py-5 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg hover:bg-gray-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isDownloading ? (
+                            <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                발급 중...
+                            </>
+                        ) : (
+                            <>
+                                <FileDown className="w-5 h-5" />
+                                대출 실행 확인서
+                            </>
+                        )}
                     </button>
                     <button
                         onClick={() => { onReset(); navigate('/main'); }}

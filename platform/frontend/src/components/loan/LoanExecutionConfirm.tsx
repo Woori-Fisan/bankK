@@ -4,12 +4,13 @@ import PinpadModal from '../pinpad/PinpadModal';
 import type { LoanData, LoanProduct } from '../../pages/LoanApplication';
 import { useExecuteLoan, extractApiError } from '../../hooks/useLoan';
 import { formatAmount } from '../../utils/formatter';
+import type { ExecutionResponse } from '../../api/loanApi';
 
 interface LoanExecutionConfirmProps {
     loanData: LoanData;
     product: LoanProduct;
     evaluationId: string;
-    onNext: () => void;
+    onNext: (response: ExecutionResponse) => void;
     onBack: () => void;
 }
 
@@ -35,7 +36,7 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({
         setSubmitError(null);
 
         try {
-            await executeMutation.mutateAsync({
+            const result = await executeMutation.mutateAsync({
                 evaluationId,
                 loanProductCode: product.loanProductCode,
                 depositAccountNo: loanData.accountNo!,
@@ -44,7 +45,7 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({
                 repaymentPeriod: product.period ?? 12,
             });
 
-            onNext();
+            onNext(result);
         } catch (err) {
             setSubmitError(extractApiError(err));
         }
