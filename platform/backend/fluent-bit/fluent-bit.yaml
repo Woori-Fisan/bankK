@@ -1,0 +1,56 @@
+service:
+  flush: 1
+  daemon: false
+  log_level: info
+  storage.path: /fluent-bit/tail-db.db
+
+parsers:
+  - name: json_log
+    format: json
+    time_key: "@timestamp"
+    time_format: "%Y-%m-%dT%H:%M:%S.%L%z"
+    time_keep: true
+
+pipeline:
+  inputs:
+    - name: tail
+      path: /var/log/app/*.log
+      parser: json_log
+      tag: platform.backend
+      read_from_head: true
+      refresh_interval: 5
+      mem_buf_limit: 5MB
+      skip_long_lines: true
+
+  filters:
+    - name: record_modifier
+      match: "platform.backend"
+      remove_key: log
+
+    # BIZ 로그에 별도 태그 복사 (keep=true → 원본 platform.backend 태그 유지)
+    # platform.backend     → 전체 로그 (Loki 행)
+    # platform.backend.biz → BIZ 로그만 (모니터링 WAS 행)
+    - name: rewrite_tag
+      match: "platform.backend"
+      rule: "$http['logType'] ^(CONTROLLER_REQ|CONTROLLER_RES|CONTROLLER_ERR|BANK_REQ|BANK_RES|BANK_ERR)$ platform.backend.biz true"
+      emitter_name: biz_emitter
+
+  outputs:
+    # 로컬 확인용
+    - name: stdout
+      match: "*"
+
+    # 전체 로그 → Loki
+    - name: loki
+      match: "platform.backend"
+      host: ${MONITORING_SERVER_IP}
+      port: ${LOKI_PORT}
+      labels: job=platform-backend
+
+    # 비즈니스 로그 → 모니터링 WAS
+    - name: http
+      match: "platform.backend.biz"
+      host: ${MONITORING_SERVER_IP}
+      port: ${MONITORING_SERVER_PORT}
+      uri: /api/logs/biz
+      format: json

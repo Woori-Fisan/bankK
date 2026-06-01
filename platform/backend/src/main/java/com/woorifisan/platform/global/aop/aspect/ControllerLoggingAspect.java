@@ -97,6 +97,7 @@ public class ControllerLoggingAspect {
         // → 이후 RES / ERR 로그에서도 동일한 맵을 재사용하므로 자동으로 포함됨
         putBankCodes(args, httpContext);
 
+        httpContext.put("logType", "CONTROLLER_REQ");
         log.info("[Request] Args: {}", argsJson, entries(Map.of("http", httpContext)));
 
         long start = System.currentTimeMillis();
@@ -105,6 +106,7 @@ public class ControllerLoggingAspect {
             long   executionTime   = System.currentTimeMillis() - start;
 
             applyElapsedAndStatus(httpContext, executionTime, response);
+            httpContext.put("logType", "CONTROLLER_RES");
             log.info("[Response] Result: {}", serialize(result), entries(Map.of("http", httpContext)));
             return result;
         } catch (BusinessException e) {
@@ -112,6 +114,7 @@ public class ControllerLoggingAspect {
             long executionTime = System.currentTimeMillis() - start;
             applyElapsedAndStatus(httpContext, executionTime, e.getErrorCode().getHttpStatus().value());
             httpContext.put("exception", e.getClass().getSimpleName());
+            httpContext.put("logType", "CONTROLLER_ERR");
             // GlobalExceptionHandler가 반환할 응답 바디를 재현하여 result로 기록
             String resultJson = serialize(ApiResponse.error(e.getErrorCode(), e.getMessage()));
             log.warn("[Error] Result: {} | Exception: {} | Message: {}",
@@ -122,6 +125,7 @@ public class ControllerLoggingAspect {
             long executionTime = System.currentTimeMillis() - start;
             applyElapsedAndStatus(httpContext, executionTime, HttpStatus.INTERNAL_SERVER_ERROR.value());
             httpContext.put("exception", e.getClass().getSimpleName());
+            httpContext.put("logType", "CONTROLLER_ERR");
             // 시스템 예외는 GlobalExceptionHandler가 INTERNAL_SERVER_ERROR로 응답
             String resultJson = serialize(ApiResponse.error(ErrorCode.INTERNAL_SERVER_ERROR));
             log.error("[Error] Result: {} | Exception: {} | Message: {}",

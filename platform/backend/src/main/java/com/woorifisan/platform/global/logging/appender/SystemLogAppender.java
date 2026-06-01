@@ -143,7 +143,7 @@ public class SystemLogAppender extends AppenderBase<ILoggingEvent> {
         if (logType == null) return null;
 
         Map<String, String> mdc         = event.getMDCPropertyMap();
-        Map<String, Object> bankContext = extractNestedContext(event, "bank");
+        Map<String, Object> bankContext = extractNestedContext(event, "http");
 
         String bankCode = getStr(bankContext, "bankCode");
 

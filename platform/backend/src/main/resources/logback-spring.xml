@@ -2,7 +2,7 @@
 <configuration>
 
     <!-- ── 프로퍼티 ──────────────────────────────────── -->
-    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="./logs"/>
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="${LOGGING_PATH:-./logs"/>
     <property name="LOG_FILE" value="${LOG_PATH}/application.log"/>
 
     <!-- ── 콘솔 (개발용) ─────────────────────────────── -->
@@ -39,7 +39,6 @@
 
     <!-- ── 비동기 래퍼 (메인 스레드 블로킹 방지) ─────── -->
     <!-- DOMAIN_MONITOR.md: 모든 로깅은 완전 비동기로 처리 -->
-    <!-- 현재는 사용하지 않지만 남겨둠 -->
     <appender name="ASYNC_JSON_FILE" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="JSON_FILE"/>
         <!-- 큐가 80% 차면 TRACE/DEBUG/INFO 드롭, ERROR는 유지 -->
@@ -66,10 +65,11 @@
     </appender>
 
     <!-- ── 프로파일별 설정 ────────────────────────────── -->
-    <!-- 로컬 개발: 콘솔 + DB -->
+    <!-- 로컬 개발: 콘솔 + 파일 + DB -->
     <springProfile name="local">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_JSON_FILE"/>
             <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
         <logger name="com.woorifisan.platform" level="DEBUG"/>
@@ -84,9 +84,10 @@
         <logger name="com.woorifisan.platform" level="DEBUG"/>
     </springProfile>
 
-    <!-- 운영: DB 만 -->
+    <!-- 운영: 파일(Fluent Bit 수집용) + DB -->
     <springProfile name="prod">
         <root level="INFO">
+            <appender-ref ref="ASYNC_JSON_FILE"/>
             <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
     </springProfile>
