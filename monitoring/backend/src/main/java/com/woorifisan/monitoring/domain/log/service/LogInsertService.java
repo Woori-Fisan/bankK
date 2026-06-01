@@ -25,7 +25,14 @@ public class LogInsertService {
         int count = bizLogBuffer.drainTo(batch);
         if (count == 0) return;
 
-        logMapper.insertBizLogs(batch);
-        log.info("[BizLog 배치 저장] {} 건", count);
+        try {
+            logMapper.insertBizLogs(batch);
+            log.info("[BizLog 배치 저장] {} 건", count);
+        } catch (Exception e) {
+            List<String> traceIds = batch.stream()
+                    .map(BizLogInsertDTO::getTraceId)
+                    .toList();
+            log.error("[BizLog 배치 저장 실패] {} 건 유실. traceIds={}, cause: {}", count, traceIds, e.getMessage(), e);
+        }
     }
 }
