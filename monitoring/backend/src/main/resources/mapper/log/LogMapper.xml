@@ -102,4 +102,23 @@
         WHERE id = #{id}
     </select>
 
+
+    <insert id="insertBizLog" parameterType="com.woorifisan.monitoring.domain.log.dto.BizLogInsertDTO">
+        INSERT INTO system_logs (
+            created_at,
+            level, log_type, trace_id, staff_id,
+            bank_code, target_code, bank_key_id,
+            http_method, http_uri, http_status,
+            elapsed_ms, client_ip, jws_signature,
+            body_data, error_code, error_message
+        ) VALUES (
+            NOW(),
+            #{level}, #{logType}, #{traceId}, #{staffId},
+            #{bankCode}, #{targetCode}, #{bankKeyId},
+            #{httpMethod}, #{httpUri}, #{httpStatus},
+            #{elapsedMs}, #{clientIp}, #{jwsSignature},
+            #{bodyData}, #{errorCode}, #{errorMessage}
+        )
+    </insert>
+
 </mapper>

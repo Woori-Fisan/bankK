@@ -54,3 +54,5 @@ pipeline:
       port: ${MONITORING_SERVER_PORT}
       uri: /api/logs/biz
       format: json
+      # 5초마다 전송
+      batch_wait: 5

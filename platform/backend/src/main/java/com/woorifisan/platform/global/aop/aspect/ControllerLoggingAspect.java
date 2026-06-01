@@ -88,8 +88,8 @@ public class ControllerLoggingAspect {
 
         Map<String, Object> httpContext = new HashMap<>();
         httpContext.put("bankKeyId", null); // 추후 구현 예정
-        httpContext.put("method", request.getMethod());
-        httpContext.put("uri", request.getRequestURI());
+        httpContext.put("httpMethod", request.getMethod());
+        httpContext.put("httpUri", request.getRequestURI());
         httpContext.put("clientIp", getClientIp(request));
         httpContext.put("controller", className + "." + methodName);
         httpContext.put("request", argsJson);
@@ -135,14 +135,14 @@ public class ControllerLoggingAspect {
     private void applyElapsedAndStatus(Map<String, Object> httpContext, long executionTime, HttpServletResponse response) {
         httpContext.put("elapsedMs", executionTime);
         if (response != null) {
-            httpContext.put("status", response.getStatus());
+            httpContext.put("httpStatus", response.getStatus());
         }
     }
 
     /** 예외 로그용 — status를 호출자가 직접 결정해 httpContext에 추가한다. (response 미작성 시점 대응) */
     private void applyElapsedAndStatus(Map<String, Object> httpContext, long executionTime, int status) {
         httpContext.put("elapsedMs", executionTime);
-        httpContext.put("status", status);
+        httpContext.put("httpStatus", status);
     }
 
     private String getClientIp(HttpServletRequest request) {
@@ -210,7 +210,7 @@ public class ControllerLoggingAspect {
                         .filter(arg -> arg != null &&
                                 NON_SERIALIZABLE_TYPES.stream().noneMatch(t -> t.isInstance(arg)))
                         .map(this::serialize)
-                        .collect(Collectors.toList());
+                        .toList();
                 if (elements.isEmpty()) return null;
                 if (elements.size() == 1) return elements.get(0);
                 return elements.stream().collect(Collectors.joining(", ", "[", "]"));
