@@ -29,6 +29,8 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-password}
       GF_AUTH_ANONYMOUS_ENABLED: "false"
+      # iframe 허용 설정
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana-data:/var/lib/grafana
