@@ -41,13 +41,13 @@ public class BizLogRequest {
 
     }
 
-    // RES 로그는 response, 나머지는 request를 body_data로 저장
+    // ERR 로그는 null, RES 로그는 response, REQ 로그는 request를 body_data로 저장
     public String resolveBodyData() {
         if (http == null) return null;
         String logType = http.logType;
-        if (logType != null && logType.endsWith("_RES")) {
-            return http.response;
-        }
+        if (logType == null) return null;
+        if (logType.endsWith("_ERR")) return null;
+        if (logType.endsWith("_RES")) return http.response;
         return http.request;
     }
 }
