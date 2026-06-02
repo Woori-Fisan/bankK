@@ -1,8 +1,11 @@
 service:
-  flush: 1
+  flush: 3
   daemon: false
   log_level: info
-  storage.path: /fluent-bit/tail-db.db
+  storage.type: filesystem
+  storage.path: /fluent-bit/storage
+  storage.backlog.mem_limit: 100MB
+  storage.metrics: on
 
 parsers:
   - name: json_log
@@ -15,7 +18,12 @@ pipeline:
   inputs:
     - name: tail
       path: /var/log/app/*.log
+      # 디스크 버퍼 활성화 - 읽어온 로그 데이터 임시 보관
+      # 전송 성공할 때까지 디스크 버퍼에 지우지 않고 대기
+      storage.type: filesystem
       parser: json_log
+      db: /fluent-bit/db/tail-db.db # 전송 성공한 위치 기록
+      db.sync: Normal
       tag: platform.backend
       read_from_head: true
       refresh_interval: 5
@@ -34,18 +42,17 @@ pipeline:
       match: "platform.backend"
       rule: "$http['logType'] ^(CONTROLLER_REQ|CONTROLLER_RES|CONTROLLER_ERR|BANK_REQ|BANK_RES|BANK_ERR)$ platform.backend.biz true"
       emitter_name: biz_emitter
+      emitter_storage.type: filesystem # 새 태그를 발행하는 이미터에도 디스크 버퍼를 연동해 무유실 보장
 
   outputs:
-    # 로컬 확인용
-    - name: stdout
-      match: "*"
-
     # 전체 로그 → Loki
     - name: loki
       match: "platform.backend"
       host: ${MONITORING_SERVER_IP}
       port: ${LOKI_PORT}
       labels: job=platform-backend
+      retry_limit: False # 무한 재시도
+      storage.total_limit_size: 500M
 
     # 비즈니스 로그 → 모니터링 WAS
     - name: http
@@ -54,5 +61,5 @@ pipeline:
       port: ${MONITORING_SERVER_PORT}
       uri: /api/logs/biz
       format: json
-      # 5초마다 전송
-      batch_wait: 5
+      retry_limit: False
+      storage.total_limit_size: 200M
