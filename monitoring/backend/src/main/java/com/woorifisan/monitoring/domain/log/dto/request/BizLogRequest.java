@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.woorifisan.monitoring.domain.log.dto.BizLogInsertDTO;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -67,12 +67,14 @@ public class BizLogRequest {
                 .build();
     }
 
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
     private LocalDateTime parseTimestamp(String ts) {
-        if (ts == null) return LocalDateTime.now(ZoneOffset.UTC);
+        if (ts == null) return LocalDateTime.now(KST);
         try {
-            return LocalDateTime.ofInstant(Instant.parse(ts), ZoneOffset.UTC);
+            return LocalDateTime.ofInstant(Instant.parse(ts), KST);
         } catch (Exception e) {
-            return LocalDateTime.now(ZoneOffset.UTC);
+            return LocalDateTime.now(KST);
         }
     }
 
