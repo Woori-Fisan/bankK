@@ -44,8 +44,8 @@ const Sidebar: React.FC = () => {
             </div>
 
             <nav className="flex-1">
-                <SidebarItem icon={LayoutDashboard} label="시스템 대시보드" to="/dashboard" />
-                <SidebarItem icon={Activity} label="실시간 메트릭" to="/metrics" />
+                <SidebarItem icon={LayoutDashboard} label="비즈니스 로그 검색" to="/dashboard" />
+                <SidebarItem icon={Activity} label="실시간 로그" to="/metrics" />
             </nav>
         </aside>
     );
