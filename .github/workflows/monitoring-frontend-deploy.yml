@@ -14,10 +14,8 @@ on:
       - develop
 
     paths:
-      - 'platform/frontend/**'
-      - '.github/workflows/platform-frontend-deploy.yml'
-
-  workflow_dispatch:
+      - 'monitoring/frontend/**'
+      - '.github/workflows/monitoring-frontend-deploy.yml'
 
 concurrency:
   group: monitoring-frontend-deploy
