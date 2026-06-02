@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.woorifisan.monitoring.domain.user.mapper.UserMapper">
+
+    <select id="findByLoginId" resultType="com.woorifisan.monitoring.domain.user.model.User">
+        SELECT
+            id,
+            login_id as loginId,
+            password_hash as passwordHash,
+            name,
+            is_active as isActive
+        FROM platform_admin
+        WHERE login_id = #{loginId} AND is_active = true
+    </select>
+
+    <insert id="save" parameterType="com.woorifisan.monitoring.domain.user.model.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO platform_admin (login_id, password_hash, name, is_active, created_at, updated_at)
+        VALUES (#{loginId}, #{passwordHash}, #{name}, true, NOW(), NOW())
+    </insert>
+
+</mapper>

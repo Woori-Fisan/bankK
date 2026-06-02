@@ -72,12 +72,21 @@ dependencies {
 	implementation 'io.micrometer:micrometer-registry-prometheus'
 	implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot'
 
+    // Redis
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
 	// Logback JSON (Fluent Bit parsing 대상)
 	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+
+	// Swagger (OpenAPI)
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
 
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+
+    // dotenv
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
 	
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
