@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import LoanGuide from '../components/loan/LoanGuide';
 import LoanRequestForm from '../components/loan/LoanRequestForm';
 import LoanEvaluation from '../components/loan/LoanEvaluation';
 import LoanProductSelection from '../components/loan/LoanProductSelection';
@@ -8,7 +7,7 @@ import LoanExecutionConfirm from '../components/loan/LoanExecutionConfirm';
 import LoanResult from '../components/loan/LoanResult';
 import type { EvaluationStatusResponse, ExecutionResponse } from '../api/loanApi';
 
-export type LoanStep = 'GUIDE' | 'FORM' | 'EVALUATION' | 'SELECTION' | 'CONTRACT' | 'CONFIRM' | 'RESULT';
+export type LoanStep = 'FORM' | 'EVALUATION' | 'SELECTION' | 'CONTRACT' | 'CONFIRM' | 'RESULT';
 
 export interface LoanProduct {
     id: number;
@@ -40,7 +39,7 @@ export interface LoanData {
 }
 
 const LoanApplication: React.FC = () => {
-    const [step, setStep] = useState<LoanStep>('GUIDE');
+    const [step, setStep] = useState<LoanStep>('FORM');
     const [loanData, setLoanData] = useState<LoanData>({});
     const [sseData, setSseData] = useState<EvaluationStatusResponse | null>(null);
     const [sseError, setSseError] = useState<Error | null>(null);
@@ -58,8 +57,6 @@ const LoanApplication: React.FC = () => {
 
     const renderStep = () => {
         switch (step) {
-            case 'GUIDE':
-                return <LoanGuide onNext={() => setStep('FORM')} />;
             case 'FORM':
                 return (
                     <LoanRequestForm
@@ -140,16 +137,15 @@ const LoanApplication: React.FC = () => {
                     />
                 );
             default:
-                return <LoanGuide onNext={() => setStep('FORM')} />;
+                return null;
         }
     };
 
     const stepGroups: { label: string; steps: LoanStep[] }[] = [
-        { label: '1. 서류안내', steps: ['GUIDE'] },
-        { label: '2. 신청서작성', steps: ['FORM'] },
-        { label: '3. 심사 및 상품선택', steps: ['EVALUATION', 'SELECTION'] },
-        { label: '4. 계약서확인', steps: ['CONTRACT'] },
-        { label: '5. 실행완료', steps: ['CONFIRM', 'RESULT'] },
+        { label: '1. 신청서작성', steps: ['FORM'] },
+        { label: '2. 심사 및 상품선택', steps: ['EVALUATION', 'SELECTION'] },
+        { label: '3. 계약서확인', steps: ['CONTRACT'] },
+        { label: '4. 실행완료', steps: ['CONFIRM', 'RESULT'] },
     ];
 
     const currentStepIndex = stepGroups.findIndex(g => g.steps.includes(step));

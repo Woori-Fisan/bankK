@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-    User, Building2, Upload, FileText, X, ChevronLeft, ChevronRight,
-    FileType, CheckCircle2, Loader2, AlertTriangle, XCircle,
+    User, Building2, Upload, FileText, X, ChevronLeft, ChevronRight, ChevronDown,
+    FileType, CheckCircle2, Loader2, AlertTriangle, XCircle, Info, ShieldCheck,
 } from 'lucide-react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import type { LoanData } from '../../pages/LoanApplication';
@@ -410,29 +410,32 @@ ${body}
                         <label htmlFor="bank" className="block text-sm font-bold text-gray-500 mb-2">
                             은행 선택
                         </label>
-                        <select
-                            id="bank"
-                            className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base outline-none appearance-none"
-                            value={formData.bankCode}
-                            disabled={isBankListLoading}
-                            onChange={(e) => {
-                                const selected = bankList?.find((b) => b.bankCode === e.target.value);
-                                setFormData({
-                                    ...formData,
-                                    bank: selected?.bankName ?? '',
-                                    bankCode: e.target.value,
-                                });
-                            }}
-                        >
-                            <option value="">
-                                {isBankListLoading ? '불러오는 중...' : '은행을 선택하세요'}
-                            </option>
-                            {bankList?.map((b) => (
-                                <option key={b.bankCode} value={b.bankCode}>
-                                    {b.bankName}
+                        <div className="relative">
+                            <select
+                                id="bank"
+                                className="w-full px-4 py-4 pr-10 bg-gray-50 border border-gray-200 rounded-xl text-base outline-none appearance-none cursor-pointer"
+                                value={formData.bankCode}
+                                disabled={isBankListLoading}
+                                onChange={(e) => {
+                                    const selected = bankList?.find((b) => b.bankCode === e.target.value);
+                                    setFormData({
+                                        ...formData,
+                                        bank: selected?.bankName ?? '',
+                                        bankCode: e.target.value,
+                                    });
+                                }}
+                            >
+                                <option value="">
+                                    {isBankListLoading ? '불러오는 중...' : '은행을 선택하세요'}
                                 </option>
-                            ))}
-                        </select>
+                                {bankList?.map((b) => (
+                                    <option key={b.bankCode} value={b.bankCode}>
+                                        {b.bankName}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        </div>
                         {fieldErrors.bank && (
                             <p className="mt-1.5 text-sm text-red-500">{fieldErrors.bank}</p>
                         )}
@@ -570,6 +573,43 @@ ${body}
                         ))}
                     </div>
                 )}
+            </div>
+
+            {/* ── 심사 안내 ── */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
+                <div className="flex items-center gap-2 mb-5">
+                    <Info className="w-5 h-5 text-gray-400" />
+                    <h3 className="text-lg font-bold text-gray-900">심사 안내</h3>
+                </div>
+                <ul className="space-y-3 text-base text-gray-600 leading-relaxed mb-5">
+                    <li className="flex gap-2">
+                        <span className="text-gray-400 shrink-0">•</span>
+                        <span>심사는 서류 제출 후 <strong className="text-gray-900">수 초 ~ 수십 초</strong> 내에 완료됩니다.</span>
+                    </li>
+                    <li className="flex gap-2">
+                        <span className="text-gray-400 shrink-0">•</span>
+                        <span>신용점수 600점 미만 시 대출이 거절될 수 있습니다.</span>
+                    </li>
+                    <li className="flex gap-2">
+                        <span className="text-gray-400 shrink-0">•</span>
+                        <span>DSR 40% 초과 시 대출이 제한될 수 있습니다.</span>
+                    </li>
+                    <li className="flex gap-2">
+                        <span className="text-gray-400 shrink-0">•</span>
+                        <span>법정 최고금리 연 20% 초과 상품은 취급하지 않습니다.</span>
+                    </li>
+                    <li className="flex gap-2">
+                        <span className="text-gray-400 shrink-0">•</span>
+                        <span>본 심사는 고객의 신용점수에 영향을 줄 수 있습니다.</span>
+                    </li>
+                </ul>
+                <div className="p-4 bg-emerald-50 rounded-xl">
+                    <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm mb-1.5">
+                        <ShieldCheck className="w-5 h-5" />
+                        NICE 신용점수 조회 동의 필요
+                    </div>
+                    <p className="text-sm text-emerald-600">다음 단계에서 신용정보조회 동의서에 서명이 필요합니다.</p>
+                </div>
             </div>
 
             {/* ── Section 3: 약관 동의 ── */}
