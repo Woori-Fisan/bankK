@@ -1,0 +1,69 @@
+services:
+
+  # ── MySQL ────────────────────────────────────────
+  mysql:
+    image: mysql:8.4
+    container_name: platform-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+#      - ./src/main/resources/db/ddl.sql:/docker-entrypoint-initdb.d/ddl.sql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────
+  redis:
+    image: redis:7.2
+    container_name: platform-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Qdrant (Vector DB) ───────────────────────────
+  qdrant:
+    image: qdrant/qdrant:v1.10.1
+    container_name: platform-qdrant
+    ports:
+      - "6333:6333" # HTTP API
+      - "6334:6334" # gRPC API
+    volumes:
+      - qdrant-data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      sh -c "
+      ./qdrant &
+      until curl -s http://localhost:6333/healthz > /dev/null; do
+        echo 'Waiting for Qdrant API...'
+        sleep 2
+      done;
+      echo 'Qdrant is ready. Creating collection if not exists...'
+      curl -X PUT \"http://localhost:6333/collections/agency-docs\" \
+      -H \"Content-Type: application/json\" \
+      -d '{\"vectors\": {\"size\": 3072, \"distance\": \"Cosine\"}}';
+      wait
+      "
+
+volumes:
+  mysql-data:
+  redis-data:
+  qdrant-data:

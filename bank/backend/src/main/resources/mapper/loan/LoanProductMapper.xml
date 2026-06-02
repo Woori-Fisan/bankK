@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.woorifisan.bank.domain.loan.mapper.LoanProductMapper">
+
+    <select id="findByProductId" resultType="LoanProduct">
+        SELECT * FROM loan_product WHERE product_id = #{productId}
+    </select>
+
+    <select id="findAllActive" resultType="LoanProduct">
+        SELECT * FROM loan_product WHERE status = 'ACTIVE_SALE' ORDER BY min_rate ASC
+    </select>
+
+    <!-- 승인한도 >= min_limit, 적용금리가 상품 금리 범위 안에 있는 상품만 반환 -->
+    <select id="findMatchingProducts" resultType="LoanProduct">
+        SELECT * FROM loan_product
+        WHERE status = 'ACTIVE_SALE'
+          AND #{approvedLimit} >= min_limit
+          AND #{appliedRate} >= min_rate
+          AND #{appliedRate} &lt;= max_rate
+        ORDER BY min_rate ASC, max_limit DESC
+    </select>
+
+</mapper>

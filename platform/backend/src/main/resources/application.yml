@@ -1,0 +1,157 @@
+spring:
+  profiles:
+    active: local
+  application:
+    name: agency-platform
+  ai:
+    google:
+      genai:
+        project-id: ${GOOGLE_CLOUD_PROJECT_ID}
+        api-key: ${GOOGLE_AI_API_KEY}
+        chat:
+          options:
+            model: gemini-3.1-flash-lite-preview
+        embedding:
+          project-id: ${GOOGLE_CLOUD_PROJECT_ID}
+          api-key: ${GOOGLE_AI_API_KEY}
+          options:
+            model: gemini-embedding-001
+
+  mvc:
+    async:
+      # SSE 연결이 최대 60초 유지되므로 그보다 긴 65초로 설정.
+      request-timeout: 65000
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  # DB
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:platform_db}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USER:root}
+    password: ${DB_PASS:1379}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # Redis
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  # Flyway
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # Spring Batch
+  batch:
+    jdbc:
+      initialize-schema: always   # 운영 전환 시 never로 변경
+      baseline-on-migrate: true
+
+  # Spring AI — Gemini (Vertex AI)
+#  ai:
+#    vertex:
+#      ai:
+#        gemini:
+#          project-id: ${GCP_PROJECT_ID}
+#          location: us-central1
+#          chat:
+#            options:
+#              model: gemini-1.5-pro
+#          embedding:
+#            options:
+#              model: text-embedding-004
+#    vectorstore:
+#      qdrant:
+#        host: ${QDRANT_HOST:localhost}
+#        port: ${QDRANT_PORT:6334}
+#        collection-name: agency-docs
+#        initialize-schema: true
+
+# MyBatis
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.woorifisan.platform
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+# JWT
+jwt:
+  secret: ${JWT_SECRET:tempJWTkeyForBankBridgeDevelopmentEnvironment123!}
+  access-expiration: 900000       # 15분 (ms)
+  refresh-expiration: 28800000    # 8시간 (ms)
+
+# mTLS 인증서 경로
+#mtls:
+#  keystore-path: ${MTLS_KEYSTORE_PATH}
+#  keystore-password: ${MTLS_KEYSTORE_PASSWORD}
+#  truststore-path: ${MTLS_TRUSTSTORE_PATH}
+#  truststore-password: ${MTLS_TRUSTSTORE_PASSWORD}
+
+# Actuator / Prometheus
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+# Swagger
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
+qdrant:
+  host: localhost
+  port: 6334
+
+# 로깅
+logging:
+  config: classpath:logback-spring.xml
+
+bank:
+  core:
+    url: ${BANK_SERVER_URL:http://localhost:8081}
+    endpoints:
+      evaluation-terms: "/api/v1/loan/evaluation/terms"
+      evaluation: "/api/v1/loan/evaluation"
+      contract-terms: "/api/v1/loan/contract/terms"
+      execution: "/api/v1/loan/execution"
+  webhook:
+    # [신규] Bank → Platform 콜백 요청 헤더(X-Webhook-Secret)의 인증 비밀키.
+    # Bank와 Platform 양쪽에서 동일한 WEBHOOK_SECRET 환경변수를 설정해야 검증이 통과된다.
+    secret: ${WEBHOOK_SECRET:dev-secret}
+  urls:
+    "020":
+      base-url: ${WOORI_BASE_URL:http://localhost:8081/api/v1/baas}
+      endpoints:
+        balance: "/account/balance"
+        history: "/account/transactions"
+        withdraw: "/transfer/withdrawal"
+        deposit: "/transfer/deposit"
+        recipient: "/transfer/recipient"
+        transfer: "/transfer"
+    "004":
+      base-url: ${KB_BASE_URL:http://localhost:8082/api/v1/baas}
+      endpoints:
+        balance: "/account/balance"
+        history: "/account/transactions"
+        withdraw: "/transfer/withdrawal"
+        deposit: "/transfer/deposit"
+        recipient: "/transfer/recipient"
+        transfer: "/transfer"
