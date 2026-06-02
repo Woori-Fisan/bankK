@@ -6,7 +6,7 @@ import LoanProductSelection from '../components/loan/LoanProductSelection';
 import LoanContractForm from '../components/loan/LoanContractForm';
 import LoanExecutionConfirm from '../components/loan/LoanExecutionConfirm';
 import LoanResult from '../components/loan/LoanResult';
-import type { EvaluationStatusResponse } from '../api/loanApi';
+import type { EvaluationStatusResponse, ExecutionResponse } from '../api/loanApi';
 
 export type LoanStep = 'GUIDE' | 'FORM' | 'EVALUATION' | 'SELECTION' | 'CONTRACT' | 'CONFIRM' | 'RESULT';
 
@@ -47,6 +47,7 @@ const LoanApplication: React.FC = () => {
     const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null);
     const [evaluationId, setEvaluationId] = useState<string | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<LoanProduct | null>(null);
+    const [executionResult, setExecutionResult] = useState<ExecutionResponse | null>(null);
 
     const handleNext = (nextStep: LoanStep, data?: Partial<LoanData>) => {
         if (data) {
@@ -115,7 +116,7 @@ const LoanApplication: React.FC = () => {
                         loanData={loanData}
                         product={selectedProduct!}
                         evaluationId={evaluationId!}
-                        onNext={() => setStep('RESULT')}
+                        onNext={(result) => { setExecutionResult(result); setStep('RESULT'); }}
                         onBack={() => setStep('CONTRACT')}
                     />
                 );
@@ -125,6 +126,7 @@ const LoanApplication: React.FC = () => {
                         loanData={loanData}
                         product={selectedProduct}
                         evaluationResult={evaluationResult}
+                        executionResult={executionResult}
                         onReset={() => {
                             setStep('GUIDE');
                             setLoanData({});
@@ -133,6 +135,7 @@ const LoanApplication: React.FC = () => {
                             setEvaluationResult(null);
                             setEvaluationId(null);
                             setSelectedProduct(null);
+                            setExecutionResult(null);
                         }}
                     />
                 );

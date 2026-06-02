@@ -1,17 +1,23 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { CheckCircle2, XCircle, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import { toPng } from 'html-to-image';
 import type { LoanData, LoanProduct, EvaluationResult } from '../../pages/LoanApplication';
+import type { ExecutionResponse } from '../../api/loanApi';
+import LoanReceiptDocument from './LoanReceiptDocument';
 
 interface LoanResultProps {
     loanData: LoanData;
     product: LoanProduct | null;
     evaluationResult: EvaluationResult | null;
+    executionResult?: ExecutionResponse | null;
     onReset: () => void;
 }
 
-const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationResult, onReset }) => {
+const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationResult, executionResult, onReset }) => {
     const navigate = useNavigate();
+    const receiptDocRef = useRef<HTMLDivElement>(null);
 
     if (!product || evaluationResult?.status === 'REJECTED') {
         return (
@@ -38,22 +44,57 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
         );
     }
 
-    const maturityDate = new Date();
-    maturityDate.setMonth(maturityDate.getMonth() + (product?.period || 0));
-    const maturityDateString = maturityDate.toISOString().split('T')[0];
-
-    const calculateMonthly = (limit: number, rate: number, p: number) => {
+    const amount = executionResult?.executeAmount ?? product?.executeAmount ?? product?.limit ?? 0;
+    const monthlyAmount = executionResult?.monthlyPayment ?? (() => {
+        const limit = product?.executeAmount ?? product?.limit ?? 0;
+        const rate = product?.rate ?? 0;
+        const p = product?.period || 12;
         const monthlyRate = (rate / 100) / 12;
         const numerator = limit * monthlyRate * Math.pow(1 + monthlyRate, p);
         const denominator = Math.pow(1 + monthlyRate, p) - 1;
         return Math.floor(numerator / denominator);
-    };
+    })();
+    const maturityDateString = executionResult?.maturityDate ?? (() => {
+        const d = new Date();
+        d.setMonth(d.getMonth() + (product?.period || 0));
+        return d.toISOString().split('T')[0];
+    })();
 
-    const amount = product?.executeAmount ?? product?.limit ?? 0;
-    const monthlyAmount = product ? calculateMonthly(amount, product.rate, product.period || 12) : 0;
+    const handlePrintReceipt = async () => {
+        if (!receiptDocRef.current) return;
+        const imgData = await toPng(receiptDocRef.current, { pixelRatio: 2 });
+        const img = new Image();
+        img.src = imgData;
+        await new Promise<void>(resolve => { img.onload = () => resolve(); });
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const imgWidth = 210;
+        const imgHeight = (img.height * imgWidth) / img.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+        const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const name = executionResult?.borrowerName ?? loanData.userName ?? '고객';
+        pdf.save(`대출실행확인서_${name}_${today}.pdf`);
+    };
 
     return (
         <div>
+            {/* 숨김 PDF 문서 템플릿 */}
+            {executionResult && (
+                <LoanReceiptDocument
+                    innerRef={receiptDocRef}
+                    loanId={executionResult.loanId}
+                    borrowerName={executionResult.borrowerName}
+                    executeAmount={executionResult.executeAmount}
+                    interestRate={executionResult.interestRate}
+                    repaymentPeriod={executionResult.repaymentPeriod}
+                    monthlyPayment={executionResult.monthlyPayment}
+                    repaymentStartDate={executionResult.repaymentStartDate}
+                    maturityDate={executionResult.maturityDate}
+                    bank={loanData.bank ?? ''}
+                    accountNo={loanData.accountNo ?? ''}
+                    productName={product?.name ?? ''}
+                />
+            )}
+
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 w-full overflow-hidden animate-in zoom-in duration-500">
                 {/* 완료 헤더 */}
                 <div className="px-12 pt-12 pb-8 flex flex-col items-center text-center border-b border-gray-100">
@@ -75,11 +116,11 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
                     <div className="grid grid-cols-2 gap-x-12 gap-y-5">
                         <div className="flex justify-between items-center py-3 border-b border-gray-100">
                             <span className="text-base text-gray-400 font-medium">신청인</span>
-                            <span className="text-base text-gray-900 font-bold">{loanData.userName}</span>
+                            <span className="text-base text-gray-900 font-bold">{executionResult?.borrowerName ?? loanData.userName}</span>
                         </div>
                         <div className="flex justify-between items-center py-3 border-b border-gray-100">
                             <span className="text-base text-gray-400 font-medium">금리</span>
-                            <span className="text-base text-gray-900 font-bold">{product?.rate || '0'}% (고정)</span>
+                            <span className="text-base text-gray-900 font-bold">{executionResult?.interestRate ?? product?.rate ?? '0'}% (고정)</span>
                         </div>
                         <div className="flex justify-between items-center py-3 border-b border-gray-100">
                             <span className="text-base text-gray-400 font-medium">입금 계좌</span>
@@ -98,7 +139,10 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
 
                 {/* 버튼 */}
                 <div className="px-12 pb-12 grid grid-cols-2 gap-4">
-                    <button className="py-5 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg hover:bg-gray-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                    <button
+                        onClick={handlePrintReceipt}
+                        className="py-5 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg hover:bg-gray-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                    >
                         <Printer className="w-5 h-5" />
                         영수증 출력
                     </button>
