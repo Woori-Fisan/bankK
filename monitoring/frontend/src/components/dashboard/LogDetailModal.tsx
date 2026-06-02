@@ -71,7 +71,7 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
                 alternateRowStyles: { fillColor: [255, 255, 255] },
                 margin: { left: 14, right: 14 },
             });
-            y = (doc as any).lastAutoTable.finalY + 6;
+            y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
         };
 
         section('Basic Info', [
@@ -112,7 +112,7 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
                 headStyles: { fillColor: [15, 118, 110], fontStyle: 'bold', fontSize: 9, font: 'helvetica' },
                 margin: { left: 14, right: 14 },
             });
-            y = (doc as any).lastAutoTable.finalY + 6;
+            y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
         }
 
         if (log.bodyData) {
