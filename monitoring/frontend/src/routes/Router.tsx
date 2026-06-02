@@ -3,7 +3,8 @@ import Layout from '../components/common/Layout';
 import LoginPage from '../pages/LoginPage';
 import SignupPage from '../pages/SignupPage';
 import DashboardPage from '../pages/DashboardPage';
-import MetricsPage from '../pages/MetricsPage';
+import MetricsPage from '../pages/LogDashboardPage';
+import MetricDashboardPage from '../pages/MetricDashboardPage';
 import PrivateRoute from './PrivateRoute';
 
 const Router = () => {
@@ -17,6 +18,7 @@ const Router = () => {
         <Route element={<Layout />}>
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="metrics" element={<MetricsPage />} />
+          <Route path="metric-dashboard" element={<MetricDashboardPage />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Route>
