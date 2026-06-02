@@ -44,7 +44,7 @@ const Sidebar: React.FC = () => {
                         <Landmark className="w-6 h-6 text-slate-900" />
                     </div>
                     <div>
-                        <h1 className="text-white text-xl font-bold leading-tight group-hover:text-emerald-400 transition-colors">Bank Bridge</h1>
+                        <h1 className="text-white text-xl font-bold leading-tight group-hover:text-emerald-400 transition-colors">BankK</h1>
                         <p className="text-slate-400 text-xs">Institutional Banking</p>
                     </div>
                 </Link>
