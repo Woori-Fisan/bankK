@@ -35,6 +35,22 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Fluent Bit  ────────────────────────────────────────
+  fluent-bit:
+    image: fluent/fluent-bit:3.2
+    container_name: platform-fluent-bit
+    environment:
+      MONITORING_SERVER_IP: ${MONITORING_SERVER_IP}
+      LOKI_PORT: ${LOKI_PORT:-3100}
+      MONITORING_SERVER_PORT: ${MONITORING_SERVER_PORT}
+    volumes:
+      - ./logs:/var/log/app
+      - ./fluent-bit/fluent-bit.yaml:/fluent-bit/etc/fluent-bit.yaml:ro
+      - fluent-bit-db:/fluent-bit/db      # 읽기 위치
+      - fluent-bit-storage:/fluent-bit/storage    # 전송 버퍼
+    restart: unless-stopped
+    command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.yaml"]
+
   # ── Qdrant (Vector DB) ───────────────────────────
   qdrant:
     image: qdrant/qdrant:v1.10.1
@@ -67,3 +83,5 @@ volumes:
   mysql-data:
   redis-data:
   qdrant-data:
+  fluent-bit-db:
+  fluent-bit-storage:

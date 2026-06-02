@@ -1,6 +1,7 @@
 package com.woorifisan.monitoring.domain.log.mapper;
 
 import com.woorifisan.monitoring.domain.log.dto.LogDetailDTO;
+import com.woorifisan.monitoring.domain.log.dto.BizLogInsertDTO;
 import com.woorifisan.monitoring.domain.log.dto.LogListDTO;
 import com.woorifisan.monitoring.domain.log.dto.request.LogRequest;
 import com.woorifisan.monitoring.domain.log.dto.request.LogSummaryRequest;
@@ -14,4 +15,5 @@ public interface LogMapper {
     long countLogList(LogRequest request);
     LogDetailDTO findById(Long id);
     Map<String, Object> findLogSummary(LogSummaryRequest request);
+    void insertBizLogs(List<BizLogInsertDTO> dtos);
 }

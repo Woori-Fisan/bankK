@@ -107,4 +107,26 @@
         WHERE id = #{id}
     </select>
 
+
+    <insert id="insertBizLogs" parameterType="java.util.List">
+        INSERT INTO system_logs (
+            created_at,
+            level, log_type, trace_id, staff_id,
+            bank_code, target_code, bank_key_id,
+            http_method, http_uri, http_status,
+            elapsed_ms, client_ip, jws_signature,
+            body_data, error_code, error_message
+        ) VALUES
+        <foreach collection="list" item="dto" separator=",">
+            (
+                #{dto.timestamp},
+                #{dto.level}, #{dto.logType}, #{dto.traceId}, #{dto.staffId},
+                #{dto.bankCode}, #{dto.targetCode}, #{dto.bankKeyId},
+                #{dto.httpMethod}, #{dto.httpUri}, #{dto.httpStatus},
+                #{dto.elapsedMs}, #{dto.clientIp}, #{dto.jwsSignature},
+                #{dto.bodyData}, #{dto.errorCode}, #{dto.errorMessage}
+            )
+        </foreach>
+    </insert>
+
 </mapper>
