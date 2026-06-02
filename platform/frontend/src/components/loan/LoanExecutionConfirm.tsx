@@ -67,8 +67,8 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({
 
             // 2. 응답 복호화 (메모리에 보관 중이던 aesKey 사용)
             if (result.resPayload) {
-                await decryptBankResponse(result.resPayload, aesKey);
-                // 추가적인 결과 처리가 필요한 경우 여기에 작성
+                const decrypted = await decryptBankResponse(result.resPayload, aesKey);
+                result.borrowerName = decrypted.customerName;
             }
 
             onNext(result);

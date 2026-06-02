@@ -69,7 +69,7 @@ export const getRecipient = async (
             headers
         });
 
-        if (!response.data.success || !response.data.data.resPayload) {
+        if (!response.data.success || !response.data.data?.resPayload) {
             return response.data as any;
         }
 
@@ -83,8 +83,8 @@ export const getRecipient = async (
         const finalData: DecryptedRecipientResult = {
             depositorName: decryptedSensitiveData.depositorName,
             depositBankAccountNo: decryptedSensitiveData.depositAccountNo,
-            depositBankName: response.data.data.depositBankName,
-            accountStatus: response.data.data.accountStatus
+            depositBankName: response.data.data?.depositBankName,
+            accountStatus: response.data.data?.accountStatus
         };
 
         return {
@@ -135,7 +135,7 @@ export const executeTransfer = async (request: TransferRequest): Promise<ApiResp
         });
 
         // 3. 응답 복호화 (출금 후 잔액 정보는 출금 은행의 응답이므로 withdrawAesKey 사용)
-        if (response.data.success && (response.data.data as any).resPayload) {
+        if (response.data.success && (response.data.data as any)?.resPayload) {
             const decryptedData = await decryptBankResponse(
                 (response.data.data as any).resPayload,
                 withdrawAesKey

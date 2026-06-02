@@ -116,15 +116,6 @@ public class TransferService {
             log.error("이체 Step 2 실패 [입금 에러]. 보상 트랜잭션(환불)을 시작합니다. 에러: {}", e.getMessage());
             
             try {
-                // 출금 은행에 다시 입금(환불) 요청 전송
-                // 플랫폼은 계좌번호를 모르지만, 출금 시 사용했던 암호화 페이로드를 다시 전달함으로써
-                // 은행 코어가 내부적으로 복호화하여 원래 계좌로 환불할 수 있도록 합니다.
-                BankDepositRequest refundRequest = BankDepositRequest.of(
-                        request.getWithdrawReqPayload(),
-                        withdrawKeyId,
-                        request.getAmount(),
-                        request.getDepositBankCode()
-                );
 
                 bankExternalClient.fetchRefund(request.getWithdrawalBankCode(), withdrawRequest);
                 log.info("보상 트랜잭션 성공 [자금 복구 완료] - 출금 계좌로 금액이 환불되었습니다.");

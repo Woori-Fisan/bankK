@@ -33,7 +33,7 @@ export const executeWithdraw = async (request: WithdrawalRequest): Promise<Withd
         const response = await axiosInstance.post<WithdrawApiResponse>('/bank/withdrawals', payload, { headers });
 
         // 3. 응답 복호화 (성공 시에만)
-        if (response.data.success && (response.data.data as any).resPayload) {
+        if (response.data.success && (response.data.data as any)?.resPayload) {
             const decryptedData = await decryptBankResponse(
                 (response.data.data as any).resPayload,
                 aesKey
@@ -43,6 +43,7 @@ export const executeWithdraw = async (request: WithdrawalRequest): Promise<Withd
                 data: { ...response.data.data, ...decryptedData }
             };
         }
+
 
         return response.data;
     } catch (error) {

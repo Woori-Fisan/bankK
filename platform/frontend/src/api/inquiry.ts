@@ -63,7 +63,7 @@ export const fetchBalance = async (request: InquiryRequest): Promise<ApiResponse
             headers
         });
 
-        if (!response.data.success || !response.data.data.resPayload) {
+        if (!response.data.success || !response.data.data?.resPayload) {
             return response.data as any;
         }
 
@@ -78,7 +78,7 @@ export const fetchBalance = async (request: InquiryRequest): Promise<ApiResponse
             success: true,
             data: {
                 balance: String(decryptedSensitiveData.balance),
-                status: response.data.data.status
+                status: response.data.data?.status
             }
         };
 
@@ -124,7 +124,7 @@ export const fetchTransactionHistory = async (request: InquiryRequest): Promise<
             headers
         });
 
-        if (!response.data.success || !response.data.data.resPayload) {
+        if (!response.data.success || !response.data.data?.resPayload) {
             return response.data as any;
         }
 
@@ -139,11 +139,12 @@ export const fetchTransactionHistory = async (request: InquiryRequest): Promise<
             success: true,
             data: {
                 history: decryptedSensitiveData.history || [],
-                status: response.data.data.status,
-                totalCount: response.data.data.totalCount,
-                totalPages: response.data.data.totalPages
+                status: response.data.data?.status,
+                totalCount: response.data.data?.totalCount,
+                totalPages: response.data.data?.totalPages
             }
         };
+
 
     } catch (error) {
         console.error('fetchTransactionHistory Error:', error);

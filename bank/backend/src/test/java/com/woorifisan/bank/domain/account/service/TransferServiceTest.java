@@ -121,7 +121,7 @@ class TransferServiceTest {
         assertNotNull(response);
         assertEquals(new BigDecimal("90000"), response.getBalanceAfter());
         assertEquals("encrypted-res", response.getResPayload());
-        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate());
+        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate(), sender.getVersion());
         verify(transactionLedgerMapper).insert(any());
     }
 
@@ -154,7 +154,7 @@ class TransferServiceTest {
         // then
         assertNotNull(response);
         assertEquals(new BigDecimal("60000"), response.getBalanceAfter());
-        verify(accountMapper).updateBalance(receiver.getId(), new BigDecimal("10000"));
+        verify(accountMapper).updateBalance(receiver.getId(), new BigDecimal("10000"), receiver.getVersion());
         verify(transactionLedgerMapper).insert(any());
     }
 
@@ -187,7 +187,8 @@ class TransferServiceTest {
         // then
         assertNotNull(response);
         assertEquals(new BigDecimal("110000"), response.getBalanceAfter());
-        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000"));
+        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000"), sender.getVersion());
         verify(transactionLedgerMapper).insert(any());
     }
 }
+

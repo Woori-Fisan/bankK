@@ -102,6 +102,7 @@ export interface ExecutionResponse {
   maturityDate: string;
   linkedAccountId: number;
   resPayload?: string;
+  borrowerName?: string; // 복호화된 고객 성명을 담을 필드 추가
 }
 
 export const fetchReviewDocuments = async (): Promise<ReviewDocumentsResponse> => {
