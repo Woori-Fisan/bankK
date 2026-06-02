@@ -1,6 +1,4 @@
 spring:
-  profiles:
-    active: local
   application:
     name: agency-platform
   ai:
@@ -123,8 +121,6 @@ qdrant:
 # 로깅
 logging:
   config: classpath:logback-spring.xml
-  file:
-    path: ${LOGGING_PATH:./logs}
 
 bank:
   core:

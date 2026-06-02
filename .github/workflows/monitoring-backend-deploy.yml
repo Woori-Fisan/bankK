@@ -1,0 +1,146 @@
+name: Monitoring Backend Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+    paths:
+      - 'monitoring/backend/**'
+      - '.github/workflows/monitoring-backend-deploy.yml'
+
+  pull_request:
+    branches:
+      - develop
+
+    paths:
+      - 'monitoring/backend/**'
+      - '.github/workflows/monitoring-backend-deploy.yml'
+
+concurrency:
+  group: monitoring-backend-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # --------------------------------------------------
+      # Checkout
+      # --------------------------------------------------
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------
+      # Set .env
+      # --------------------------------------------------
+
+      - name: Create env file
+        working-directory: monitoring/backend
+        run: |
+          echo "${{ secrets.MONITORING_BACKEND_ENV_TEST }}" > .env
+
+      - name: Export env variables
+        working-directory: monitoring/backend
+        run: |
+          grep -v '^#' .env | grep -v '^$' >> $GITHUB_ENV
+
+      # --------------------------------------------------
+      # Java Setup
+      # --------------------------------------------------
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # --------------------------------------------------
+      # DockerHub Login
+      # --------------------------------------------------
+
+      - name: DockerHub Login
+        uses: docker/login-action@v3
+
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # --------------------------------------------------
+      # Gradle Permission
+      # --------------------------------------------------
+
+      - name: Grant Gradle Execute Permission
+        working-directory: monitoring/backend
+
+        run: chmod +x ./gradlew
+
+      # --------------------------------------------------
+      # SonarQube + Coverage
+      # --------------------------------------------------
+
+      - name: SonarQube Scan
+        working-directory: monitoring/backend
+
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+        run: |
+          ./gradlew test jacocoTestReport sonarqube \
+            -Dspring.profiles.active=test \
+            -Dsonar.host.url=$SONAR_HOST_URL \
+            -Dsonar.token=$SONAR_TOKEN
+
+      # --------------------------------------------------
+      # Extract SHA
+      # --------------------------------------------------
+
+      - name: Extract Short SHA
+        run: |
+          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+
+      # --------------------------------------------------
+      # Docker Build & Push
+      # --------------------------------------------------
+
+      - name: Build & Push with Jib
+        working-directory: monitoring/backend
+
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
+
+        run: |
+          ./gradlew jib \
+            -PbuildNumber=$SHORT_SHA
+
+      # --------------------------------------------------
+      # SSH Key Setup
+      # --------------------------------------------------
+
+      - name: Setup SSH Key
+        run: |
+          echo "${{ secrets.BASTION_SSH_KEY }}" > key.pem
+          chmod 600 key.pem
+
+      # --------------------------------------------------
+      # Deploy
+      # --------------------------------------------------
+
+      - name: Deploy to Monitoring Server
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+            -p ${{ secrets.BASTION_PORT }} \
+            -i key.pem \
+            ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }} \
+            "ssh -o StrictHostKeyChecking=no \
+            -i ~/.ssh/Monitoring-Key.pem \
+            ubuntu@${{ secrets.MONITORING_RUNTIME_HOST }} \
+            /home/ubuntu/monitoring-backend/deploy.sh $SHORT_SHA"
