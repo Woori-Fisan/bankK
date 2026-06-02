@@ -1,11 +1,13 @@
 package com.woorifisan.monitoring.domain.log.dto;
 
+import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
 public class BizLogInsertDTO {
+    private LocalDateTime timestamp;
     private String level;
     private String logType;
     private String traceId;

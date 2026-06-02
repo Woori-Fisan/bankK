@@ -3,6 +3,9 @@ package com.woorifisan.monitoring.domain.log.dto.request;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.woorifisan.monitoring.domain.log.dto.BizLogInsertDTO;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -44,6 +47,7 @@ public class BizLogRequest {
 
     public BizLogInsertDTO toInsertDTO() {
         return BizLogInsertDTO.builder()
+                .timestamp(parseTimestamp(timestamp))
                 .level(level)
                 .logType(http.getLogType())
                 .traceId(traceId)
@@ -61,6 +65,15 @@ public class BizLogRequest {
                 .errorCode(http.getErrorCode())
                 .errorMessage(http.getErrorMessage())
                 .build();
+    }
+
+    private LocalDateTime parseTimestamp(String ts) {
+        if (ts == null) return LocalDateTime.now(ZoneOffset.UTC);
+        try {
+            return LocalDateTime.ofInstant(Instant.parse(ts), ZoneOffset.UTC);
+        } catch (Exception e) {
+            return LocalDateTime.now(ZoneOffset.UTC);
+        }
     }
 
     // ERR 로그는 null, RES 로그는 response, REQ 로그는 request를 body_data로 저장

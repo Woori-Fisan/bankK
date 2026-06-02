@@ -22,7 +22,7 @@ public class LogInsertService {
     @Scheduled(fixedDelay = 5000)
     public void flush() {
         List<BizLogInsertDTO> batch = new ArrayList<>();
-        int count = bizLogBuffer.drainTo(batch);
+        int count = bizLogBuffer.drainTo(batch, 500);
         if (count == 0) return;
 
         try {

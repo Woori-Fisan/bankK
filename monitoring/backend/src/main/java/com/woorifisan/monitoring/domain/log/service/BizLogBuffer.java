@@ -16,12 +16,12 @@ public class BizLogBuffer {
         boolean accepted = queue.offer(dto);
         if (!accepted) {
             log.warn("[BizLogBuffer] 큐 초과 drop. traceId={}",
-                    log.getName());
+                    dto.getTraceId());
         }
     }
 
-    public int drainTo(List<BizLogInsertDTO> target) {
+    public int drainTo(List<BizLogInsertDTO> target, int maxElements) {
         //  drainTo: atomic하게 큐를 비우므로 flush와 offer 간 race condition 없음
-        return queue.drainTo(target);
+        return queue.drainTo(target, maxElements); // 대량 INSERT 방지 최대 개수 제한
     }
 }

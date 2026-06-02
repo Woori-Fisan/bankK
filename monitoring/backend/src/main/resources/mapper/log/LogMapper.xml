@@ -119,7 +119,7 @@
         ) VALUES
         <foreach collection="list" item="dto" separator=",">
             (
-                NOW(),
+                #{dto.timestamp},
                 #{dto.level}, #{dto.logType}, #{dto.traceId}, #{dto.staffId},
                 #{dto.bankCode}, #{dto.targetCode}, #{dto.bankKeyId},
                 #{dto.httpMethod}, #{dto.httpUri}, #{dto.httpStatus},

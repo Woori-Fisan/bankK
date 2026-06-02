@@ -4,14 +4,13 @@ import com.woorifisan.monitoring.domain.log.dto.request.BizLogRequest;
 import com.woorifisan.monitoring.domain.log.service.BizLogBuffer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @Tag(name = "BizLog", description = "Fluent Bit 비즈니스 로그 수신 API")
 @RestController
@@ -25,7 +24,7 @@ public class BizLogController {
     @PostMapping("/biz")
     public ResponseEntity<Void> receiveBizLogs(@RequestBody List<BizLogRequest> logs) {
         logs.stream()
-                .filter(req -> req.getHttp() != null && req.getHttp().getLogType() != null)
+                .filter(req -> req != null && req.getHttp() != null && req.getHttp().getLogType() != null)
                 .map(BizLogRequest::toInsertDTO)
                 .forEach(bizLogBuffer::offer);
         return ResponseEntity.ok().build();
