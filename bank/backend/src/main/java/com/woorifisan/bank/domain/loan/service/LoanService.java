@@ -153,8 +153,8 @@ public class LoanService {
 
         String loanNo = generateLoanNo();
 
-        // 7. 파일을 on-premises 스토리지에 저장. 실패 시 저장된 파일 cleanup 후 예외
-        List<Path> savedPaths = saveFiles(loanNo, files);
+        // 7. 파일을 on-premises 스토리지에 저장 (E2EE 복호화 포함). 실패 시 저장된 파일 cleanup 후 예외
+        List<Path> savedPaths = saveFiles(loanNo, files, cek);
 
         // 8. loan_ledger SUBMITTED 상태로 생성
         LoanLedger ledger = LoanLedger.builder()
@@ -202,7 +202,7 @@ public class LoanService {
 
     // 파일을 {documentStoragePath}/{loanNo}/ 경로에 저장
     // 중간에 실패하면 이미 저장된 파일을 모두 삭제하고 예외 던지기
-    private List<Path> saveFiles(String loanNo, List<MultipartFile> files) {
+    private List<Path> saveFiles(String loanNo, List<MultipartFile> files, SecretKey cek) {
         List<Path> savedPaths = new ArrayList<>();
         Path loanDir = Paths.get(documentStoragePath, loanNo);
         try {
@@ -219,16 +219,22 @@ public class LoanService {
                     : "unnamed";
             String fileName = UUID.randomUUID() + "_" + cleanFileName;
             Path target = loanDir.resolve(fileName);
-            try (var inputStream = file.getInputStream()) {
-                Files.copy(inputStream, target);
+            
+            try {
+                // E2EE 복호화: MultipartFile에서 바이트 배열을 읽어 복호화 수행
+                byte[] encryptedBytes = file.getBytes();
+                byte[] decryptedBytes = securityService.decryptFile(encryptedBytes, cek);
+                
+                // 복호화된 원본 데이터를 파일로 저장
+                Files.write(target, decryptedBytes);
                 savedPaths.add(target);
-            } catch (IOException e) {
+            } catch (IOException | RuntimeException e) {
                 // 저장 성공한 파일들 전부 삭제 후 예외
                 savedPaths.forEach(p -> {
                     try { Files.deleteIfExists(p); } catch (IOException ignored) {}
                 });
                 try { Files.deleteIfExists(loanDir); } catch (IOException ignored) {}
-                log.error("[접수] 파일 저장 실패 - loanNo: {}, file: {}", loanNo, file.getOriginalFilename(), e);
+                log.error("[접수] 파일 복호화 및 저장 실패 - loanNo: {}, file: {}", loanNo, file.getOriginalFilename(), e);
                 throw new BusinessException(ErrorCode.LOAN_STORAGE_ERROR);
             }
         }

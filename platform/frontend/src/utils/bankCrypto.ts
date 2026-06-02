@@ -132,6 +132,30 @@ export const decryptBankResponse = async (
 };
 
 /**
+ * 파일 암호화 (이미 생성된 AES 키 재사용)
+ * @param file 원본 파일 객체
+ * @param aesKey JSON 암호화 시 생성된 AES 키
+ * @returns IV(12바이트) + 암호문이 결합된 Blob
+ */
+export const encryptFileWithKey = async (file: File, aesKey: CryptoKey): Promise<Blob> => {
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const fileBuffer = await file.arrayBuffer();
+
+    const encryptedBuffer = await window.crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        aesKey,
+        fileBuffer
+    );
+
+    // IV(12바이트) + 암호문(태그 포함) 결합
+    const combined = new Uint8Array(iv.length + encryptedBuffer.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(encryptedBuffer), iv.length);
+
+    return new Blob([combined], { type: 'application/octet-stream' });
+};
+
+/**
  * 보안 요청 준비 (암호화 + 서명 통합) - aesKey를 함께 반환하여 호출자가 보관하도록 함
  */
 export const prepareSecureRequest = async (

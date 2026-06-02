@@ -81,6 +81,17 @@ public class SecurityService {
     }
 
     /**
+     * 암호화된 파일 데이터를 복호화합니다. (IV + CipherText 형태)
+     * 
+     * @param encryptedFile 암호화된 파일 바이트 배열
+     * @param cek 요청 복호화 시 추출된 대칭키
+     * @return 복호화된 원본 바이트 배열
+     */
+    public byte[] decryptFile(byte[] encryptedFile, SecretKey cek) {
+        return cryptoUtil.decryptWithCek(encryptedFile, cek);
+    }
+
+    /**
      * 복호화 결과와 CEK를 함께 담는 내부 클래스
      */
     @lombok.Getter

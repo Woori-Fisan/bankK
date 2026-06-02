@@ -156,6 +156,33 @@ public class CryptoUtil {
     }
 
     /**
+     * 전달받은 CEK를 사용하여 바이너리 데이터를 AES-256-GCM 복호화
+     * @param encryptedBytes IV + CipherText + AuthTag 바이트 배열
+     * @param cek 요청 복호화 시 추출된 대칭키
+     * @return 복호화된 평문 바이트 배열
+     */
+    public byte[] decryptWithCek(byte[] encryptedBytes, SecretKey cek) {
+        try {
+            ByteBuffer byteBuffer = ByteBuffer.wrap(encryptedBytes);
+
+            byte[] iv = new byte[GCM_IV_LENGTH];
+            byteBuffer.get(iv);
+
+            byte[] cipherText = new byte[byteBuffer.remaining()];
+            byteBuffer.get(cipherText);
+
+            Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
+            GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+            cipher.init(Cipher.DECRYPT_MODE, cek, parameterSpec);
+
+            return cipher.doFinal(cipherText);
+        } catch (Exception e) {
+            log.error("바이너리 데이터 복호화 실패", e);
+            throw new RuntimeException("바이너리 복호화 중 오류가 발생했습니다.", e);
+        }
+    }
+
+    /**
      * 키 디코딩 (Plain String 또는 Base64 대응)
      */
     private byte[] decodeKey(String key) {

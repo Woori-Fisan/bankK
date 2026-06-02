@@ -9,7 +9,7 @@ import { useReviewDocuments, useSubmitLoanEvaluation, useBankList, extractApiErr
 import type { ReviewDocument, EvaluationStatusResponse } from '../../api/loanApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { isValidAccountNumber } from '../../utils/validator';
-import { prepareSecureRequest, decryptBankResponse } from '../../utils/bankCrypto';
+import { prepareSecureRequest, decryptBankResponse, encryptFileWithKey } from '../../utils/bankCrypto';
 
 interface AgreedDoc extends ReviewDocument {
     agreed: boolean;
@@ -268,9 +268,18 @@ ${body}
         });
 
         try {
+            // 3. 파일 암호화 루프 (JSON 암호화에 사용된 동일 AES 키 재사용)
+            const encryptedFiles = await Promise.all(
+                files.map(async (f) => {
+                    const encryptedBlob = await encryptFileWithKey(f.file, aesKey);
+                    // 원본 파일명 유지 (은행이 파일명으로 서류 종류를 식별함)
+                    return new File([encryptedBlob], f.name, { type: 'application/octet-stream' });
+                })
+            );
+
             const result = await submitMutation.mutateAsync({
                 payload,
-                files: files.map((f) => f.file),
+                files: encryptedFiles,
                 headers,
             });
 
