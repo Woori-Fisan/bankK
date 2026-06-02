@@ -62,17 +62,21 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
 
     const handlePrintReceipt = async () => {
         if (!receiptDocRef.current) return;
-        const imgData = await toPng(receiptDocRef.current, { pixelRatio: 2 });
-        const img = new Image();
-        img.src = imgData;
-        await new Promise<void>(resolve => { img.onload = () => resolve(); });
-        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        const imgWidth = 210;
-        const imgHeight = (img.height * imgWidth) / img.width;
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-        const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const name = executionResult?.borrowerName ?? loanData.userName ?? '고객';
-        pdf.save(`대출실행확인서_${name}_${today}.pdf`);
+        try {
+            const imgData = await toPng(receiptDocRef.current, { pixelRatio: 2 });
+            const img = new Image();
+            img.src = imgData;
+            await new Promise<void>(resolve => { img.onload = () => resolve(); });
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const imgWidth = 210;
+            const imgHeight = (img.height * imgWidth) / img.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+            const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const name = executionResult?.borrowerName ?? loanData.userName ?? '고객';
+            pdf.save(`대출실행확인서_${name}_${today}.pdf`);
+        } catch {
+            alert('PDF 생성에 실패했습니다. 다시 시도해 주세요.');
+        }
     };
 
     return (

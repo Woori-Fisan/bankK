@@ -58,7 +58,7 @@ const LoanReceiptDocument: React.FC<LoanReceiptDocumentProps> = ({
                 {/* 헤더 */}
                 <div style={{ textAlign: 'center', paddingBottom: 28, marginBottom: 32, borderBottom: '2px solid #1a2e5a' }}>
                     <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: 10, color: '#1a2e5a', marginBottom: 6 }}>
-                        우 리 은 행
+                        {bank}
                     </div>
                     <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: 6, color: '#222', marginBottom: 16 }}>
                         대 출 실 행 확 인 서
@@ -105,7 +105,7 @@ const LoanReceiptDocument: React.FC<LoanReceiptDocumentProps> = ({
                     <p style={{ margin: 0 }}>본 확인서는 대출 실행을 증명하는 공식 문서입니다.</p>
                     <p style={{ margin: 0 }}>대출 관련 문의: 우리은행 고객센터 1588-5000</p>
                     <div style={{ textAlign: 'right', marginTop: 40, fontSize: 14, color: '#333', fontWeight: 600 }}>
-                        우 리 은 행 장 &nbsp;&nbsp; (인)
+                        {bank}장 &nbsp;&nbsp; (인)
                     </div>
                 </div>
             </div>

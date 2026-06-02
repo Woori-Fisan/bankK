@@ -9,7 +9,6 @@ import com.woorifisan.platform.domain.bank.model.Bank;
 import com.woorifisan.platform.domain.loan.dto.request.LoanCallbackRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
-import com.woorifisan.platform.domain.loan.dto.request.LoanReceiptRequest;
 import com.woorifisan.platform.domain.loan.dto.response.AvailableProductDto;
 import com.woorifisan.platform.domain.loan.dto.response.LoanContractDocumentsResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluateResponse;
@@ -19,22 +18,12 @@ import com.woorifisan.platform.domain.loan.dto.response.LoanRequiredDocumentsRes
 import com.woorifisan.platform.domain.loan.dto.response.TermsDocumentDto;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -282,111 +271,6 @@ public class LoanService {
                 .build();
     }
 
-    /**
-     * 대출 실행 확인서 PDF 생성
-     * Apache PDFBox를 사용해 A4 사이즈 PDF를 메모리에서 생성하고 바이트 배열로 반환
-     */
-    public byte[] generateReceiptPdf(LoanReceiptRequest req) {
-        try (PDDocument doc = new PDDocument()) {
-
-            // A4 사이즈 페이지 생성
-            PDPage page = new PDPage(PDRectangle.A4);
-            doc.addPage(page);
-
-            // 클래스패스에서 NanumGothic 폰트 파일 로드
-            InputStream fontStream = getClass().getResourceAsStream("/fonts/NanumGothic.ttf");
-            if (fontStream == null) {
-                throw new IllegalStateException("폰트 파일을 찾을 수 없습니다.");
-            }
-
-            // PDType0Font: TTF 파일을 PDF 내부에 임베드하는 CID 폰트 방식
-            // PDType1Font(기본 14종)는 한글 미지원이므로 반드시 PDType0Font를 사용해야 함
-            PDType0Font font = PDType0Font.load(doc, fontStream, true);
-
-            float pageWidth = page.getMediaBox().getWidth();
-            float margin = 55f;
-
-            // PDPageContentStream: PDF 캔버스에 텍스트/선/도형을 그리는 객체
-            try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
-
-                // 헤더 영역
-                drawCenteredText(cs, font, 15f, req.getDepositBankName(), pageWidth, 800f);
-                drawCenteredText(cs, font, 19f, "대  출  실  행  확  인  서", pageWidth, 774f);
-
-                // 헤더 구분선: 굵은 선(1.5pt) + 얇은 선(0.4pt)을 4포인트 간격으로 그려 이중선 효과
-                drawLine(cs, margin, 757f, pageWidth - margin, 757f, 1.5f);
-                drawLine(cs, margin, 753f, pageWidth - margin, 753f, 0.4f);
-
-                // 문서 메타 정보
-                // 발급 시각을 서버 현재 시각으로 기록 (요청 시각 = PDF 생성 시각)
-                String issuedAt = LocalDateTime.now()
-                        .format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 HH:mm:ss"));
-                drawText(cs, font, 10f, "문서번호  :  " + req.getLoanId(), margin, 735f);
-                drawText(cs, font, 10f, "발급일시  :  " + issuedAt, margin, 718f);
-
-                drawLine(cs, margin, 704f, pageWidth - margin, 704f, 0.5f);
-
-                // 차주 정보 섹션
-                drawText(cs, font, 11f, "■  차주 정보", margin, 686f);
-                drawLabelValue(cs, font, "성              명", req.getBorrowerName(), margin, 665f);
-
-                drawLine(cs, margin, 651f, pageWidth - margin, 651f, 0.5f);
-
-                // 대출 내역 섹션
-                drawText(cs, font, 11f, "■  대출 내역", margin, 633f);
-
-                // 금액: BigDecimal → long 변환 후 %,d 포맷으로 천 단위 쉼표 삽입
-                String amountStr = String.format("%,d 원", req.getExecuteAmount().longValue());
-
-                // 금리: stripTrailingZeros()로 4.50 → 4.5 처리, toPlainString()으로 1E+1 같은 지수 표기 방지
-                String rateStr = req.getInterestRate().stripTrailingZeros().toPlainString() + "% (고정)";
-
-                String periodStr = req.getRepaymentPeriod() + " 개월";
-                String monthlyStr = String.format("%,d 원", req.getMonthlyPayment().longValue());
-
-                drawLabelValue(cs, font, "대출 상품명", req.getLoanProductName(), margin, 613f);
-                drawLabelValue(cs, font, "대  출  금액", amountStr, margin, 595f);
-                drawLabelValue(cs, font, "적  용  금리", rateStr, margin, 577f);
-                drawLabelValue(cs, font, "대  출  기간", periodStr, margin, 559f);
-                drawLabelValue(cs, font, "월  상  환금", monthlyStr, margin, 541f);
-                drawLabelValue(cs, font, "첫  상  환일", req.getRepaymentStartDate(), margin, 523f);
-                drawLabelValue(cs, font, "만    기    일", req.getMaturityDate(), margin, 505f);
-
-                drawLine(cs, margin, 491f, pageWidth - margin, 491f, 0.5f);
-
-                // 입금 정보 섹션
-                drawText(cs, font, 11f, "■  입금 정보", margin, 473f);
-                drawLabelValue(cs, font, "입  금  은행", req.getDepositBankName(), margin, 453f);
-                // 계좌번호는 개인정보 보호를 위해 마스킹하여 출력
-                drawLabelValue(cs, font, "입  금  계좌", maskAccount(req.getDepositAccountNo()), margin, 435f);
-                drawLabelValue(cs, font, "입금 거래번호", req.getDepositTransactionId(), margin, 417f);
-
-                // 하단 구분선 (상단과 동일한 이중선, 순서만 반전)
-                drawLine(cs, margin, 400f, pageWidth - margin, 400f, 0.4f);
-                drawLine(cs, margin, 396f, pageWidth - margin, 396f, 1.5f);
-
-                // 안내 문구
-                drawCenteredText(cs, font, 9f, "본 확인서는 대출 실행 증빙 서류로 활용하실 수 있습니다.", pageWidth, 376f);
-                drawCenteredText(cs, font, 9f, "위·변조 시 관련 법령에 따라 처벌받을 수 있습니다.", pageWidth, 361f);
-
-                drawLine(cs, margin, 348f, pageWidth - margin, 348f, 0.3f);
-
-                // 실제 은행명과 함께 대리업무 경유 발급임을 명시
-                drawCenteredText(cs, font, 9f, req.getDepositBankName() + "  |  대리업무 취급기관 경유 발급", pageWidth, 332f);
-            }
-
-            // PDF 내용을 메모리 버퍼에 직렬화
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            doc.save(baos);
-            // 바이트 배열로 변환하여 반환 — 컨트롤러에서 HTTP 응답 바디로 사용
-            return baos.toByteArray();
-
-        } catch (IOException e) {
-            log.error("[PDF] 대출 실행 확인서 생성 실패", e);
-            throw new RuntimeException("대출 실행 확인서 PDF 생성에 실패했습니다.", e);
-        }
-    }
-
     // Helpers
     // documents 리스트에서 특정 documentType 동의 여부 확인
     private boolean hasAgreed(LoanEvaluateRequest request, String type) {
@@ -398,54 +282,6 @@ public class LoanService {
     private BigDecimal toBigDecimal(Object value) {
         if (value == null) return BigDecimal.ZERO;
         try { return new BigDecimal(value.toString()); } catch (NumberFormatException e) { return BigDecimal.ZERO; }
-    }
-
-    /**
-     * PDF에 텍스트 한 줄을 절대 좌표(x, y)에 출력
-     */
-    private void drawText(PDPageContentStream cs, PDType0Font font, float size, String text, float x, float y) throws IOException {
-        cs.beginText();
-        cs.setFont(font, size);
-        // newLineAtOffset: 현재 텍스트 위치 기준 상대 이동이지만,
-        // beginText() 직후에는 (0,0)이므로 사실상 절대 좌표로 동작
-        cs.newLineAtOffset(x, y);
-        cs.showText(text);
-        cs.endText();
-    }
-
-    /**
-     * 텍스트를 페이지 가로 중앙에 출력
-     */
-    private void drawCenteredText(PDPageContentStream cs, PDType0Font font, float size, String text, float pageWidth, float y) throws IOException {
-        float textWidth = font.getStringWidth(text) / 1000 * size;
-        float x = (pageWidth - textWidth) / 2;
-        drawText(cs, font, size, text, x, y);
-    }
-
-    /**
-     * 지정한 두 좌표 사이에 수평선을 그리기
-     */
-    private void drawLine(PDPageContentStream cs, float x1, float y1, float x2, float y2, float lineWidth) throws IOException {
-        cs.setLineWidth(lineWidth);
-        cs.moveTo(x1, y1);
-        cs.lineTo(x2, y2);
-        cs.stroke();
-    }
-
-    /** 라벨과 값을 "라벨  :  값" 형식으로 한 줄에 출력한다. */
-    private void drawLabelValue(PDPageContentStream cs, PDType0Font font, String label, String value, float margin, float y) throws IOException {
-        drawText(cs, font, 10f, label + "  :  " + value, margin, y);
-    }
-
-    /**
-     * 계좌번호를 마스킹하여 반환
-     */
-    private String maskAccount(String accountNo) {
-        if (accountNo == null || accountNo.length() < 6) return accountNo;
-        // 하이픈 등 숫자 외 문자 제거
-        String digits = accountNo.replaceAll("[^0-9]", "");
-        if (digits.length() < 6) return accountNo;
-        return digits.substring(0, 3) + "-***-***" + digits.substring(digits.length() - 3);
     }
 
 }
