@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import LoanGuide from '../components/loan/LoanGuide';
 import LoanRequestForm from '../components/loan/LoanRequestForm';
 import LoanEvaluation from '../components/loan/LoanEvaluation';
 import LoanProductSelection from '../components/loan/LoanProductSelection';
 import LoanContractForm from '../components/loan/LoanContractForm';
 import LoanExecutionConfirm from '../components/loan/LoanExecutionConfirm';
 import LoanResult from '../components/loan/LoanResult';
-import type { EvaluationStatusResponse } from '../api/loanApi';
+import type { EvaluationStatusResponse, ExecutionResponse } from '../api/loanApi';
 
-export type LoanStep = 'GUIDE' | 'FORM' | 'EVALUATION' | 'SELECTION' | 'CONTRACT' | 'CONFIRM' | 'RESULT';
+export type LoanStep = 'FORM' | 'EVALUATION' | 'SELECTION' | 'CONTRACT' | 'CONFIRM' | 'RESULT';
 
 export interface LoanProduct {
     id: number;
@@ -40,13 +39,14 @@ export interface LoanData {
 }
 
 const LoanApplication: React.FC = () => {
-    const [step, setStep] = useState<LoanStep>('GUIDE');
+    const [step, setStep] = useState<LoanStep>('FORM');
     const [loanData, setLoanData] = useState<LoanData>({});
     const [sseData, setSseData] = useState<EvaluationStatusResponse | null>(null);
     const [sseError, setSseError] = useState<Error | null>(null);
     const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null);
     const [evaluationId, setEvaluationId] = useState<string | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<LoanProduct | null>(null);
+    const [executionResult, setExecutionResult] = useState<ExecutionResponse | null>(null);
 
     const handleNext = (nextStep: LoanStep, data?: Partial<LoanData>) => {
         if (data) {
@@ -57,8 +57,6 @@ const LoanApplication: React.FC = () => {
 
     const renderStep = () => {
         switch (step) {
-            case 'GUIDE':
-                return <LoanGuide onNext={() => setStep('FORM')} />;
             case 'FORM':
                 return (
                     <LoanRequestForm
@@ -115,7 +113,7 @@ const LoanApplication: React.FC = () => {
                         loanData={loanData}
                         product={selectedProduct!}
                         evaluationId={evaluationId!}
-                        onNext={() => setStep('RESULT')}
+                        onNext={(result) => { setExecutionResult(result); setStep('RESULT'); }}
                         onBack={() => setStep('CONTRACT')}
                     />
                 );
@@ -125,6 +123,7 @@ const LoanApplication: React.FC = () => {
                         loanData={loanData}
                         product={selectedProduct}
                         evaluationResult={evaluationResult}
+                        executionResult={executionResult}
                         onReset={() => {
                             setStep('GUIDE');
                             setLoanData({});
@@ -133,30 +132,56 @@ const LoanApplication: React.FC = () => {
                             setEvaluationResult(null);
                             setEvaluationId(null);
                             setSelectedProduct(null);
+                            setExecutionResult(null);
                         }}
                     />
                 );
             default:
-                return <LoanGuide onNext={() => setStep('FORM')} />;
+                return null;
         }
     };
 
+    const stepGroups: { label: string; steps: LoanStep[] }[] = [
+        { label: '1. 신청서작성', steps: ['FORM'] },
+        { label: '2. 심사 및 상품선택', steps: ['EVALUATION', 'SELECTION'] },
+        { label: '3. 계약서확인', steps: ['CONTRACT'] },
+        { label: '4. 실행완료', steps: ['CONFIRM', 'RESULT'] },
+    ];
+
+    const currentStepIndex = stepGroups.findIndex(g => g.steps.includes(step));
+
     return (
-        <div className="p-8 max-w-7xl mx-auto min-h-full flex flex-col bg-gray-50">
-            <header className="mb-8">
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                    <span className={step === 'GUIDE' ? 'font-bold text-blue-600' : ''}>1. 서류안내</span>
-                    <span>/</span>
-                    <span className={step === 'FORM' ? 'font-bold text-blue-600' : ''}>2. 신청서작성</span>
-                    <span>/</span>
-                    <span className={['EVALUATION', 'SELECTION'].includes(step) ? 'font-bold text-blue-600' : ''}>3. 심사 및 상품선택</span>
-                    <span>/</span>
-                    <span className={step === 'CONTRACT' ? 'font-bold text-blue-600' : ''}>4. 계약서확인</span>
-                    <span>/</span>
-                    <span className={['CONFIRM', 'RESULT'].includes(step) ? 'font-bold text-blue-600' : ''}>5. 실행완료</span>
+        <div className="px-8 py-8 min-h-full flex flex-col bg-gray-50 max-w-7xl mx-auto w-full">
+            <header className="mb-10">
+                <h1 className="text-4xl font-black text-gray-900 tracking-tight">신용 대출 신청</h1>
+                <p className="text-gray-500 mt-2 font-medium">대행기관 직원을 위한 대출 신청 프로세스입니다.</p>
+
+                <div className="flex items-center mt-8">
+                    {stepGroups.map((group, i) => {
+                        const isActive = group.steps.includes(step);
+                        const isDone = i < currentStepIndex;
+                        const label = group.label.replace(/^\d+\. /, '');
+                        return (
+                            <React.Fragment key={group.label}>
+                                {i > 0 && (
+                                    <div className={`flex-1 h-0.5 mx-1 ${isDone ? 'bg-slate-700' : 'bg-gray-200'}`} />
+                                )}
+                                <div className="flex flex-col items-center gap-1.5 shrink-0">
+                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all ${
+                                        isActive ? 'bg-slate-900 text-white border-slate-900' :
+                                        isDone  ? 'bg-slate-600 text-white border-slate-600' :
+                                                  'bg-white text-gray-400 border-gray-200'
+                                    }`}>
+                                        {i + 1}
+                                    </div>
+                                    <span className={`text-xs font-bold whitespace-nowrap ${
+                                        isActive ? 'text-slate-900' : isDone ? 'text-slate-500' : 'text-gray-400'
+                                    }`}>{label}</span>
+                                </div>
+                            </React.Fragment>
+                        );
+                    })}
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900">신용 대출 신청</h1>
-                <p className="text-gray-500 text-sm mt-1">대행기관 직원을 위한 대출 신청 프로세스입니다.</p>
             </header>
 
             <main className="flex-1">

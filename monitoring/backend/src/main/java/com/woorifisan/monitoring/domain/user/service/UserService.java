@@ -58,23 +58,21 @@ public class UserService {
      * 토큰 재발급 (Refresh Token Rotation - RTR)
      */
     public AuthTokenDto refresh(String refreshToken) {
-        // 1. Refresh Token 유효성 검증
-        jwtProvider.validateToken(refreshToken);
+        // 1. Refresh Token 유효성 검증 및 정보 추출 (1회 파싱)
+        io.jsonwebtoken.Claims claims = jwtProvider.getClaims(refreshToken);
+        Long userId = Long.parseLong(claims.getSubject());
+        String loginId = claims.get("loginId", String.class);
 
-        // 2. 사용자 정보 추출
-        Long userId = jwtProvider.extractStaffId(refreshToken);
-        String loginId = jwtProvider.extractLoginId(refreshToken);
-
-        // 3. Redis에서 저장된 토큰 조회
+        // 2. Redis에서 저장된 토큰 조회
         String storedRefreshToken = jwtProvider.getStoredRefreshToken(userId);
 
-        // 4. Redis에 없으면 이미 로그아웃된 상태
+        // 3. Redis에 없으면 이미 로그아웃된 상태
         if (storedRefreshToken == null) {
             log.warn("[재발급 실패] 이미 로그아웃된 세션 - loginId: {}", loginId);
             throw new BusinessException(ErrorCode.ALREADY_LOGGED_OUT);
         }
 
-        // 5. RTR — 토큰 재사용 감지
+        // 4. RTR — 토큰 재사용 감지
         if (!storedRefreshToken.equals(refreshToken)) {
             jwtProvider.deleteRefreshToken(userId);
             jwtProvider.addToBlacklist(refreshToken);
@@ -82,10 +80,10 @@ public class UserService {
             throw new BusinessException(ErrorCode.TOKEN_REUSE_DETECTED);
         }
 
-        // 6. 사용자 유효성 재확인
+        // 5. 사용자 유효성 재확인
         validateUser(loginId);
 
-        // 7. 새 토큰 쌍 발급 및 갱신
+        // 6. 새 토큰 쌍 발급 및 갱신
         String newAccessToken = jwtProvider.generateAccessToken(userId, loginId);
         String newRefreshToken = jwtProvider.generateRefreshToken(userId, loginId);
         
@@ -117,10 +115,27 @@ public class UserService {
 
     /**
      * 로그아웃
+     * @param userId 인증된 사용자 ID (만료 시 null)
+     * @param refreshToken 쿠키에서 추출한 Refresh Token
+     * @param accessToken 블랙리스트에 등록할 Access Token
      */
-    public void logout(Long userId, String accessToken) {
-        log.info("[로그아웃] staffId: {} 세션 무효화", userId);
-        jwtProvider.deleteRefreshToken(userId);
+    public void logout(Long userId, String refreshToken, String accessToken) {
+        // 1. userId가 없으면 Refresh Token에서 추출 시도
+        if (userId == null && refreshToken != null) {
+            try {
+                // getClaims를 직접 사용하여 1회 파싱 및 검증 수행
+                userId = Long.parseLong(jwtProvider.getClaims(refreshToken).getSubject());
+            } catch (Exception e) {
+                log.warn("[로그아웃] 유효하지 않은 Refresh Token으로 ID 추출 실패");
+            }
+        }
+
+        if (userId != null) {
+            log.info("[로그아웃] staffId: {} 세션 무효화", userId);
+            jwtProvider.deleteRefreshToken(userId);
+        }
+
+        // 2. Access Token 블랙리스트 추가
         if (accessToken != null) {
             jwtProvider.addToBlacklist(accessToken);
         }

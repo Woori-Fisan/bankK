@@ -148,29 +148,11 @@ public class JwtProvider {
                 .compact();
     }
 
-    // 토큰에서 staffId 추출
-    public Long extractStaffId(String token) {
-        return Long.parseLong(parseClaims(token).getSubject());
-    }
-
-    // 토큰에서 loginId 추출
-    public String extractLoginId(String token) {
-        return parseClaims(token).get("loginId", String.class);
-    }
-
-    // 토큰 유효성 검증
-    public void validateToken(String token) {
-        try {
-            parseClaims(token);
-        } catch (ExpiredJwtException e) {
-            throw new BusinessException(ErrorCode.EXPIRED_TOKEN);
-        } catch (JwtException | IllegalArgumentException e) {
-            throw new BusinessException(ErrorCode.INVALID_TOKEN);
-        }
-    }
-
-    // Claims 파싱
-    private Claims parseClaims(String token) {
+    /**
+     * 토큰에서 모든 정보(Claims) 추출 및 검증 (1회 파싱)
+     * Claims는 Map<String, Object>를 상속하므로 유연하게 사용 가능
+     */
+    public Claims getClaims(String token) {
         try {
             return Jwts.parser()
                     .verifyWith(secretKey)
@@ -189,15 +171,11 @@ public class JwtProvider {
      */
     public long getRemainingExpiration(String token) {
         try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
+            Claims claims = getClaims(token);
             long now = new Date().getTime();
             return Math.max(0, claims.getExpiration().getTime() - now);
-        } catch (ExpiredJwtException e) {
-            return 0;
+        } catch (BusinessException e) {
+            return 0; // 이미 만료되었거나 유효하지 않은 토큰
         } catch (Exception e) {
             log.error("토큰 만료 시간 추출 중 오류 발생", e);
             return 0;
