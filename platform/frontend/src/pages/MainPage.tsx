@@ -16,8 +16,9 @@ const MainPage: React.FC = () => {
     const { isAdmin } = useAuth();
 
     return (
-        <div className="flex-1 overflow-auto px-10 py-12 max-w-7xl mx-auto w-full">
-            <PageHeader 
+        <div className="flex-1 overflow-y-auto bg-gray-50/50">
+            <div className="max-w-7xl mx-auto px-10 py-12 w-full min-h-full flex flex-col">
+                <PageHeader 
                 title="서비스 허브"
                 description="진행하실 금융 업무 또는 조회 서비스를 선택해 주세요."
             />
@@ -62,7 +63,8 @@ const MainPage: React.FC = () => {
                 )}
             </Section>
         </div>
-    );
+    </div>
+);
 };
 
 export default MainPage;

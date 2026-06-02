@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { AlertCircle, ArrowRight, Wallet } from 'lucide-react';
+import { useState } from 'react';
+import { AlertCircle, ArrowRight, Search, User } from 'lucide-react';
 import AccountInputSection from '../../common/AccountInputSection';
 import AmountInputSection from '../sections/AmountInputSection';
 import WithdrawFeeSection from '../sections/WithdrawFeeSection';
@@ -10,6 +10,13 @@ import type { BankOption } from '../../../api/loanApi';
 import Card from '../../common/Card';
 import { Button } from '../../common/Button';
 import RrnInput from '../../common/RrnInput';
+import Input from '../../common/Input';
+
+export interface WithdrawEntryFormProps {
+    initialData?: WithdrawData;
+    onNext: (data: WithdrawData) => void;
+    banks: BankOption[];
+}
 
 export interface WithdrawEntryFormProps {
     initialData?: WithdrawData;
@@ -18,6 +25,7 @@ export interface WithdrawEntryFormProps {
 }
 
 const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNext, banks }) => {
+    const [userName, setUserName] = useState(initialData?.userName || '');
     const [sourceAccount, setSourceAccount] = useState<{
         bankName: string;
         bankCode: string;
@@ -66,14 +74,18 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
     };
 
     const handleSubmit = () => {
+        if (!userName) {
+            alert('고객 성명을 입력해 주세요.');
+            return;
+        }
         if (birthDate.length !== 7) {
             alert('주민등록번호를 정확히 입력해 주세요.');
             return;
         }
-        onNext({ sourceAccount: { ...sourceAccount }, birthDate, amount, fee });
+        onNext({ userName, sourceAccount: { ...sourceAccount }, birthDate, amount, fee });
     };
 
-    const isNextDisabled = sourceAccount.balance === undefined || isCheckingBalance || !amount || parseInt(amount, 10) === 0;
+    const isNextDisabled = !userName || sourceAccount.balance === undefined || isCheckingBalance || !amount || parseInt(amount, 10) === 0;
 
     return (
         <div className="w-full space-y-6 animate-in fade-in duration-500">
@@ -89,25 +101,27 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                 <div className="lg:col-span-2 space-y-6">
                     <Card padding="lg" className="border-slate-100 shadow-sm">
                         <div className="space-y-10">
-                            {/* 1행: 계좌 정보 입력 */}
-                            <AccountInputSection 
-                                title="출금 계좌 정보"
-                                bankCode={sourceAccount.bankCode}
-                                accountNumber={sourceAccount.accountNumber}
-                                banks={banks}
-                                onBankChange={(name, code) => {
-                                    setSourceAccount(prev => ({ ...prev, bankName: name, bankCode: code, balance: undefined }));
-                                    setApiError(null);
-                                }}
-                                onAccountChange={(val) => {
-                                    setSourceAccount(prev => ({ ...prev, accountNumber: val, balance: undefined }));
-                                    setApiError(null);
-                                }}
-                                onBlur={handleCheckBalance}
-                            />
+                            {/* 1단계: 고객 정보 입력 */}
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-2 px-1">
+                                    <User className="w-4 h-4 text-emerald-500" />
+                                    <h3 className="text-sm font-bold text-slate-700">고객 정보</h3>
+                                </div>
+                                <div className="max-w-md">
+                                    <Input
+                                        label="고객 성명"
+                                        placeholder="예) 홍길동"
+                                        value={userName}
+                                        onChange={(e) => {
+                                            setUserName(e.target.value);
+                                            setApiError(null);
+                                        }}
+                                    />
+                                </div>
+                            </div>
 
-                            {/* 2행: 본인 인증 입력 */}
-                            <div className="pt-6 border-t border-slate-50">
+                            {/* 2단계: 주민등록번호 입력 */}
+                            <div className="pt-8 border-t border-slate-50">
                                 <RrnInput 
                                     rrnFront={birthDate.slice(0, 6)}
                                     rrnBack={birthDate.slice(6, 7)}
@@ -123,6 +137,25 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                                     }}
                                     onBlur={handleCheckBalance}
                                     isChecking={isCheckingBalance}
+                                />
+                            </div>
+
+                            {/* 3단계: 출금 계좌 정보 입력 */}
+                            <div className="pt-8 border-t border-slate-50">
+                                <AccountInputSection 
+                                    title="출금 계좌 정보"
+                                    bankCode={sourceAccount.bankCode}
+                                    accountNumber={sourceAccount.accountNumber}
+                                    banks={banks}
+                                    onBankChange={(name, code) => {
+                                        setSourceAccount(prev => ({ ...prev, bankName: name, bankCode: code, balance: undefined }));
+                                        setApiError(null);
+                                    }}
+                                    onAccountChange={(val) => {
+                                        setSourceAccount(prev => ({ ...prev, accountNumber: val, balance: undefined }));
+                                        setApiError(null);
+                                    }}
+                                    onBlur={handleCheckBalance}
                                 />
                             </div>
                         </div>
@@ -143,35 +176,44 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                 {/* 2. 요약 및 실행 영역 (1컬럼) */}
                 <div className="lg:col-span-1 space-y-6">
                     {/* 출금 가능 잔액 카드 */}
-                    <Card padding="lg" className={`min-h-[180px] flex flex-col justify-between transition-all duration-500 ${sourceAccount.balance !== undefined ? 'bg-emerald-900 text-white border-none shadow-xl shadow-emerald-900/10' : 'bg-white border-slate-100 shadow-sm'}`}>
-                        <div>
+                    <Card padding="lg" className={`min-h-[280px] flex flex-col justify-between transition-all duration-500 ${sourceAccount.balance !== undefined ? 'bg-emerald-900 text-white border-none shadow-xl shadow-emerald-900/10' : 'bg-white border-slate-100 shadow-sm'}`}>
+                        <div className="space-y-6">
                             <div className="flex items-center justify-between mb-2">
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${sourceAccount.balance !== undefined ? 'text-emerald-300' : 'text-slate-400'}`}>잔액 정보</span>
-                                <Wallet className={`w-4 h-4 ${sourceAccount.balance !== undefined ? 'text-emerald-400' : 'text-slate-300'}`} />
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${sourceAccount.balance !== undefined ? 'text-emerald-300' : 'text-slate-400'}`}>출금 요약</span>
+                                <Search className={`w-4 h-4 ${sourceAccount.balance !== undefined ? 'text-emerald-400' : 'text-slate-300'}`} />
                             </div>
-                            <h4 className={`text-xs font-bold ${sourceAccount.balance !== undefined ? 'text-emerald-100' : 'text-slate-500'}`}>출금 가능 잔액</h4>
-                        </div>
-                        
-                        <div className="py-2">
-                            {isCheckingBalance ? (
-                                <div className="flex gap-1.5 items-baseline">
-                                    <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-bounce" />
-                                    <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                    <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            
+                            <div className="space-y-4">
+                                <div className="space-y-1">
+                                    <p className={`text-[10px] font-bold uppercase ${sourceAccount.balance !== undefined ? 'text-emerald-300' : 'text-slate-400'}`}>고객명</p>
+                                    <p className="text-sm font-black">{userName || '미입력'}</p>
                                 </div>
-                            ) : sourceAccount.balance !== undefined ? (
-                                <p className="text-4xl font-black tracking-tighter">
-                                    <span className="text-lg font-bold mr-1 opacity-60">₩</span>
-                                    {formatAmount(sourceAccount.balance)}
-                                </p>
-                            ) : (
-                                <p className="text-sm font-bold text-slate-300 leading-relaxed text-center py-4">계좌 정보 입력 시<br/>조회됩니다.</p>
-                            )}
+                                <div className="space-y-1">
+                                    <p className={`text-[10px] font-bold uppercase ${sourceAccount.balance !== undefined ? 'text-emerald-300' : 'text-slate-400'}`}>계좌번호</p>
+                                    <p className="text-sm font-black font-mono">{sourceAccount.bankName} {sourceAccount.accountNumber || '미입력'}</p>
+                                </div>
+                            </div>
                         </div>
 
-                        {sourceAccount.balance !== undefined && (
-                            <div className="pt-3 border-t border-white/10" />
-                        )}
+                        <div className="pt-4 mt-4 border-t border-white/10">
+                            <h4 className={`text-xs font-bold ${sourceAccount.balance !== undefined ? 'text-emerald-100' : 'text-slate-500'}`}>출금 가능 잔액</h4>
+                            <div className="mt-1">
+                                {isCheckingBalance ? (
+                                    <div className="flex gap-1.5 items-baseline py-2">
+                                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" />
+                                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    </div>
+                                ) : sourceAccount.balance !== undefined ? (
+                                    <p className="text-3xl font-black tracking-tighter">
+                                        <span className="text-base font-bold mr-1 opacity-60">₩</span>
+                                        {formatAmount(sourceAccount.balance)}
+                                    </p>
+                                ) : (
+                                    <p className="text-sm font-bold text-slate-300 py-2">계좌 확인 시 조회됩니다.</p>
+                                )}
+                            </div>
+                        </div>
                     </Card>
 
                     {/* 수수료 및 정책 카드 */}

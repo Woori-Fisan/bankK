@@ -82,7 +82,7 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
                                 variant="primary"
                                 size="xl"
                                 fullWidth
-                                onClick={onClose}
+                                onClick={handleHome}
                                 className="rounded-2xl h-14 text-base font-bold shadow-lg shadow-slate-200"
                             >
                                 메인 페이지로 돌아가기

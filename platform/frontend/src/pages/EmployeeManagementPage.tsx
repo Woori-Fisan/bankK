@@ -21,8 +21,9 @@ const EmployeeManagementPage: React.FC = () => {
     };
 
     return (
-        <div className="p-10 max-w-7xl mx-auto w-full">
-            <PageHeader 
+        <div className="flex-1 overflow-y-auto bg-gray-50/50">
+            <div className="max-w-7xl mx-auto px-10 py-12 w-full min-h-full flex flex-col">
+                <PageHeader 
                 title="직원 관리"
                 description="직원 계정 생성, 조회, 수정 및 삭제 요청을 관리합니다."
                 action={
@@ -61,7 +62,8 @@ const EmployeeManagementPage: React.FC = () => {
                 />
             </Modal>
         </div>
-    );
+    </div>
+);
 };
 
 export default EmployeeManagementPage;

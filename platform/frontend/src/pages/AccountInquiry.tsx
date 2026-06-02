@@ -162,9 +162,10 @@ const AccountInquiry: React.FC = () => {
 
     // Step 2: 결과 화면
     return (
-        <div className={`p-10 max-w-7xl mx-auto min-h-full flex flex-col bg-gray-50 transition-opacity ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-            <PageHeader
-                title="거래 내역 및 잔액 조회"
+        <div className="flex-1 overflow-y-auto bg-gray-50/50">
+            <div className={`px-10 py-12 max-w-7xl mx-auto min-h-full flex flex-col transition-opacity ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                <PageHeader
+                    title="거래 내역 및 잔액 조회"
                 action={
                     <Button 
                         variant="outline"
@@ -198,7 +199,8 @@ const AccountInquiry: React.FC = () => {
                 />
             </section>
         </div>
-    );
+    </div>
+);
 };
 
 export default AccountInquiry;

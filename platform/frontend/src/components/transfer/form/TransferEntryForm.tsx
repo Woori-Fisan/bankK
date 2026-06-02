@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Landmark, AlertCircle, ArrowRight, Search, Info, Wallet, User, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Landmark, AlertCircle, ArrowRight, Info, Wallet, User, CheckCircle2, Loader2 } from 'lucide-react';
 import Card from '../../common/Card';
 import RrnInput from '../../common/RrnInput';
 import AccountInputSection from '../../common/AccountInputSection';
@@ -11,10 +11,11 @@ import { useTransferStore } from '../../../store/useTransferStore';
 import { getBalance, getRecipient } from '../../../api/transfer';
 import { fetchBankList, type BankOption } from '../../../api/loanApi';
 import { formatAmount } from '../../../utils/formatter';
+import Input from '../../common/Input';
 
 const TransferEntryForm: React.FC = () => {
     const { 
-        fromBank, fromBankName, fromAccountNumber, customerRrnPrefix, balance,
+        fromName, fromBank, fromBankName, fromAccountNumber, customerRrnPrefix, balance,
         toBank, toBankName, toAccountNumber, toName, amount,
         updateData
     } = useTransferStore();
@@ -24,7 +25,7 @@ const TransferEntryForm: React.FC = () => {
     const [isRecipientInquiring, setIsRecipientInquiring] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const isSenderInquired = balance !== '0' && fromAccountNumber !== '';
+    const isSenderInquired = balance !== '0' && fromAccountNumber !== '' && fromName !== '';
     const isRecipientInquired = toName !== '' && toAccountNumber !== '';
 
     useEffect(() => {
@@ -40,10 +41,8 @@ const TransferEntryForm: React.FC = () => {
     }, []);
 
     const handleSenderInquiry = async () => {
-        if (customerRrnPrefix.length !== 7) {
-            setError('주민등록번호를 정확히 입력해주세요.');
-            return;
-        }
+        if (!fromName || !fromBank || !fromAccountNumber || customerRrnPrefix.length !== 7) return;
+        
         setIsSenderInquiring(true);
         setError(null);
         try {
@@ -131,6 +130,7 @@ const TransferEntryForm: React.FC = () => {
                                 banks={banks}
                                 onBankChange={(name, code) => updateData({ toBank: code, toBankName: name, toName: '' })}
                                 onAccountChange={(val) => updateData({ toAccountNumber: val, toName: '' })}
+                                onBlur={handleRecipientInquiry}
                             />
                             
                             {/* 결과 영역 미리 할당 */}
@@ -150,15 +150,10 @@ const TransferEntryForm: React.FC = () => {
                                     </div>
                                 ) : (
                                     <div className="w-full p-6 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 flex items-center justify-between">
-                                        <p className="text-sm text-slate-400 font-medium italic">수취인 조회가 필요합니다</p>
-                                        <Button 
-                                            variant="emerald" 
-                                            onClick={handleRecipientInquiry}
-                                            disabled={isRecipientInquiring || !toBank || !toAccountNumber}
-                                            className="shadow-sm"
-                                        >
-                                            {isRecipientInquiring ? '조회 중...' : '수취인 조회'}
-                                        </Button>
+                                        <p className="text-sm text-slate-400 font-medium italic">
+                                            {isRecipientInquiring ? '수취인 조회 중입니다...' : '수취인 정보를 입력하면 자동으로 조회됩니다.'}
+                                        </p>
+                                        {isRecipientInquiring && <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />}
                                     </div>
                                 )}
                             </div>
@@ -167,22 +162,46 @@ const TransferEntryForm: React.FC = () => {
 
                     {/* 섹션 2: 출금 계좌 (내 계좌) */}
                     <Card padding="lg" className={`border-slate-100 shadow-sm transition-all duration-500 ${!isRecipientInquired ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
-                        <div className="space-y-8">
-                            <AccountInputSection 
-                                title="2. 출금 계좌 정보 (내 계좌)"
-                                bankCode={fromBank}
-                                accountNumber={fromAccountNumber}
-                                banks={banks}
-                                onBankChange={(name, code) => updateData({ fromBank: code, fromBankName: name, balance: '0' })}
-                                onAccountChange={(val) => updateData({ fromAccountNumber: val, balance: '0' })}
-                            />
+                        <div className="space-y-10">
+                            {/* 1. 보내는 분 성명 */}
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-2 px-1">
+                                    <User className="w-4 h-4 text-emerald-500" />
+                                    <h3 className="text-sm font-bold text-slate-700">2. 출금 계좌 정보 (보내는 분)</h3>
+                                </div>
+                                <div className="max-w-md">
+                                    <Input
+                                        label="고객 성명"
+                                        placeholder="예) 홍길동"
+                                        value={fromName}
+                                        onChange={(e) => updateData({ fromName: e.target.value, balance: '0' })}
+                                        onBlur={handleSenderInquiry}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* 2. 주민등록번호 */}
                             <div className="pt-8 border-t border-slate-50">
                                 <RrnInput 
                                     rrnFront={customerRrnPrefix.slice(0, 6)}
                                     rrnBack={customerRrnPrefix.slice(6, 7)}
                                     onRrnFrontChange={(val) => updateData({ customerRrnPrefix: val + customerRrnPrefix.slice(6, 7), balance: '0' })}
                                     onRrnBackChange={(val) => updateData({ customerRrnPrefix: customerRrnPrefix.slice(0, 6) + val, balance: '0' })}
+                                    onBlur={handleSenderInquiry}
                                     isChecking={isSenderInquiring}
+                                />
+                            </div>
+
+                            {/* 3. 계좌 정보 */}
+                            <div className="pt-8 border-t border-slate-50">
+                                <AccountInputSection 
+                                    title="보내는 분 계좌 정보"
+                                    bankCode={fromBank}
+                                    accountNumber={fromAccountNumber}
+                                    banks={banks}
+                                    onBankChange={(name, code) => updateData({ fromBank: code, fromBankName: name, balance: '0' })}
+                                    onAccountChange={(val) => updateData({ fromAccountNumber: val, balance: '0' })}
+                                    onBlur={handleSenderInquiry}
                                 />
                             </div>
 
@@ -206,15 +225,10 @@ const TransferEntryForm: React.FC = () => {
                                     </div>
                                 ) : (
                                     <div className="w-full p-6 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 flex items-center justify-between">
-                                        <p className="text-sm text-slate-400 font-medium italic">출금 계좌 확인이 필요합니다</p>
-                                        <Button 
-                                            variant="emerald" 
-                                            onClick={handleSenderInquiry}
-                                            disabled={isSenderInquiring || !fromBank || !fromAccountNumber || customerRrnPrefix.length !== 7}
-                                            className="shadow-sm"
-                                        >
-                                            {isSenderInquiring ? '조회 중...' : '내 계좌 확인'}
-                                        </Button>
+                                        <p className="text-sm text-slate-400 font-medium italic">
+                                            {isSenderInquiring ? '내 계좌 조회 중입니다...' : '출금 계좌 정보를 입력하면 자동으로 조회됩니다.'}
+                                        </p>
+                                        {isSenderInquiring && <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />}
                                     </div>
                                 )}
                             </div>
@@ -246,7 +260,7 @@ const TransferEntryForm: React.FC = () => {
                 {/* 2. 요약 및 실행 영역 (1컬럼) */}
                 <div className="lg:col-span-1">
                     <div className="sticky top-10 space-y-6">
-                        <Card padding="lg" className="bg-white border-slate-100 shadow-sm flex flex-col justify-between min-h-[520px]">
+                        <Card padding="lg" className="bg-white border-slate-100 shadow-sm flex flex-col justify-between min-h-[580px]">
                             <div className="space-y-8">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">실시간 이체 현황</span>
@@ -272,15 +286,15 @@ const TransferEntryForm: React.FC = () => {
                                         <p className="text-[10px] font-bold text-slate-400 uppercase">보내는 분</p>
                                         {isSenderInquired ? (
                                             <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 animate-in slide-in-from-right-2">
-                                                <p className="text-sm font-black text-slate-900">{fromBankName}</p>
-                                                <p className="text-[11px] text-slate-500 font-mono mt-0.5">{fromAccountNumber}</p>
+                                                <p className="text-sm font-black text-slate-900">{fromName}</p>
+                                                <p className="text-[11px] text-slate-500 font-mono mt-0.5">{fromBankName} {fromAccountNumber}</p>
                                                 <p className="text-emerald-600 font-black mt-2 pt-2 border-t border-emerald-200/30 flex justify-between items-baseline">
                                                     <span className="text-[10px] uppercase">잔액</span>
                                                     <span className="text-lg">₩ {formatAmount(balance)}</span>
                                                 </p>
                                             </div>
                                         ) : (
-                                            <p className="text-sm font-bold text-slate-300 italic pl-1">계좌 확인이 필요합니다</p>
+                                            <p className="text-sm font-bold text-slate-300 italic pl-1">정보 입력 및 계좌 확인이 필요합니다</p>
                                         )}
                                     </div>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { CreditCard } from 'lucide-react';
-import { formatAmount } from '../../../utils/formatter';
+import { formatAmount, formatDate } from '../../../utils/formatter';
 
 interface WithdrawDetailTableProps {
     bankName: string;
@@ -36,7 +36,7 @@ const WithdrawDetailTable: React.FC<WithdrawDetailTableProps> = ({
                     </div>
                     <div className="p-6 space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">거래 일시</p>
-                        <p className="text-sm font-bold text-slate-600">{dateTime}</p>
+                        <p className="text-sm font-bold text-slate-600">{formatDate(dateTime, true, 'text')}</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">

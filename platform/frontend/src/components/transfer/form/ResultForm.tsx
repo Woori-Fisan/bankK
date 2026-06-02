@@ -78,7 +78,7 @@ const ResultForm: React.FC = () => {
                                 variant="primary"
                                 size="xl"
                                 fullWidth
-                                onClick={reset}
+                                onClick={handleHome}
                                 className="rounded-2xl h-14 text-base font-bold shadow-lg shadow-slate-200"
                             >
                                 메인 페이지로 돌아가기
