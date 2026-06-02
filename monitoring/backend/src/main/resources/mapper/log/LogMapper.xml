@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.woorifisan.monitoring.domain.log.mapper.LogMapper">
+
+    <sql id="logSearchCondition">
+        <where>
+            <if test="level != null and level != ''">
+                AND level = #{level}
+            </if>
+            <if test="agencyCode != null and agencyCode != ''">
+                AND agency_code = #{agencyCode}
+            </if>
+            <if test="bankCode != null and bankCode != ''">
+                AND bank_code = #{bankCode}
+            </if>
+            <if test="staffId != null and staffId != ''">
+                AND staff_id = #{staffId}
+            </if>
+            <if test="traceId != null and traceId != ''">
+                AND trace_id = #{traceId}
+            </if>
+            <if test="logType != null and logType != ''">
+                AND log_type = #{logType}
+            </if>
+            <if test="httpStatus != null and httpStatus != ''">
+                AND http_status = #{httpStatus}
+            </if>
+            <if test="errorCode != null and errorCode != ''">
+                AND error_code = #{errorCode}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND created_at &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND created_at &lt;= #{endDate}
+            </if>
+        </where>
+    </sql>
+
+    <!-- 목록 조회용: 대용량 텍스트 필드(body_data, jws_signature) 및 상세 전용 필드 제외 -->
+    <select id="findLogList" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogRequest"
+            resultType="com.woorifisan.monitoring.domain.log.dto.LogListDTO">
+        SELECT
+            id,
+            created_at as createdAt,
+            level,
+            log_type as logType,
+            trace_id as traceId,
+            staff_id as staffId,
+            bank_code as bankCode,
+            target_code as targetCode,
+            agency_code as agencyCode,
+            http_method as httpMethod,
+            http_status as httpStatus,
+            elapsed_ms as elapsedMs,
+            http_uri as httpUri,
+            error_code as errorCode
+        FROM system_logs
+        <include refid="logSearchCondition" />
+        ORDER BY created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countLogList" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogRequest" resultType="long">
+        SELECT COUNT(*)
+        FROM system_logs
+        <include refid="logSearchCondition" />
+    </select>
+
+    <!-- 통계 요약 조회: 총 건수, 에러 건수, 평균 응답시간 집계 -->
+    <select id="findLogSummary" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogSummaryRequest" resultType="map">
+        SELECT
+            COUNT(*) as totalCount,
+            COUNT(CASE WHEN level = 'ERROR' THEN 1 END) as errorCount,
+            IFNULL(AVG(elapsed_ms), 0) as avgElapsedMs
+        FROM system_logs
+        <include refid="logSearchCondition" />
+    </select>
+
+    <!-- 단건 상세 조회용: 암호화 페이로드(body_data) 및 서명(jws_signature) 등 모든 필드 포함 -->
+    <select id="findById" parameterType="long"
+            resultType="com.woorifisan.monitoring.domain.log.dto.LogDetailDTO">
+        SELECT
+            id,
+            created_at as createdAt,
+            level,
+            log_type as logType,
+            trace_id as traceId,
+            staff_id as staffId,
+            bank_code as bankCode,
+            target_code as targetCode,
+            agency_code as agencyCode,
+            bank_key_id as bankKeyId,
+            http_method as httpMethod,
+            http_uri as httpUri,
+            http_status as httpStatus,
+            elapsed_ms as elapsedMs,
+            client_ip as clientIp,
+            jws_signature as jwsSignature,
+            body_data as bodyData,
+            error_code as errorCode,
+            error_message as errorMessage
+        FROM system_logs
+        WHERE id = #{id}
+    </select>
+
+</mapper>
