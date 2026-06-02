@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { AlertTriangle, ShieldCheck, Loader2 } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, Loader2, ChevronLeft } from 'lucide-react';
 import PinpadModal from '../pinpad/PinpadModal';
 import type { LoanData, LoanProduct } from '../../pages/LoanApplication';
 import { useExecuteLoan, extractApiError } from '../../hooks/useLoan';
 import { formatAmount } from '../../utils/formatter';
 import { prepareSecureRequest, decryptBankResponse } from '../../utils/bankCrypto';
+import type { ExecutionResponse } from '../../api/loanApi';
 
 interface LoanExecutionConfirmProps {
     loanData: LoanData;
     product: LoanProduct;
     evaluationId: string;
-    onNext: () => void;
+    onNext: (result: ExecutionResponse) => void;
     onBack: () => void;
 }
 
@@ -70,7 +71,7 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({
                 // 추가적인 결과 처리가 필요한 경우 여기에 작성
             }
 
-            onNext();
+            onNext(result);
         } catch (err) {
             setSubmitError(extractApiError(err));
         }
@@ -83,88 +84,96 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({
     const isLoading = executeMutation.isPending;
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-[500px]">
-            <div className="bg-white border border-gray-200 rounded-3xl shadow-xl w-full max-w-lg overflow-hidden">
-                <div className="p-8 border-b border-gray-100">
-                    <h2 className="text-xl font-bold text-gray-900 mb-1">대출 실행 최종 확인</h2>
-                    <p className="text-sm text-gray-500">아래 내용을 최종 확인 후 대출을 실행해 주세요.</p>
+        <div>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 w-full overflow-hidden">
+                {/* 헤더 */}
+                <div className="px-12 py-10 border-b border-gray-100">
+                    <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-1">대출 실행 최종 확인</h2>
+                    <p className="text-base text-gray-500 font-medium">아래 내용을 최종 확인 후 대출을 실행해 주세요.</p>
                 </div>
 
-                <div className="p-8 space-y-6">
-                    <div className="bg-gray-50 rounded-2xl p-6 space-y-4 border border-gray-100">
-                        <div className="flex justify-between items-center">
-                            <span className="text-[11px] text-gray-400 font-bold uppercase">신청인</span>
-                            <span className="text-xs font-bold text-gray-900">{loanData.userName}</span>
+                <div className="px-12 py-10 space-y-8">
+                    {/* 대출 금액 강조 */}
+                    <div className="bg-gray-50 rounded-2xl p-10 text-center border border-gray-100">
+                        <p className="text-sm text-gray-500 mb-2 font-medium">대출 실행 금액</p>
+                        <p className="text-5xl font-black text-gray-900 tracking-tight">
+                            ₩ {formatAmount(product.executeAmount ?? product.limit)}
+                        </p>
+                    </div>
+
+                    {/* 상세 정보 */}
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-5">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">신청인</span>
+                                <span className="text-base font-bold text-gray-900">{loanData.userName}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">상품명</span>
+                                <span className="text-base font-bold text-gray-900">{product.name}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">적용 금리</span>
+                                <span className="text-base font-bold text-gray-900">{product.rate}% (고정)</span>
+                            </div>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[11px] text-gray-400 font-bold uppercase">상품명</span>
-                            <span className="text-xs font-bold text-gray-900">{product.name}</span>
-                        </div>
-                        <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                            <span className="text-[11px] text-gray-400 font-bold uppercase">대출 금액</span>
-                            <span className="text-xl font-bold text-emerald-600">
-                                ₩ {formatAmount(product.executeAmount ?? product.limit)}
-                            </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[11px] text-gray-400 font-bold uppercase">적용 금리</span>
-                            <span className="text-xs font-bold text-gray-900">{product.rate}% (고정)</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[11px] text-gray-400 font-bold uppercase">대출 기간</span>
-                            <span className="text-xs font-bold text-gray-900">{product.period}개월</span>
-                        </div>
-                        <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                            <span className="text-[11px] text-gray-400 font-bold uppercase">입금 계좌</span>
-                            <span className="text-xs font-bold text-gray-900">
-                                {loanData.bank} {loanData.accountNo}
-                            </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[11px] text-gray-400 font-bold uppercase">만기일</span>
-                            <span className="text-xs font-bold text-gray-900">{maturityDateString}</span>
+                        <div className="space-y-5">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">입금 계좌</span>
+                                <span className="text-base font-bold text-gray-900">{loanData.bank} {loanData.accountNo}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">대출 기간</span>
+                                <span className="text-base font-bold text-gray-900">{product.period}개월</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">만기일</span>
+                                <span className="text-base font-bold text-gray-900">{maturityDateString}</span>
+                            </div>
                         </div>
                     </div>
 
                     {submitError && (
-                        <p className="text-sm text-red-500 text-center">{submitError}</p>
+                        <p className="text-base text-red-500 text-center">{submitError}</p>
                     )}
 
-                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex gap-3">
-                        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
-                        <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-5 flex gap-3">
+                        <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
+                        <p className="text-base text-amber-700 leading-relaxed font-medium">
                             대출 실행 후에는 취소가 불가합니다. 위 내용을 다시 한번 확인해 주세요.
                         </p>
                     </div>
+                </div>
 
-                    <div className="flex gap-3 pt-4">
-                        <button
-                            type="button"
-                            onClick={onBack}
-                            disabled={isLoading}
-                            className="flex-1 py-3.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
-                        >
-                            이전으로
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleExecution}
-                            disabled={isLoading}
-                            className="flex-[2] py-3.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    대출 실행 중...
-                                </>
-                            ) : (
-                                <>
-                                    <ShieldCheck className="w-4 h-4" />
-                                    대출 실행
-                                </>
-                            )}
-                        </button>
-                    </div>
+                {/* 버튼 */}
+                <div className="px-12 pb-10 grid grid-cols-2 gap-4">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        disabled={isLoading}
+                        className="py-5 bg-gray-100 text-gray-600 rounded-2xl font-black text-lg hover:bg-gray-200 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                        <ChevronLeft className="w-5 h-5" />
+                        이전으로
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleExecution}
+                        disabled={isLoading}
+                        className="py-5 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-slate-800 active:scale-[0.98] transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                        {isLoading ? (
+                            <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                대출 실행 중...
+                            </>
+                        ) : (
+                            <>
+                                <ShieldCheck className="w-5 h-5" />
+                                대출 실행
+                            </>
+                        )}
+                    </button>
                 </div>
             </div>
 

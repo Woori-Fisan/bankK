@@ -1,0 +1,52 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+ingester:
+  lifecycler:
+    ring:
+      replication_factor: 1
+  chunk_idle_period: 5m # 5분 동안 로그 없으면 flush
+  chunk_retain_period: 30s # flush 완료 후 30초간 메모리에 유지
+  max_chunk_age: 30m # 최대 30분마다 강제 flush
+  wal:
+    enabled: true
+    dir: /loki/wal          # 컨테이너 종료 시 WAL에서 복구
+
+limits_config:
+  allow_structured_metadata: false
+  volume_enabled: true
+
+ruler:
+  alertmanager_url: http://localhost:9093

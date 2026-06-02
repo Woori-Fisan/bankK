@@ -85,7 +85,8 @@ public class BankExternalApiAspect {
         bankContext.put("httpUri", bankUri);
         bankContext.put("request", requestJson);
 
-        log.info("[BankAPI][Request] {}", apiType, entries(Map.of("bank", bankContext)));
+        bankContext.put("logType", "BANK_REQ");
+        log.info("[BankAPI][Request] {}", apiType, entries(Map.of("http", bankContext)));
 
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
@@ -96,7 +97,8 @@ public class BankExternalApiAspect {
             bankContext.put("elapsedMs", stopWatch.getTotalTimeMillis());
             bankContext.put("httpStatus", 200); // onStatus 에러 핸들러 미발동 = 2xx 성공
             bankContext.put("response", serialize(result));
-            log.info("[BankAPI][Response] {}", apiType, entries(Map.of("bank", bankContext)));
+            bankContext.put("logType", "BANK_RES");
+            log.info("[BankAPI][Response] {}", apiType, entries(Map.of("http", bankContext)));
 
             return result;
         } catch (BankCoreException e) {
@@ -105,9 +107,10 @@ public class BankExternalApiAspect {
 
             bankContext.put("elapsedMs", stopWatch.getTotalTimeMillis());
             bankContext.put("httpStatus", e.getBankHttpStatus());
-            bankContext.put("bankErrorCode", e.getBankErrorCode());
-            bankContext.put("bankErrorMessage", e.getBankErrorMessage());
-            log.warn("[BankAPI][BusinessError] {}", apiType, entries(Map.of("bank", bankContext)));
+            bankContext.put("errorCode", e.getBankErrorCode());
+            bankContext.put("errorMessage", e.getBankErrorMessage());
+            bankContext.put("logType", "BANK_ERR");
+            log.warn("[BankAPI][BusinessError] {}", apiType, entries(Map.of("http", bankContext)));
 
             throw e;
         } catch (BusinessException e) {
@@ -118,7 +121,8 @@ public class BankExternalApiAspect {
             bankContext.put("httpStatus", e.getErrorCode().getHttpStatus().value());
             bankContext.put("errorCode", e.getErrorCode().getCode());
             bankContext.put("errorMessage", e.getMessage());
-            log.warn("[BankAPI][BusinessError] {}", apiType, entries(Map.of("bank", bankContext)));
+            bankContext.put("logType", "BANK_ERR");
+            log.warn("[BankAPI][BusinessError] {}", apiType, entries(Map.of("http", bankContext)));
 
             throw e;
         } catch (Exception e) {
@@ -127,7 +131,8 @@ public class BankExternalApiAspect {
             bankContext.put("elapsedMs", stopWatch.getTotalTimeMillis());
             bankContext.put("exceptionType", e.getClass().getSimpleName());
             bankContext.put("errorMessage", e.getMessage());
-            log.error("[BankAPI][SystemError] {}", apiType, entries(Map.of("bank", bankContext)), e);
+            // BANK_COMM_ERR은 DB 저장 대상 제외 — logType 미설정으로 Fluent Bit 필터 통과 안 함
+            log.error("[BankAPI][SystemError] {}", apiType, entries(Map.of("http", bankContext)), e);
 
             throw e;
         } finally {

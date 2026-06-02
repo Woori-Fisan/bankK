@@ -207,6 +207,10 @@ tasks.named('test') {
 |--------------------------------------------------------------------------
 */
 
+bootRun {
+	jvmArgs '-Duser.timezone=Asia/Seoul'
+}
+
 jacocoTestReport {
 
 	dependsOn test

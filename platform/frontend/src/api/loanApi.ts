@@ -152,6 +152,28 @@ export const executeLoan = async (
   return data.data!;
 };
 
+export interface ReceiptRequest {
+  loanId: string;
+  borrowerName: string;
+  depositTransactionId: string;
+  executeAmount: number;
+  interestRate: number;
+  repaymentPeriod: number;
+  monthlyPayment: number;
+  repaymentStartDate: string;
+  maturityDate: string;
+  loanProductName: string;
+  depositBankName: string;
+  depositAccountNo: string;
+}
+
+export const downloadLoanReceipt = async (payload: ReceiptRequest): Promise<Blob> => {
+  const { data } = await axiosInstance.post('/loan/receipt', payload, {
+    responseType: 'blob',
+  });
+  return data;
+};
+
 export interface BankOption {
   bankCode: string;
   bankName: string;
