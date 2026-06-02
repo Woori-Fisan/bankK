@@ -1,10 +1,6 @@
 import React, { useEffect } from 'react';
 import { useTransferStore } from '../store/useTransferStore';
-import AccountInquiryForm from '../components/transfer/form/AccountInquiryForm';
-import WithdrawalConfirmForm from '../components/transfer/form/WithdrawalConfirmForm';
-import RecipientInputForm from '../components/transfer/form/RecipientInputForm';
-import RecipientConfirmForm from '../components/transfer/form/RecipientConfirmForm';
-import AmountInputForm from '../components/transfer/form/AmountInputForm';
+import TransferEntryForm from '../components/transfer/form/TransferEntryForm';
 import FinalConfirmForm from '../components/transfer/form/FinalConfirmForm';
 import ResultForm from '../components/transfer/form/ResultForm';
 
@@ -19,20 +15,18 @@ const TransferPage: React.FC = () => {
     }, [reset]);
 
     const renderStep = () => {
+        // 1~5단계: 통합 입력 폼
+        // 6단계: 최종 정보 확인 및 비밀번호 입력
+        // 7단계: 이체 결과 확인
         switch (step) {
-            case 1: return <AccountInquiryForm />;
-            case 2: return <WithdrawalConfirmForm />;
-            case 3: return <RecipientInputForm />;
-            case 4: return <RecipientConfirmForm />;
-            case 5: return <AmountInputForm />;
             case 6: return <FinalConfirmForm />;
             case 7: return <ResultForm />;
-            default: return null;
+            default: return <TransferEntryForm />;
         }
     };
 
     return (
-        <div className="p-10 max-w-4xl mx-auto w-full">
+        <div className="p-10 max-w-7xl mx-auto w-full min-h-full flex flex-col bg-gray-50/50 relative">
             {renderStep()}
         </div>
     );

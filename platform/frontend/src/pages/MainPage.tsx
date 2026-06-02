@@ -8,20 +8,21 @@ import {
     UserCog,
 } from 'lucide-react';
 import ServiceCard from '../components/common/ServiceCard';
-
+import PageHeader from '../components/common/PageHeader';
+import Section from '../components/common/Section';
 import { useAuth } from '../hooks/useAuth';
 
 const MainPage: React.FC = () => {
     const { isAdmin } = useAuth();
 
     return (
-        <div className="flex-1 overflow-auto px-8 py-8">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">서비스 허브</h1>
-                <p className="text-gray-600">진행하실 금융 업무 또는 조회 서비스를 선택해 주세요.</p>
-            </div>
+        <div className="flex-1 overflow-auto px-10 py-12 max-w-7xl mx-auto w-full">
+            <PageHeader 
+                title="서비스 허브"
+                description="진행하실 금융 업무 또는 조회 서비스를 선택해 주세요."
+            />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <Section columns={3} gap={8}>
                 <ServiceCard
                     icon={Landmark}
                     bgIcon={Landmark}
@@ -59,7 +60,7 @@ const MainPage: React.FC = () => {
                         to="/employee-management"
                     />
                 )}
-            </div>
+            </Section>
         </div>
     );
 };

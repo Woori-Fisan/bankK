@@ -9,6 +9,7 @@ import { useReviewDocuments, useSubmitLoanEvaluation, useBankList, extractApiErr
 import type { ReviewDocument, EvaluationStatusResponse } from '../../api/loanApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { isValidAccountNumber } from '../../utils/validator';
+import RrnInput from '../common/RrnInput';
 
 interface AgreedDoc extends ReviewDocument {
     agreed: boolean;
@@ -41,7 +42,6 @@ const SectionHeader: React.FC<{ step: number; icon: React.ReactNode; title: stri
 const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSseMessage, onSseError }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const sseControllerRef = useRef<AbortController | null>(null);
-    const rrnBackRef = useRef<HTMLInputElement>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [rrnFront, setRrnFront] = useState('');
     const [rrnBack, setRrnBack] = useState('');
@@ -189,10 +189,6 @@ ${body}
         setFieldErrors(errors);
         return Object.keys(errors).length === 0;
     };
-
-    useEffect(() => {
-        return () => {};
-    }, []);
 
     const handleSubmit = () => {
         if (!validate()) return;
@@ -348,53 +344,29 @@ ${body}
                         />
                     </div>
 
-                    {/* 주민등록번호 — 전체 너비 */}
+                    {/* 주민등록번호 — RrnInput 통합 적용 */}
                     <div className="col-span-2">
-                        <label className="block text-sm font-bold text-gray-500 mb-2">
-                            주민등록번호
-                        </label>
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="text"
-                                inputMode="numeric"
-                                maxLength={6}
-                                placeholder="000000"
-                                value={rrnFront}
-                                onChange={(e) => {
-                                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                                    setRrnFront(val);
-                                    if (val.length === 6) rrnBackRef.current?.focus();
-                                }}
-                                onBlur={() => {
-                                    if (rrnFront.length > 0 && rrnFront.length < 6)
-                                        setFieldErrors((p) => ({ ...p, rrn: '앞 6자리를 모두 입력해주세요.' }));
-                                    else setFieldErrors((p) => ({ ...p, rrn: undefined }));
-                                }}
-                                className="w-36 px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none text-center tracking-widest"
-                            />
-                            <span className="text-gray-400 font-bold text-lg">-</span>
-                            <input
-                                ref={rrnBackRef}
-                                type="text"
-                                inputMode="numeric"
-                                maxLength={1}
-                                value={rrnBack}
-                                onChange={(e) => {
-                                    const val = e.target.value.replace(/[^1-4]/g, '').slice(0, 1);
-                                    setRrnBack(val);
-                                }}
-                                onBlur={() => {
-                                    if (rrnBack.length > 0 && !/^[1-4]$/.test(rrnBack))
-                                        setFieldErrors((p) => ({ ...p, rrn: '뒷자리는 1~4 사이 숫자입니다.' }));
-                                    else setFieldErrors((p) => ({ ...p, rrn: undefined }));
-                                }}
-                                className="w-10 px-2 py-4 bg-gray-50 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none text-center"
-                            />
-                            <span className="text-gray-300 text-xl tracking-widest select-none">●●●●●●</span>
-                        </div>
-                        {fieldErrors.rrn && (
-                            <p className="mt-1.5 text-sm text-red-500">{fieldErrors.rrn}</p>
-                        )}
+                        <RrnInput
+                            rrnFront={rrnFront}
+                            rrnBack={rrnBack}
+                            onRrnFrontChange={(val) => {
+                                setRrnFront(val);
+                                setFieldErrors((p) => ({ ...p, rrn: undefined }));
+                            }}
+                            onRrnBackChange={(val) => {
+                                setRrnBack(val);
+                                setFieldErrors((p) => ({ ...p, rrn: undefined }));
+                            }}
+                            onBlur={() => {
+                                if (rrnFront.length > 0 && rrnFront.length < 6)
+                                    setFieldErrors((p) => ({ ...p, rrn: '앞 6자리를 모두 입력해주세요.' }));
+                                else if (rrnBack.length > 0 && !/^[1-4]$/.test(rrnBack))
+                                    setFieldErrors((p) => ({ ...p, rrn: '뒷자리는 1~4 사이 숫자입니다.' }));
+                                else setFieldErrors((p) => ({ ...p, rrn: undefined }));
+                            }}
+                            error={fieldErrors.rrn}
+                            label="주민등록번호"
+                        />
                     </div>
 
                     {/* 구분선 */}

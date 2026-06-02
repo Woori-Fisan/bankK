@@ -3,7 +3,7 @@ import { AlertTriangle, ShieldCheck, Loader2, ChevronLeft } from 'lucide-react';
 import PinpadModal from '../pinpad/PinpadModal';
 import type { LoanData, LoanProduct } from '../../pages/LoanApplication';
 import { useExecuteLoan, extractApiError } from '../../hooks/useLoan';
-import { formatAmount } from '../../utils/formatter';
+import { formatAmount, formatDate } from '../../utils/formatter';
 import type { ExecutionResponse } from '../../api/loanApi';
 
 interface LoanExecutionConfirmProps {
@@ -53,7 +53,7 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({
 
     const maturityDate = new Date();
     maturityDate.setMonth(maturityDate.getMonth() + (product.period ?? 0));
-    const maturityDateString = maturityDate.toISOString().split('T')[0];
+    const maturityDateString = formatDate(maturityDate.toISOString(), false, 'text');
 
     const isLoading = executeMutation.isPending;
 
@@ -139,12 +139,12 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({
                         {isLoading ? (
                             <>
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                대출 실행 중...
+                                대출 진행 중...
                             </>
                         ) : (
                             <>
                                 <ShieldCheck className="w-5 h-5" />
-                                대출 실행
+                                대출 진행
                             </>
                         )}
                     </button>

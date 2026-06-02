@@ -1,8 +1,11 @@
 import React from 'react';
 import WithdrawResultHeader from '../sections/WithdrawResultHeader';
-import WithdrawAmountCard from '../sections/WithdrawAmountCard';
 import WithdrawDetailTable from '../sections/WithdrawDetailTable';
 import type { WithdrawData, WithdrawResult } from '../../../types/withdraw';
+import { formatAmount } from '../../../utils/formatter';
+import Card from '../../common/Card';
+import { Button } from '../../common/Button';
+import { Printer } from 'lucide-react';
 
 interface WithdrawResultViewProps {
     data: WithdrawData;
@@ -16,35 +19,77 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
     onClose,
 }) => {
     return (
-        <div className="w-full max-w-4xl mx-auto bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-500">
-            <div className="p-8 md:p-12 space-y-12">
-                <WithdrawResultHeader />
+        <div className="w-full max-w-7xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pb-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* 좌측: 성공 안내 및 상세 정보 (8컬럼) */}
+                <div className="lg:col-span-8 space-y-6">
+                    <Card padding="xl" className="border-slate-100 shadow-sm">
+                        <WithdrawResultHeader />
+                    </Card>
 
-                <div className="max-w-md mx-auto w-full">
-                    <WithdrawAmountCard amount={data.amount} />
+                    <Card padding="xl" className="border-slate-100 shadow-sm">
+                        <WithdrawDetailTable 
+                            bankName={data.sourceAccount.bankName}
+                            accountNumber={data.sourceAccount.accountNumber}
+                            birthDate={data.birthDate}
+                            balanceBefore={result.balanceBefore}
+                            balanceAfter={result.balanceAfter}
+                            transactionId={result.transactionId}
+                            dateTime={result.dateTime}
+                            fee={data.fee}
+                        />
+                    </Card>
                 </div>
 
-                <div className="border-t border-gray-50 pt-10">
-                    <WithdrawDetailTable 
-                        bankName={data.sourceAccount.bankName}
-                        accountNumber={data.sourceAccount.accountNumber}
-                        birthDate={data.birthDate}
-                        balanceBefore={result.balanceBefore}
-                        balanceAfter={result.balanceAfter}
-                        transactionId={result.transactionId}
-                        dateTime={result.dateTime}
-                    />
-                </div>
+                {/* 우측: 요약 정보 및 액션 버튼 (4컬럼) */}
+                <div className="lg:col-span-4 space-y-6">
+                    <Card padding="xl" className="border-slate-100 shadow-sm text-center h-full flex flex-col justify-between">
+                        <div className="space-y-8">
+                            <div>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-4">최종 출금 금액</span>
+                                <div className="flex items-baseline justify-center gap-2">
+                                    <span className="text-xl font-bold text-slate-400">₩</span>
+                                    <span className="text-6xl font-black text-slate-900 tracking-tighter">
+                                        {formatAmount(data.amount)}
+                                    </span>
+                                </div>
+                            </div>
 
-                <footer className="pt-8 flex justify-center">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-12 py-4 border border-gray-200 text-gray-600 text-lg font-black rounded-xl hover:bg-gray-50 active:scale-[0.98] transition-all"
-                    >
-                        목록으로 돌아가기
-                    </button>
-                </footer>
+                            <div className="pt-8 border-t border-slate-50 space-y-4">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-400 font-medium">수수료</span>
+                                    <span className="text-slate-900 font-bold">{formatAmount(data.fee)}원</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-400 font-medium">상태</span>
+                                    <span className="text-emerald-600 font-black">출금 완료</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 mt-12">
+                            <Button
+                                variant="outline"
+                                size="xl"
+                                fullWidth
+                                onClick={() => alert('출력 기능은 준비 중입니다.')}
+                                className="rounded-2xl h-14 text-base font-bold gap-2 border-slate-200"
+                            >
+                                <Printer className="w-5 h-5" />
+                                출금 내역 출력
+                            </Button>
+                            <Button
+                                variant="primary"
+                                size="xl"
+                                fullWidth
+                                onClick={onClose}
+                                className="rounded-2xl h-14 text-base font-bold shadow-lg shadow-slate-200"
+                            >
+                                메인 페이지로 돌아가기
+                            </Button>
+                        </div>
+                    </Card>
+                </div>
             </div>
         </div>
     );

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useEmployeeStore } from '../../../store/useEmployeeStore';
 import { deleteEmployee } from '../../../api/employee';
+import { Button } from '../../common/Button';
 
 interface Props {
     loginId: string;
@@ -35,30 +36,37 @@ const DeleteEmployeeForm: React.FC<Props> = ({ loginId, onSuccess, onCancel }) =
     };
 
     return (
-        <div>
-            <p className="text-gray-700 mb-6 leading-relaxed">
-                정말로 직원 <span className="font-bold text-slate-900">{loginId}</span> 계정을 삭제하시겠습니까? <br/>
-                <span className="text-rose-500 text-sm font-medium">이 작업은 되돌릴 수 없습니다.</span>
-            </p>
+        <div className="space-y-8">
+            <div className="space-y-4">
+                <p className="text-slate-600 leading-relaxed">
+                    정말로 직원 <span className="font-bold text-slate-900">{loginId}</span> 계정을 삭제하시겠습니까?
+                </p>
+                <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl">
+                    <p className="text-rose-600 text-sm font-bold">
+                        ⚠️ 이 작업은 되돌릴 수 없으며, 해당 직원은 즉시 시스템 접근이 차단됩니다.
+                    </p>
+                </div>
+            </div>
 
-            {error && <p className="text-red-500 text-sm mb-4 font-bold">{error}</p>}
+            {error && <p className="text-rose-500 text-sm font-bold ml-1">{error}</p>}
 
-            <div className="flex justify-end gap-3">
-                <button
-                    type="button"
+            <div className="flex justify-end gap-3 pt-2">
+                <Button
+                    variant="outline"
                     onClick={onCancel}
-                    className="inline-flex justify-center py-2.5 px-5 border border-gray-300 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-all"
+                    disabled={isLoading}
+                    className="px-6"
                 >
                     취소
-                </button>
-                <button
-                    type="button"
+                </Button>
+                <Button
+                    variant="danger"
                     onClick={handleDelete}
                     disabled={isLoading}
-                    className="inline-flex justify-center py-2.5 px-5 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-rose-600 hover:bg-rose-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="px-8"
                 >
-                    {isLoading ? '삭제 중...' : '계정 삭제'}
-                </button>
+                    {isLoading ? '삭제 중...' : '직원 계정 삭제'}
+                </Button>
             </div>
         </div>
     );

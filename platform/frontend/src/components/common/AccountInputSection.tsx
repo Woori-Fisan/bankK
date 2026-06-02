@@ -1,31 +1,37 @@
 import React from 'react';
-import type { BankOption } from '../../../api/loanApi';
-import Input from '../../common/Input';
+import type { BankOption } from '../../api/loanApi';
+import Input from './Input';
 import { Landmark, Hash } from 'lucide-react';
 
-interface WithdrawAccountSectionProps {
-    bankName: string;
+interface AccountInputSectionProps {
+    title?: string;
     bankCode: string;
     accountNumber: string;
     banks: BankOption[];
     onBankChange: (bankName: string, bankCode: string) => void;
     onAccountChange: (val: string) => void;
     onBlur?: () => void;
+    error?: {
+        bankCode?: string;
+        accountNumber?: string;
+    };
 }
 
-const WithdrawAccountSection: React.FC<WithdrawAccountSectionProps> = ({
+const AccountInputSection: React.FC<AccountInputSectionProps> = ({
+    title = "계좌 정보",
     bankCode,
     accountNumber,
     banks,
     onBankChange,
     onAccountChange,
     onBlur,
+    error
 }) => {
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-2 px-1">
                 <Landmark className="w-4 h-4 text-emerald-500" />
-                <h3 className="text-sm font-bold text-slate-700">출금 계좌 정보</h3>
+                <h3 className="text-sm font-bold text-slate-700">{title}</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -39,6 +45,7 @@ const WithdrawAccountSection: React.FC<WithdrawAccountSectionProps> = ({
                             if (selectedBank) onBankChange(selectedBank.bankName, selectedBank.bankCode);
                         }}
                         onBlur={onBlur}
+                        error={error?.bankCode}
                     >
                         <option value="">은행을 선택하세요</option>
                         {banks.map((b) => (
@@ -56,7 +63,9 @@ const WithdrawAccountSection: React.FC<WithdrawAccountSectionProps> = ({
                         value={accountNumber}
                         onChange={(e) => onAccountChange(e.target.value.replace(/[^0-9]/g, ''))}
                         onBlur={onBlur}
+                        error={error?.accountNumber}
                         placeholder="'-' 없이 숫자만 입력"
+                        helperText="* 계좌번호는 '-' 없이 숫자만 입력해 주세요."
                     />
                 </div>
             </div>
@@ -64,4 +73,4 @@ const WithdrawAccountSection: React.FC<WithdrawAccountSectionProps> = ({
     );
 };
 
-export default WithdrawAccountSection;
+export default AccountInputSection;

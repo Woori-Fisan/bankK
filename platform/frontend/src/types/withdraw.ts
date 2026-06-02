@@ -19,6 +19,7 @@ export interface WithdrawalRequest {
 export interface WithdrawData {
     sourceAccount: {
         bankName: string;
+        bankCode: string;
         accountNumber: string;
         balance?: number;
     };

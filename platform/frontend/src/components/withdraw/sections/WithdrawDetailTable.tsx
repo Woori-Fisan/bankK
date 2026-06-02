@@ -10,55 +10,44 @@ interface WithdrawDetailTableProps {
     balanceAfter: number;
     transactionId: string;
     dateTime: string;
+    fee: number;
 }
 
 const WithdrawDetailTable: React.FC<WithdrawDetailTableProps> = ({
     bankName,
     accountNumber,
-    birthDate,
     balanceBefore,
     balanceAfter,
-    transactionId,
     dateTime,
+    fee,
 }) => {
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-2 text-emerald-700">
-                <CreditCard className="w-5 h-5" />
-                <h3 className="text-lg font-black tracking-tight">거래 상세 내역</h3>
+            <div className="flex items-center gap-2 text-slate-800">
+                <CreditCard className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-lg font-bold">거래 상세 정보</h3>
             </div>
 
-            <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
-                <div className="grid grid-cols-2 p-6 border-b border-gray-100">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase">출금 계좌 (Source Account)</p>
-                        <p className="text-sm font-bold text-gray-900">{bankName} {accountNumber}</p>
+            <div className="bg-slate-50/50 rounded-2xl border border-slate-100 divide-y divide-slate-100">
+                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                    <div className="p-6 space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">출금 계좌</p>
+                        <p className="text-sm font-bold text-slate-900">{bankName} {accountNumber}</p>
                     </div>
-                    <div className="text-right space-y-1">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase">본인 확인 (Birth Date)</p>
-                        <p className="text-sm font-bold text-gray-700">{birthDate}</p>
-                    </div>
-                </div>
-                <div className="grid grid-cols-2 p-6 bg-white/50">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase">출금 전 잔액 (Balance Before)</p>
-                        <p className="text-sm font-bold text-gray-900">₩ {formatAmount(balanceBefore)}</p>
-                    </div>
-                    <div className="text-right space-y-1">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase">출금 후 잔액 (Balance After)</p>
-                        <p className="text-sm font-bold text-gray-900">₩ {formatAmount(balanceAfter)}</p>
+                    <div className="p-6 space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">거래 일시</p>
+                        <p className="text-sm font-bold text-slate-600">{dateTime}</p>
                     </div>
                 </div>
-            </div>
-
-            <div className="flex justify-between items-center px-2 py-4 border-t border-gray-100 mt-4">
-                <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">거래 일시 (Date/Time)</p>
-                    <p className="text-xs font-bold text-gray-600">{dateTime}</p>
-                </div>
-                <div className="text-right space-y-1">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">거래 번호 (Transaction ID)</p>
-                    <p className="text-xs font-bold text-gray-600">{transactionId}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                    <div className="p-6 space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">출금 전 잔액</p>
+                        <p className="text-sm font-bold text-slate-900">₩ {formatAmount(balanceBefore)}</p>
+                    </div>
+                    <div className="p-6 space-y-1 text-right md:text-left">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">출금 후 잔액</p>
+                        <p className="text-xl font-black text-emerald-600">₩ {formatAmount(balanceAfter)}</p>
+                    </div>
                 </div>
             </div>
         </div>

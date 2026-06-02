@@ -7,19 +7,19 @@ const BalanceCalculationSection: React.FC = () => {
     const remainingBalance = availableBalance - amount;
 
     return (
-        <div className="bg-gray-50 rounded-2xl p-8 border border-gray-100 space-y-4">
+        <div className="bg-slate-50 rounded-2xl p-8 border border-slate-100 space-y-5">
             <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500 font-medium">현재 잔액</span>
-                <span className="text-base font-bold text-gray-900">₩ {availableBalance.toLocaleString()}</span>
+                <span className="text-sm text-slate-500 font-bold">현재 잔액</span>
+                <span className="text-base font-black text-slate-900">₩ {availableBalance.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500 font-medium">이체 금액</span>
-                <span className="text-base font-bold text-red-500">- ₩ {amount.toLocaleString()}</span>
+                <span className="text-sm text-slate-500 font-bold">이체 신청 금액</span>
+                <span className="text-base font-black text-rose-500">- ₩ {amount.toLocaleString()}</span>
             </div>
-            <div className="h-px bg-gray-200 w-full my-2"></div>
-            <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-900 font-bold">이체 후 예상 잔액</span>
-                <span className="text-xl font-bold text-emerald-600">₩ {remainingBalance.toLocaleString()}</span>
+            <div className="h-px bg-slate-200 w-full"></div>
+            <div className="flex justify-between items-center pt-1">
+                <span className="text-sm text-slate-900 font-black">이체 후 예상 잔액</span>
+                <span className="text-2xl font-black text-emerald-600">₩ {remainingBalance.toLocaleString()}</span>
             </div>
         </div>
     );

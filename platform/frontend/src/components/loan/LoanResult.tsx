@@ -6,6 +6,7 @@ import { toPng } from 'html-to-image';
 import type { LoanData, LoanProduct, EvaluationResult } from '../../pages/LoanApplication';
 import type { ExecutionResponse } from '../../api/loanApi';
 import LoanReceiptDocument from './LoanReceiptDocument';
+import { formatAmount, formatDate } from '../../utils/formatter';
 
 interface LoanResultProps {
     loanData: LoanData;
@@ -45,8 +46,10 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
     }
 
     const amount = executionResult?.executeAmount ?? product?.executeAmount ?? product?.limit ?? 0;
+    
+    // 월 상환금 계산 로직 통합
     const monthlyAmount = executionResult?.monthlyPayment ?? (() => {
-        const limit = product?.executeAmount ?? product?.limit ?? 0;
+        const limit = amount;
         const rate = product?.rate ?? 0;
         const p = product?.period || 12;
         const monthlyRate = (rate / 100) / 12;
@@ -54,11 +57,15 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
         const denominator = Math.pow(1 + monthlyRate, p) - 1;
         return Math.floor(numerator / denominator);
     })();
-    const maturityDateString = executionResult?.maturityDate ?? (() => {
-        const d = new Date();
-        d.setMonth(d.getMonth() + (product?.period || 0));
-        return d.toISOString().split('T')[0];
-    })();
+
+    // 만기일 포맷팅 통합
+    const maturityDateString = executionResult?.maturityDate 
+        ? formatDate(executionResult.maturityDate, false, 'text')
+        : (() => {
+            const d = new Date();
+            d.setMonth(d.getMonth() + (product?.period || 0));
+            return formatDate(d.toISOString(), false, 'text');
+        })();
 
     const handlePrintReceipt = async () => {
         if (!receiptDocRef.current) return;
@@ -111,8 +118,8 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
 
                 {/* 금액 강조 */}
                 <div className="px-12 py-10 border-b border-gray-100 bg-gray-50 text-center">
-                    <p className="text-sm text-gray-500 mb-2 font-medium">대출금 (Loan Amount)</p>
-                    <p className="text-5xl font-black text-gray-900 tracking-tight">₩ {amount.toLocaleString() || '0'}</p>
+                    <p className="text-sm text-gray-500 mb-2 font-medium">대출 실행 금액</p>
+                    <p className="text-5xl font-black text-gray-900 tracking-tight">₩ {formatAmount(amount)}</p>
                 </div>
 
                 {/* 상세 정보 */}
