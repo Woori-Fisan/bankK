@@ -21,6 +21,7 @@ const getTransactionType = (uri: string | null): string => {
     if (lower.includes('withdrawal')) return '출금';
     if (lower.includes('transfer')) return '이체';
     if (lower.includes('loan')) return '대출';
+    if (lower.includes('inquiry') || lower.includes('account')) return '조회';
     return '';
 };
 
@@ -47,6 +48,7 @@ const TRANSACTION_TYPE_EN: Record<string, string> = {
     '출금': 'Withdrawal',
     '이체': 'Transfer',
     '대출': 'Loan',
+    '조회': 'Inquiry',
 };
 
 const BANK_NAME_EN: Record<string, string> = {
