@@ -54,6 +54,8 @@ services:
     environment:
       PLATFORM_BACKEND_HOST: ${PLATFORM_BACKEND_HOST:-host.docker.internal}
       PLATFORM_BACKEND_PORT: ${PLATFORM_BACKEND_PORT:-8080}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # ← Linux 호환
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml.tmpl:ro
       - ./prometheus/entrypoint.sh:/entrypoint.sh:ro
