@@ -5,7 +5,7 @@
     <springProperty scope="context"
                     name="LOG_PATH"
                     source="logging.file.path"
-                    defaultValue="/app/logs"/>
+                    defaultValue="./logs"/>
 
     <property name="LOG_FILE"
               value="${LOG_PATH}/application.log"/>
