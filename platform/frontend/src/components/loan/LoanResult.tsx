@@ -3,8 +3,9 @@ import { CheckCircle2, XCircle, Printer, Info, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
-import type { LoanData, LoanProduct, EvaluationResult } from '../../pages/LoanApplication';
+import type { LoanData, LoanProduct } from '../../pages/LoanApplication';
 import type { ExecutionResponse } from '../../api/loanApi';
+import type { EvaluationResult } from './LoanEntryForm';
 import LoanReceiptDocument from './LoanReceiptDocument';
 import { formatAmount, formatDate } from '../../utils/formatter';
 import Card from '../common/Card';
@@ -44,11 +45,11 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
 
     // 만기일 포맷팅
     const maturityDateString = executionResult?.maturityDate 
-        ? formatDate(executionResult.maturityDate, false, 'text')
+        ? formatDate(executionResult.maturityDate, false, 'dot')
         : (() => {
             const d = new Date();
             d.setMonth(d.getMonth() + (product?.period || 0));
-            return formatDate(d.toISOString(), false, 'text');
+            return formatDate(d.toISOString(), false, 'dot');
         })();
 
     const handlePrintReceipt = async () => {
@@ -133,20 +134,20 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* 좌측: 성공 안내 및 상세 정보 (8컬럼) */}
-                <div className="lg:col-span-8 space-y-6">
-                    <Card padding="xl" className="border-slate-100 shadow-sm">
-                        <div className="flex flex-col items-center text-center space-y-4">
-                            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
-                                <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                <div className="lg:col-span-8">
+                    <Card padding="xl" className="border-slate-100 shadow-sm h-full">
+                        {/* 완료 헤더 */}
+                        <div className="flex flex-col items-center text-center space-y-6 mb-12">
+                            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center">
+                                <CheckCircle2 className="w-10 h-10 text-emerald-500" />
                             </div>
-                            <div className="space-y-1">
-                                <h2 className="text-2xl font-black text-slate-900 tracking-tight">대출 실행이 완료되었습니다</h2>
-                                <p className="text-sm font-bold text-slate-400">요청하신 대출금이 지정된 계좌로 안전하게 입금되었습니다.</p>
+                            <div className="space-y-2">
+                                <h2 className="text-3xl font-black text-slate-900 tracking-tight">대출 실행이 완료되었습니다</h2>
+                                <p className="text-slate-500 font-medium text-base">요청하신 대출금이 지정된 계좌로 안전하게 입금되었습니다.</p>
                             </div>
                         </div>
-                    </Card>
 
-                    <Card padding="xl" className="border-slate-100 shadow-sm">
+                        {/* 상세 정보 테이블 */}
                         <div className="space-y-6">
                             <div className="flex items-center gap-2 text-slate-800">
                                 <Receipt className="w-5 h-5 text-emerald-600" />
@@ -161,13 +162,13 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
                                     </div>
                                     <div className="p-6 space-y-1">
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">적용 금리</p>
-                                        <p className="text-sm font-bold text-slate-900">{executionResult?.interestRate ?? product?.rate ?? '0'}% (고정금리)</p>
+                                        <p className="text-sm font-bold text-slate-900">{executionResult?.interestRate ?? product?.rate ?? '0'}% <span className="text-xs font-medium text-slate-400 ml-1">(고정금리)</span></p>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
                                     <div className="p-6 space-y-1">
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">입금 계좌</p>
-                                        <p className="text-sm font-bold text-slate-900">{loanData.bank} {loanData.accountNo?.slice(0, 3)}-***-***{loanData.accountNo?.slice(-3)}</p>
+                                        <p className="text-sm font-bold text-slate-900">{loanData.bank} <span className="font-mono text-emerald-600">{loanData.accountNo?.slice(0, 3)}-***-***{loanData.accountNo?.slice(-3)}</span></p>
                                     </div>
                                     <div className="p-6 space-y-1">
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">대출 만기일</p>

@@ -23,7 +23,7 @@ const MainPage: React.FC = () => {
                 description="진행하실 금융 업무 또는 조회 서비스를 선택해 주세요."
             />
 
-            <Section columns={3} gap={8}>
+            <Section columns={2} gap={8}>
                 <ServiceCard
                     icon={Landmark}
                     bgIcon={Landmark}

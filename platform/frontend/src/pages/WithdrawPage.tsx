@@ -169,8 +169,8 @@ const WithdrawPage: React.FC = () => {
                                 <div className="flex justify-between items-center pt-5 border-t border-slate-200/50">
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">출금 계좌</span>
                                     <div className="text-right">
-                                        <p className="text-lg font-black text-slate-900">{withdrawData.sourceAccount.bankName}</p>
-                                        <p className="text-sm font-bold text-emerald-600 font-mono">{withdrawData.sourceAccount.accountNumber}</p>
+                                        <p className="text-sm font-bold text-emerald-600 font-mono">{withdrawData.sourceAccount.bankName}</p>
+                                        <p className="text-lg font-black text-slate-900">{withdrawData.sourceAccount.accountNumber}</p>
                                     </div>
                                 </div>
                                 

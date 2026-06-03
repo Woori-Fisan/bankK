@@ -73,7 +73,7 @@ const EmployeeDetailPanel: React.FC = () => {
                 </div>
 
                 <div className="pt-4 text-[11px] text-slate-400 font-medium text-center">
-                    등록일시: {formatDate(selectedEmployee.createdAt, true)}
+                    등록일시: {formatDate(selectedEmployee.createdAt, true, "dot")}
                 </div>
             </div>
 

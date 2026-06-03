@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Loader2, CheckCircle2, XCircle, Info, ChevronRight, FileText } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, ChevronRight, FileText } from 'lucide-react';
 import type { LoanData, EvaluationResult, LoanProduct } from '../../pages/LoanApplication';
 import type { EvaluationStatusResponse } from '../../api/loanApi';
 import { formatAmount } from '../../utils/formatter';

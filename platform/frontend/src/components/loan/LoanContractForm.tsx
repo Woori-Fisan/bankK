@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Receipt, Info, ChevronLeft, ChevronRight, X, Loader2, AlertTriangle, Search } from 'lucide-react';
+import { FileText, Info, ChevronRight, X, Loader2, AlertTriangle, AlertCircle } from 'lucide-react';
 import type { LoanProduct, LoanData } from '../../pages/LoanApplication';
-import { useContractDocuments, extractApiError } from '../../hooks/useLoan';
-import type { ContractDocument } from '../../api/loanApi';
+import { useContractDocuments, extractApiError, useExecuteLoan } from '../../hooks/useLoan';
+import type { ContractDocument, ExecutionResponse } from '../../api/loanApi';
 import { formatAmount } from '../../utils/formatter';
 import { Button } from '../common/Button';
+import PinpadModal from '../pinpad/PinpadModal';
 
 interface AgreedContractDoc extends ContractDocument {
     agreed: boolean;
@@ -14,7 +15,7 @@ interface LoanContractFormProps {
     product: LoanProduct;
     loanData: LoanData;
     evaluationId: string;
-    onNext: () => void;
+    onNext: (result: ExecutionResponse) => void;
     onBack: () => void;
 }
 
@@ -32,6 +33,10 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
     const [viewedDocs, setViewedDocs] = useState<Set<string>>(new Set());
     const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
     const iframeRef = useRef<HTMLIFrameElement>(null);
+
+    const [isPinpadOpen, setIsPinpadOpen] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const executeMutation = useExecuteLoan();
 
     useEffect(() => {
         if (!isModalOpen) return;
@@ -128,7 +133,28 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
 
     const handleActualExecution = () => {
         setIsExecutionConfirmOpen(false);
-        onNext();
+        setSubmitError(null);
+        setIsPinpadOpen(true);
+    };
+
+    const handlePinComplete = async (pin: string) => {
+        setIsPinpadOpen(false);
+        setSubmitError(null);
+
+        try {
+            const result = await executeMutation.mutateAsync({
+                evaluationId,
+                loanProductCode: product.loanProductCode,
+                depositAccountNo: loanData.accountNo!,
+                accountPassword: pin,
+                executeAmount: product.executeAmount ?? product.limit,
+                repaymentPeriod: product.period ?? 12,
+            });
+
+            onNext(result);
+        } catch (err) {
+            setSubmitError(extractApiError(err));
+        }
     };
 
     const mandatoryDocs = agreedDocs.filter((d) => d.isMandatory);
@@ -136,8 +162,17 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
     const isNextDisabled = mandatoryDocs.some((d) => !d.agreed);
     const agreedCount = agreedDocs.filter((d) => d.agreed).length;
 
+    const isExecuting = executeMutation.isPending;
+
     return (
         <div className="space-y-8">
+            {submitError && (
+                <div className="mb-6 flex items-center gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100 max-w-4xl mx-auto animate-in fade-in slide-in-from-top-2">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    <span className="text-sm font-bold">{submitError}</span>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-9 space-y-6">
                     {isLoading && (
@@ -259,7 +294,6 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                     <div className="sticky top-6 min-h-[600px] flex flex-col justify-items-start">
                         <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm ">
                             <div className="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100">
-                                <Receipt className="w-5 h-5 text-gray-400" />
                                 <h3 className="text-base font-bold text-gray-900">선택 상품 요약</h3>
                             </div>
                             <div className="space-y-5">
@@ -292,15 +326,15 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                         <div className="mt-3 space-y-3">
                             <Button
                                 onClick={handleExecutionClick}
-                                disabled={isNextDisabled || isLoading}
-                                variant={isNextDisabled || isLoading ? 'secondary' : 'primary'}
+                                disabled={isNextDisabled || isLoading || isExecuting}
+                                variant={isNextDisabled || isLoading || isExecuting ? 'secondary' : 'primary'}
                                 size="xl"
                                 fullWidth
                                 className={`h-20 rounded-2xl text-xl font-black shadow-lg transition-all group ${
-                                    isNextDisabled || isLoading ? 'bg-slate-200 text-slate-400 shadow-none' : 'bg-slate-900 text-white hover:bg-slate-800'
+                                    isNextDisabled || isLoading || isExecuting ? 'bg-slate-200 text-slate-400 shadow-none' : 'bg-slate-900 text-white hover:bg-slate-800'
                                 }`}
                             >
-                                {isLoading ? (
+                                {isLoading || isExecuting ? (
                                     <Loader2 className="w-6 h-6 animate-spin" />
                                 ) : (
                                     <>
@@ -423,8 +457,8 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                                 <div className="flex justify-between items-center pt-5 border-t border-slate-200/50">
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">대출금 입금 계좌</span>
                                     <div className="text-right">
-                                        <p className="text-lg font-black text-slate-900">{loanData.bank}</p>
-                                        <p className="text-sm font-bold text-emerald-600 font-mono">{loanData.accountNo}</p>
+                                        <p className="text-sm font-bold text-emerald-600 font-mono">{loanData.bank}</p>
+                                        <p className="text-lg font-black text-slate-900">{loanData.accountNo}</p>
                                     </div>
                                 </div>
                             </div>
@@ -459,6 +493,13 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                     </div>
                 </div>
             )}
+            
+            <PinpadModal
+                isOpen={isPinpadOpen}
+                onClose={() => setIsPinpadOpen(false)}
+                onComplete={handlePinComplete}
+                title="계좌 비밀번호 입력"
+            />
         </div>
     );
 };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import WithdrawResultHeader from '../sections/WithdrawResultHeader';
 import WithdrawDetailTable from '../sections/WithdrawDetailTable';
 import type { WithdrawData, WithdrawResult } from '../../../types/withdraw';
@@ -18,16 +19,20 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
     result,
     onClose,
 }) => {
+    const navigate = useNavigate();
+
+    const handleHome = () => {
+        onClose();
+        navigate('/main');
+    };
+
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pb-10">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* 좌측: 성공 안내 및 상세 정보 (8컬럼) */}
-                <div className="lg:col-span-8 space-y-6">
-                    <Card padding="xl" className="border-slate-100 shadow-sm">
+                <div className="lg:col-span-8">
+                    <Card padding="xl" className="border-slate-100 shadow-sm h-full">
                         <WithdrawResultHeader />
-                    </Card>
-
-                    <Card padding="xl" className="border-slate-100 shadow-sm">
                         <WithdrawDetailTable 
                             bankName={data.sourceAccount.bankName}
                             accountNumber={data.sourceAccount.accountNumber}
@@ -36,7 +41,6 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
                             balanceAfter={result.balanceAfter}
                             transactionId={result.transactionId}
                             dateTime={result.dateTime}
-                            fee={data.fee}
                         />
                     </Card>
                 </div>
@@ -48,7 +52,7 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
                             <div>
                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-4">최종 출금 금액</span>
                                 <div className="flex items-baseline justify-center gap-2">
-                                    <span className="text-xl font-bold text-slate-400">₩</span>
+                                    <span className="text-xl font-bold text-slate-400">원</span>
                                     <span className="text-6xl font-black text-slate-900 tracking-tighter">
                                         {formatAmount(data.amount)}
                                     </span>

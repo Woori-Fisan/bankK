@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Landmark, AlertCircle, ArrowRight, Info, Wallet, User, CheckCircle2, Loader2 } from 'lucide-react';
+import { Landmark, AlertCircle, ArrowRight, Info, Wallet, User, CheckCircle2, Loader2, ChevronRight } from 'lucide-react';
 import Card from '../../common/Card';
 import RrnInput from '../../common/RrnInput';
 import AccountInputSection from '../../common/AccountInputSection';
@@ -263,8 +263,7 @@ const TransferEntryForm: React.FC = () => {
                         <Card padding="lg" className="bg-white border-slate-100 shadow-sm flex flex-col justify-between min-h-[580px]">
                             <div className="space-y-8">
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">실시간 이체 현황</span>
-                                    <ArrowRight className="w-4 h-4 text-slate-300" />
+                                    <span className="text-sm font-bold text-slate-700 uppercase tracking-widest">실시간 이체 현황</span>
                                 </div>
                                 
                                 <div className="space-y-6">
@@ -323,7 +322,7 @@ const TransferEntryForm: React.FC = () => {
                                     }`}
                                 >
                                     다음 단계로
-                                    <ArrowRight className={`w-6 h-6 ml-2 transition-transform ${isNextDisabled ? '' : 'group-hover:translate-x-1'}`} />
+                                    <ChevronRight className={`w-6 h-6 ml-2 transition-transform ${isNextDisabled ? '' : 'group-hover:translate-x-1'}`} />
                                 </Button>
                             </div>
                         </Card>

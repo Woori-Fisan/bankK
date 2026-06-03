@@ -3,7 +3,6 @@ import {
     User, Building2, Upload, FileText, X, ChevronRight, ChevronDown,
     FileType, CheckCircle2, Loader2, AlertTriangle, Info, ShieldCheck,
     AlertCircle,
-    Search,
 } from 'lucide-react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import type { LoanData } from '../../pages/LoanApplication';
@@ -32,16 +31,6 @@ interface LoanRequestFormProps {
     onSseMessage: (data: EvaluationStatusResponse) => void;
     onSseError: (error: Error) => void;
 }
-
-const SectionHeader: React.FC<{ step: number; icon: React.ReactNode; title: string }> = ({ step, icon, title }) => (
-    <div className="flex items-center gap-3 mb-8 pb-5 border-b border-gray-100">
-        <span className="w-9 h-9 bg-slate-900 text-white rounded-full flex items-center justify-center text-sm font-bold shrink-0">
-            {step}
-        </span>
-        <span className="text-gray-400">{icon}</span>
-        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
-    </div>
-);
 
 const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSseMessage, onSseError }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,20 +65,20 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
             setAgreedDocs(docsData.documents.map((d) => ({ ...d, agreed: false })));
         }
     }, [docsData]);
-useEffect(() => {
-    if (!isModalOpen) return;
 
-    const handler = (e: MessageEvent) => {
-        // srcDoc으로 생성된 iframe은 origin 검사가 까다로울 수 있으므로
-        // 정확한 메시지 데이터(terms-scrolled-to-bottom)인지만 확인합니다.
-        if (e.data === 'terms-scrolled-to-bottom') {
-            setHasScrolledToBottom(true);
-        }
-    };
+    useEffect(() => {
+        if (!isModalOpen) return;
 
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-}, [isModalOpen]);
+        const handler = (e: MessageEvent) => {
+            if (e.data === 'terms-scrolled-to-bottom') {
+                setHasScrolledToBottom(true);
+            }
+        };
+
+        window.addEventListener('message', handler);
+        return () => window.removeEventListener('message', handler);
+    }, [isModalOpen]);
+
     const handleTermToggle = (documentType: string) => {
         setAgreedDocs((prev) =>
             prev.map((d) => (d.documentType === documentType ? { ...d, agreed: !d.agreed } : d)),
@@ -157,7 +146,6 @@ useEffect(() => {
       wrapper.offsetHeight
     );
     
-    // 하단 도달 감지 (오차 범위 25px 허용하여 배율 대응)
     if(scrollPos >= totalHeight - 25){
       sent = true;
       window.parent.postMessage('terms-scrolled-to-bottom','${origin}');
@@ -165,9 +153,8 @@ useEffect(() => {
   }
   window.addEventListener('scroll', check);
   window.addEventListener('load', function(){
-    setTimeout(check, 100); // 렌더링 완료 후 체크
+    setTimeout(check, 100);
   });
-  // 창 크기 조절 대응
   window.addEventListener('resize', check);
 })();
 </` + `script>
@@ -298,22 +285,17 @@ useEffect(() => {
 
     if (isUploading) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 bg-white border border-gray-200 rounded-3xl">
+            <div className="flex flex-col items-center justify-center py-20 bg-white border border-gray-200 rounded-3xl shadow-sm">
                 <div className="relative mb-6">
-                    <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
+                    <Loader2 className="w-16 h-16 text-emerald-500 animate-spin" />
                     <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-8 h-8 bg-blue-50 rounded-full" />
+                        <div className="w-8 h-8 bg-emerald-50 rounded-full" />
                     </div>
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 mb-2">파일 전송 중...</h2>
                 <p className="text-sm text-gray-500 text-center max-w-xs">
                     서류를 업로드하고 심사를 접수하고 있습니다.
                 </p>
-                <div className="flex gap-1.5 mt-6">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse delay-75" />
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse delay-150" />
-                </div>
             </div>
         );
     }
@@ -333,7 +315,10 @@ useEffect(() => {
                     
                     {/* 섹션 1: 고객 정보 및 계좌 */}
                     <Card padding="lg" className="border-slate-100 shadow-sm">
-                        <SectionHeader step={1} icon={<User className="w-5 h-5" />} title="고객 정보 및 입금 계좌" />
+                        <div className="flex items-center gap-2 px-1 mb-8 pb-5 border-b border-gray-100">
+                            <User className="w-5 h-5 text-emerald-500" />
+                            <h3 className="text-sm font-bold text-slate-700">1. 고객 정보 및 입금 계좌</h3>
+                        </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
                             {/* 성명 */}
@@ -452,7 +437,10 @@ useEffect(() => {
 
                     {/* 섹션 2: 서류 업로드 */}
                     <Card padding="lg" className="border-slate-100 shadow-sm">
-                        <SectionHeader step={2} icon={<Upload className="w-5 h-5" />} title="서류 업로드" />
+                        <div className="flex items-center gap-2 px-1 mb-8 pb-5 border-b border-gray-100">
+                            <Upload className="w-4 h-4 text-emerald-500" />
+                            <h3 className="text-sm font-bold text-slate-700">2. 서류 업로드</h3>
+                        </div>
 
                         {/* 필수 서류 체크리스트 */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -531,7 +519,10 @@ useEffect(() => {
 
                     {/* 섹션 3: 약관 동의 */}
                     <Card padding="lg" className="border-slate-100 shadow-sm">
-                        <SectionHeader step={3} icon={<FileText className="w-5 h-5" />} title="약관 동의" />
+                        <div className="flex items-center gap-2 px-1 mb-8 pb-5 border-b border-gray-100">
+                            <FileText className="w-4 h-4 text-emerald-500" />
+                            <h3 className="text-sm font-bold text-slate-700">3. 약관 동의</h3>
+                        </div>
 
                         <div className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 flex items-start gap-4 mb-8">
                             <Info className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
@@ -604,7 +595,6 @@ useEffect(() => {
                             <div className="space-y-8">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">신청 현황 요약</span>
-                                    <Search className="w-4 h-4 text-slate-300" />
                                 </div>
                                 
                                 <div className="space-y-6">

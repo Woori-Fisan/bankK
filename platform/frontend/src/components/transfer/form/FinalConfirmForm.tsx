@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, User, Wallet, AlertTriangle, ArrowRight } from 'lucide-react';
-import Card from '../../common/Card';
+import { AlertCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '../../common/Button';
 import PinpadModal from '../../pinpad/PinpadModal';
 import { useTransferStore } from '../../../store/useTransferStore';
@@ -72,9 +71,12 @@ const FinalConfirmForm: React.FC = () => {
                     {/* 받는 분 */}
                     <div className="flex justify-between items-start">
                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">받는 분</span>
-                        <div className="text-right">
-                            <p className="text-lg font-black text-slate-900">{toName}</p>
-                            <p className="text-sm font-bold text-emerald-600">{toBankName} {toAccountNumber}</p>
+                        <div className='flex gap-15'>
+                            <span className="text-lg font-black text-emerald-600">{toName}</span>
+                            <div className="text-right">
+                                <p className="text-sm font-bold text-emerald-600">{toBankName}</p>
+                                <p className="text-lg font-black text-slate-900">{toAccountNumber}</p>
+                            </div>
                         </div>
                     </div>
                     
@@ -83,9 +85,12 @@ const FinalConfirmForm: React.FC = () => {
                     {/* 보내는 분 */}
                     <div className="flex justify-between items-start">
                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">보내는 분</span>
-                        <div className="text-right">
-                            <p className="text-lg font-black text-slate-900">{fromName}</p>
-                            <p className="text-sm text-slate-500 font-mono">{fromBankName} {fromAccountNumber}</p>
+                        <div className='flex gap-15'>
+                            <span className="text-lg font-black text-emerald-600">{fromName}</span>
+                            <div className="text-right">
+                                <p className="text-sm font-bold text-emerald-600">{fromBankName}</p>
+                                <p className="text-lg font-black text-slate-900">{fromAccountNumber}</p>
+                            </div>
                         </div>
                     </div>
 

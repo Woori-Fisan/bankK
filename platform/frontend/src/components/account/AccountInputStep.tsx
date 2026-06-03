@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowRight, Search, Info, User, AlertTriangle } from 'lucide-react';
+import { AlertCircle, ChevronRight, Info, User, AlertTriangle } from 'lucide-react';
 import { isValidAccountNumber } from '../../utils/validator';
 import { fetchBankList, type BankOption } from '../../api/loanApi';
 import { Button } from '../common/Button';
@@ -187,43 +187,44 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
 
                     {/* 2. 요약 및 실행 영역 (1컬럼) */}
                     <div className="lg:col-span-1 space-y-6">
-                        <Card padding="lg" className="bg-white border-slate-100 shadow-sm flex flex-col justify-between min-h-[420px]">
-                            <div className="space-y-6">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">조회 요약</span>
-                                    <Search className="w-4 h-4 text-slate-300" />
-                                </div>
-                                
+                        <div className="sticky top-10 space-y-6">
+                            <Card padding="lg" className="bg-white border-slate-100 shadow-sm flex flex-col justify-between min-h-[420px]">
                                 <div className="space-y-6">
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase">고객명</p>
-                                        <p className="text-sm font-black text-slate-900">{formData.userName || '미입력'}</p>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">조회 요약</span>
                                     </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase">대상 은행</p>
-                                        <p className="text-sm font-black text-slate-900">{formData.bankName || '은행 미선택'}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase">계좌 번호</p>
-                                        <p className="text-sm font-black text-slate-900 font-mono">{formData.accountNo || '번호 미입력'}</p>
+                                    
+                                    <div className="space-y-6">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase">고객명</p>
+                                            <p className="text-sm font-black text-slate-900">{formData.userName || '미입력'}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase">대상 은행</p>
+                                            <p className="text-sm font-black text-slate-900">{formData.bankName || '은행 미선택'}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase">계좌 번호</p>
+                                            <p className="text-sm font-black text-slate-900">{formData.accountNo || '번호 미입력'}</p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <Button
-                                onClick={handleSubmit}
-                                disabled={isNextDisabled}
-                                variant={isNextDisabled ? 'secondary' : 'primary'}
-                                size="xl"
-                                fullWidth
-                                className={`h-16 rounded-2xl text-lg font-black shadow-lg transition-all group ${
-                                    isNextDisabled ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-white hover:bg-slate-800'
-                                }`}
-                            >
-                                계좌 조회하기
-                                <ArrowRight className={`w-5 h-5 ml-2 transition-transform ${isNextDisabled ? '' : 'group-hover:translate-x-1'}`} />
-                            </Button>
-                        </Card>
+                                <Button
+                                    onClick={handleSubmit}
+                                    disabled={isNextDisabled}
+                                    variant={isNextDisabled ? 'secondary' : 'primary'}
+                                    size="xl"
+                                    fullWidth
+                                    className={`h-16 rounded-2xl text-lg font-black shadow-lg transition-all group ${
+                                        isNextDisabled ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-white hover:bg-slate-800'
+                                    }`}
+                                >
+                                    계좌 조회하기
+                                    <ChevronRight className={`w-5 h-5 ml-2 transition-transform ${isNextDisabled ? '' : 'group-hover:translate-x-1'}`} />
+                                </Button>
+                            </Card>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -260,8 +261,8 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
                                 <div className="flex justify-between items-center pt-5 border-t border-slate-200/50">
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">대상 계좌</span>
                                     <div className="text-right">
-                                        <p className="text-lg font-black text-slate-900">{formData.bankName}</p>
-                                        <p className="text-sm font-bold text-emerald-600 font-mono">{formData.accountNo}</p>
+                                        <p className="text-sm font-bold text-emerald-600 font-mono">{formData.bankName}</p>
+                                        <p className="text-lg font-black text-slate-900">{formData.accountNo}</p>
                                     </div>
                                 </div>
                             </div>

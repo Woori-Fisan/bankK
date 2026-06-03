@@ -43,7 +43,7 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ tx }) => {
         <tr className="hover:bg-emerald-50/30 transition-all duration-200 group">
             <td className="px-6 py-5 whitespace-nowrap">
                 <div className="flex flex-col">
-                    <span className="text-gray-900 font-semibold">{formatDate(tx.date, false, 'text')}</span>
+                    <span className="text-gray-900 font-semibold">{formatDate(tx.date, false, 'dot')}</span>
                     <span className="text-gray-400 text-xs">{tx.date.includes(' ') ? tx.date.split(' ')[1] : ''}</span>
                 </div>
             </td>

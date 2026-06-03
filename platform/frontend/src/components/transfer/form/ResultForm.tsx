@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import SuccessSummarySection from '../section/SuccessSummarySection';
 import ResultDetailSection from '../section/ResultDetailSection';
 import { useTransferStore } from '../../../store/useTransferStore';
@@ -8,22 +9,25 @@ import { Button } from '../../common/Button';
 import { Printer } from 'lucide-react';
 
 const ResultForm: React.FC = () => {
+    const navigate = useNavigate();
     const { 
         amount, toName, toBankName, toBankAccountNo, 
         fromBankName, fromAccountNumber, 
         transactionId, transactionDate, balanceAfter, reset 
     } = useTransferStore();
 
+    const handleHome = () => {
+        reset();
+        navigate('/main');
+    };
+
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pb-10">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* 좌측: 성공 안내 및 상세 정보 (8컬럼) */}
-                <div className="lg:col-span-8 space-y-6">
-                    <Card padding="xl" className="border-slate-100 shadow-sm">
+                <div className="lg:col-span-8">
+                    <Card padding="xl" className="border-slate-100 shadow-sm h-full">
                         <SuccessSummarySection />
-                    </Card>
-
-                    <Card padding="xl" className="border-slate-100 shadow-sm">
                         <ResultDetailSection 
                             toName={toName}
                             toBank={toBankName}

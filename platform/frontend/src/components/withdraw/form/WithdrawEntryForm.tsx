@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertCircle, ArrowRight, Search, User } from 'lucide-react';
+import { AlertCircle, ChevronRight, Search, User } from 'lucide-react';
 import AccountInputSection from '../../common/AccountInputSection';
 import AmountInputSection from '../sections/AmountInputSection';
 import WithdrawFeeSection from '../sections/WithdrawFeeSection';
@@ -11,12 +11,6 @@ import Card from '../../common/Card';
 import { Button } from '../../common/Button';
 import RrnInput from '../../common/RrnInput';
 import Input from '../../common/Input';
-
-export interface WithdrawEntryFormProps {
-    initialData?: WithdrawData;
-    onNext: (data: WithdrawData) => void;
-    banks: BankOption[];
-}
 
 export interface WithdrawEntryFormProps {
     initialData?: WithdrawData;
@@ -105,7 +99,7 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                             <div className="space-y-6">
                                 <div className="flex items-center gap-2 px-1">
                                     <User className="w-4 h-4 text-emerald-500" />
-                                    <h3 className="text-sm font-bold text-slate-700">고객 정보</h3>
+                                    <h3 className="text-sm font-bold text-slate-700">1. 고객 정보</h3>
                                 </div>
                                 <div className="max-w-md">
                                     <Input
@@ -122,6 +116,10 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
 
                             {/* 2단계: 주민등록번호 입력 */}
                             <div className="pt-8 border-t border-slate-50">
+                                <div className="flex items-center gap-2 px-1 mb-4">
+                                    <User className="w-4 h-4 text-emerald-500" />
+                                    <h3 className="text-sm font-bold text-slate-700">2. 주민등록번호</h3>
+                                </div>
                                 <RrnInput 
                                     rrnFront={birthDate.slice(0, 6)}
                                     rrnBack={birthDate.slice(6, 7)}
@@ -143,7 +141,7 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                             {/* 3단계: 출금 계좌 정보 입력 */}
                             <div className="pt-8 border-t border-slate-50">
                                 <AccountInputSection 
-                                    title="출금 계좌 정보"
+                                    title="3. 출금 계좌 정보"
                                     bankCode={sourceAccount.bankCode}
                                     accountNumber={sourceAccount.accountNumber}
                                     banks={banks}
@@ -174,80 +172,66 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                 </div>
 
                 {/* 2. 요약 및 실행 영역 (1컬럼) */}
-                <div className="lg:col-span-1 space-y-6">
-                    {/* 출금 가능 잔액 카드 */}
-                    <Card padding="lg" className={`min-h-[280px] flex flex-col justify-between transition-all duration-500 ${sourceAccount.balance !== undefined ? 'bg-emerald-900 text-white border-none shadow-xl shadow-emerald-900/10' : 'bg-white border-slate-100 shadow-sm'}`}>
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className={`text-[10px] font-black uppercase tracking-widest ${sourceAccount.balance !== undefined ? 'text-emerald-300' : 'text-slate-400'}`}>출금 요약</span>
-                                <Search className={`w-4 h-4 ${sourceAccount.balance !== undefined ? 'text-emerald-400' : 'text-slate-300'}`} />
-                            </div>
-                            
-                            <div className="space-y-4">
-                                <div className="space-y-1">
-                                    <p className={`text-[10px] font-bold uppercase ${sourceAccount.balance !== undefined ? 'text-emerald-300' : 'text-slate-400'}`}>고객명</p>
-                                    <p className="text-sm font-black">{userName || '미입력'}</p>
+                <div className="lg:col-span-1">
+                    <div className="sticky top-10 space-y-6">
+                        {/* 출금 가능 잔액 카드 */}
+                        <Card padding="lg" className="bg-white border-slate-100 shadow-sm min-h-[280px] flex flex-col justify-between transition-all duration-500">
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-bold text-slate-700 uppercase tracking-widest">출금 요약</span>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className={`text-[10px] font-bold uppercase ${sourceAccount.balance !== undefined ? 'text-emerald-300' : 'text-slate-400'}`}>계좌번호</p>
-                                    <p className="text-sm font-black font-mono">{sourceAccount.bankName} {sourceAccount.accountNumber || '미입력'}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="pt-4 mt-4 border-t border-white/10">
-                            <h4 className={`text-xs font-bold ${sourceAccount.balance !== undefined ? 'text-emerald-100' : 'text-slate-500'}`}>출금 가능 잔액</h4>
-                            <div className="mt-1">
-                                {isCheckingBalance ? (
-                                    <div className="flex gap-1.5 items-baseline py-2">
-                                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" />
-                                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                
+                                <div className="space-y-6">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">고객명</p>
+                                        <p className="text-sm font-black text-slate-900">{userName || '미입력'}</p>
                                     </div>
-                                ) : sourceAccount.balance !== undefined ? (
-                                    <p className="text-3xl font-black tracking-tighter">
-                                        <span className="text-base font-bold mr-1 opacity-60">₩</span>
-                                        {formatAmount(sourceAccount.balance)}
-                                    </p>
-                                ) : (
-                                    <p className="text-sm font-bold text-slate-300 py-2">계좌 확인 시 조회됩니다.</p>
-                                )}
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">계좌번호</p>
+                                        <p className="text-sm font-black text-slate-900 font-mono">{sourceAccount.bankName} {sourceAccount.accountNumber || '미입력'}</p>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </Card>
 
-                    {/* 수수료 및 정책 카드 */}
-                    <Card padding="md" className="border-slate-100 bg-white shadow-sm space-y-4">
-                        <WithdrawFeeSection fee={fee} isWaived={true} />
-                        <div className="pt-3 border-t border-slate-50 space-y-2">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">안내 사항</p>
-                            <ul className="space-y-1.5">
-                                <li className="flex items-start gap-2 text-[11px] text-slate-500 font-medium">
-                                    <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
-                                    출금 수수료 전액 면제
-                                </li>
-                                <li className="flex items-start gap-2 text-[11px] text-slate-500 font-medium">
-                                    <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
-                                    1일 한도: 1,000,000원
-                                </li>
-                            </ul>
-                        </div>
-                    </Card>
+                            <div className="pt-4 mt-4 border-t border-slate-50">
+                                <div className="space-y-1.5">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">출금 가능 잔액</p>
+                                    <div className="mt-1">
+                                        {isCheckingBalance ? (
+                                            <div className="flex gap-1.5 items-baseline py-2">
+                                                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" />
+                                                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                            </div>
+                                        ) : sourceAccount.balance !== undefined ? (
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-3xl font-black text-slate-900">{formatAmount(sourceAccount.balance)}</span>
+                                                <span className="text-sm font-bold text-slate-500">원</span>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm font-bold text-slate-300 py-2">계좌 확인 시 조회됩니다.</p>
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] font-bold text-emerald-600">수수료 전액 면제 (0원)</p>
+                                </div>
+                            </div>
+                        </Card>
 
-                    {/* 실행 버튼 (대출 페이지 스타일 통일: 비활성 시 Gray, 활성 시 Slate) */}
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={isNextDisabled}
-                        variant={isNextDisabled ? 'secondary' : 'primary'}
-                        size="xl"
-                        fullWidth
-                        className={`h-16 rounded-2xl text-xl font-black shadow-lg transition-all group ${
-                            isNextDisabled ? 'bg-slate-200 text-slate-400 shadow-none' : 'bg-slate-900 text-white hover:bg-slate-800'
-                        }`}
-                    >
-                        다음 단계로
-                        <ArrowRight className={`w-6 h-6 ml-2 transition-transform ${isNextDisabled ? '' : 'group-hover:translate-x-1'}`} />
-                    </Button>
+                        {/* 실행 버튼 */}
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={isNextDisabled}
+                            variant={isNextDisabled ? 'secondary' : 'primary'}
+                            size="xl"
+                            fullWidth
+                            className={`h-16 rounded-2xl text-xl font-black shadow-lg transition-all group ${
+                                isNextDisabled ? 'bg-slate-200 text-slate-400 shadow-none' : 'bg-slate-900 text-white hover:bg-slate-800'
+                            }`}
+                        >
+                            다음 단계로
+                            <ChevronRight className={`w-6 h-6 ml-2 transition-transform ${isNextDisabled ? '' : 'group-hover:translate-x-1'}`} />
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
