@@ -190,8 +190,9 @@ public class ControllerLoggingAspect {
         if (obj instanceof Object[] args) {
             try {
                 List<String> elements = Arrays.stream(args)
-                        .filter(arg -> arg == null ||
-                                NON_SERIALIZABLE_TYPES.stream().noneMatch(t -> t.isInstance(arg)))
+                        .filter(arg -> arg != null
+                                && !(arg instanceof String)
+                                && NON_SERIALIZABLE_TYPES.stream().noneMatch(t -> t.isInstance(arg)))
                         .map(this::serialize)
                         .toList();
                 if (elements.isEmpty()) return null;
