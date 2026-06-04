@@ -20,6 +20,7 @@ public class BizLogRequest {
     private String level;
     private String traceId;
     private String staffId;
+    private String agencyCode;
 
     private HttpContext http;
 
@@ -52,6 +53,7 @@ public class BizLogRequest {
                 .logType(http.getLogType())
                 .traceId(traceId)
                 .staffId(staffId)
+                .agencyCode(agencyCode)
                 .bankCode(http.getBankCode())
                 .targetCode(http.getTargetCode())
                 .bankKeyId(http.getBankKeyId())
