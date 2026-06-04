@@ -31,9 +31,7 @@ const FinalConfirmForm: React.FC = () => {
                 customerRrnPrefix: customerRrnPrefix,
                 depositBankCode: toBank,
                 depositAccountNo: toAccountNumber,
-                amount: amount,
-                encryptedKey: 'TEMP_ENCRYPTED_KEY',
-                jwsSignature: 'TEMP_JWS_SIGNATURE'
+                amount: amount
             });
 
             if (response.success) {

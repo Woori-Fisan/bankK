@@ -23,5 +23,8 @@ spring:
       mode: always
       schema-locations: classpath:sql/test-schema.sql
 
+bank:
+  code: "020"
+
 DB_ENCRYPTION_KEY: dGVzdC1rZXktMzItYnl0ZXMtZm9yLXRlc3Rpbmch  # 테스트용 32바이트 Base64
 BLIND_INDEX_SALT: test-salt

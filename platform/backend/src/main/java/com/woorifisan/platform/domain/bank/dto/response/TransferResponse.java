@@ -1,6 +1,8 @@
 package com.woorifisan.platform.domain.bank.dto.response;
 
+import com.woorifisan.platform.global.security.dto.SecureResponse;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 
@@ -13,8 +15,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class TransferResponse {
+@SuperBuilder
+public class TransferResponse extends SecureResponse {
 
     private String transactionId;
     private String transactionDate;

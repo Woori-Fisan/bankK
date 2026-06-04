@@ -67,6 +67,7 @@ public class AuthController {
         LoginResponse loginResponse = LoginResponse.builder()
                 .accessToken(tokenDto.getAccessToken())
                 .role(tokenDto.getRole())
+                .refreshTokenExpiresIn(tokenDto.getRefreshTokenExpiresIn())
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success(loginResponse));
@@ -119,7 +120,8 @@ public class AuthController {
 
         TokenRefreshResponse refreshResponse = TokenRefreshResponse.builder()
                 .accessToken(tokenDto.getAccessToken())
-                .accessTokenExpiresIn((int) tokenDto.getAccessTokenExpiresIn())
+                .accessTokenExpiresIn(tokenDto.getAccessTokenExpiresIn())
+                .refreshTokenExpiresIn(tokenDto.getRefreshTokenExpiresIn())
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success(refreshResponse));

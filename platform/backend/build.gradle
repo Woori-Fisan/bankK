@@ -116,6 +116,7 @@ dependencies {
 
 	// Validation
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-aop'
 
 	// AOP
 	implementation 'org.springframework.boot:spring-boot-starter-aop'

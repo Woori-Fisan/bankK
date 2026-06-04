@@ -1,16 +1,25 @@
 import { create } from 'zustand';
 
+interface BankKeyInfo {
+  keyId: string;
+  publicKey: string;
+}
+
 interface BankKeyStore {
-  bankPublicKeys: Record<string, string>;
-  setBankPublicKey: (bankCode: string, publicKey: string) => void;
+  bankPublicKeys: Record<string, BankKeyInfo>;
+  setBankPublicKey: (bankCode: string, keyInfo: BankKeyInfo) => void;
+  setAllBankKeys: (keys: Record<string, BankKeyInfo>) => void;
   getBankPublicKey: (bankCode: string) => string | null;
+  getBankKeyId: (bankCode: string) => string | null;
 }
 
 export const useBankKeyStore = create<BankKeyStore>((set, get) => ({
   bankPublicKeys: {},
-  setBankPublicKey: (bankCode, publicKey) =>
+  setBankPublicKey: (bankCode, keyInfo) =>
     set((state) => ({
-      bankPublicKeys: { ...state.bankPublicKeys, [bankCode]: publicKey },
+      bankPublicKeys: { ...state.bankPublicKeys, [bankCode]: keyInfo },
     })),
-  getBankPublicKey: (bankCode) => get().bankPublicKeys[bankCode] ?? null,
+  setAllBankKeys: (keys) => set({ bankPublicKeys: keys }),
+  getBankPublicKey: (bankCode) => get().bankPublicKeys[bankCode]?.publicKey ?? null,
+  getBankKeyId: (bankCode) => get().bankPublicKeys[bankCode]?.keyId ?? null,
 }));

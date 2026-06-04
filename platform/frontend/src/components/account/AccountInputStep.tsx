@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, CreditCard, User, Landmark, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Search, CreditCard, User, Landmark, AlertCircle, ArrowRight } from 'lucide-react';
 import { isValidAccountNumber } from '../../utils/validator';
 import { fetchBankList, type BankOption } from '../../api/loanApi';
 
@@ -8,8 +8,6 @@ interface AccountInputStepProps {
         bankCode: string; 
         accountNo: string; 
         customerRrnPrefix: string;
-        encryptedKey: string;
-        jwsSignature: string;
     }) => void;
     apiError?: string;
     clearApiError?: () => void;
@@ -19,10 +17,7 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
     const [formData, setFormData] = useState({
         bankCode: '',
         accountNo: '',
-        customerRrnPrefix: '', // 백엔드 DTO 규격 준수
-        // 사용자 요청에 따른 테스트용 하드코딩 문자열 설정
-        encryptedKey: 'ENC_AES_KEY_STRING',
-        jwsSignature: 'JWS_SIGNATURE_STRING',
+        customerRrnPrefix: ''
     });
     
     // 동적 은행 리스트 상태
@@ -106,7 +101,7 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
             return;
         }
 
-        // 2. 백엔드 DTO 규격에 맞는 완성된 객체 전달
+        // 2. 부모 컴포넌트로 데이터 전달 (하이픈 제거)
         onNext({
             ...formData,
             customerRrnPrefix: formData.customerRrnPrefix.replace(/-/g, '')
@@ -217,18 +212,8 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
                             )}
                         </div>
 
-                        {/* 테스트용 보안 토큰 표시 (개발용) */}
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-3 mt-4">
-                            <ShieldCheck className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs text-slate-500 font-bold mb-1">Security Payload (Test Mode)</p>
-                                <p className="text-[10px] text-slate-400 font-mono truncate">KEY: {formData.encryptedKey}</p>
-                                <p className="text-[10px] text-slate-400 font-mono truncate">SIG: {formData.jwsSignature}</p>
-                            </div>
-                        </div>
-
                         {/* 안내 문구 */}
-                        <div className="flex items-start gap-3.5 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="flex items-start gap-3.5 p-5 bg-slate-50 rounded-2xl border border-slate-100 mt-4">
                             <AlertCircle className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
                             <p className="text-sm text-slate-500 leading-relaxed font-medium">
                                 입력하신 정보는 본인 확인 및 계좌 조회를 위해 해당 금융기관으로 안전하게 전송됩니다. 

@@ -1,21 +1,22 @@
 package com.woorifisan.bank.domain.account.dto.response;
 
+import com.woorifisan.bank.global.security.dto.SecureResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Getter
-@Builder
+@SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Schema(description = "거래 내역 조회 응답 객체")
-public class TransactionHistoryResponse {
+public class TransactionHistoryResponse extends SecureResponse {
 
     @Schema(description = "전체 거래 건수", example = "100")
     private Integer totalCount;
@@ -32,6 +33,26 @@ public class TransactionHistoryResponse {
     @Schema(description = "다음 페이지 존재 여부", example = "true")
     private Boolean hasNext;
 
-    @Schema(description = "거래 내역 리스트")
-    private List<TransactionHistoryDto> history;
+    /**
+     * 암호화될 민감 데이터 구조
+     */
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class SensitiveData {
+        private List<TransactionHistoryDto> history;
+    }
+
+    public static TransactionHistoryResponse of(
+            String resPayload, Integer totalCount, Integer totalPages, 
+            Integer currentPage, Integer size, Boolean hasNext) {
+        return TransactionHistoryResponse.builder()
+                .resPayload(resPayload)
+                .totalCount(totalCount)
+                .totalPages(totalPages)
+                .currentPage(currentPage)
+                .size(size)
+                .hasNext(hasNext)
+                .build();
+    }
 }
