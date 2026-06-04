@@ -27,8 +27,15 @@ export const useReviewDocuments = () =>
 
 export const useSubmitLoanEvaluation = () =>
   useMutation({
-    mutationFn: ({ payload, files }: { payload: EvaluationRequest; files: File[] }) =>
-      submitLoanEvaluation(payload, files),
+    mutationFn: ({
+      payload,
+      files,
+      headers,
+    }: {
+      payload: any;
+      files: File[];
+      headers?: Record<string, string>;
+    }) => submitLoanEvaluation(payload, files, headers),
   });
 
 export const useContractDocuments = (
@@ -43,7 +50,8 @@ export const useContractDocuments = (
 
 export const useExecuteLoan = () =>
   useMutation({
-    mutationFn: (payload: ExecutionRequest) => executeLoan(payload),
+    mutationFn: ({ payload, headers }: { payload: any; headers?: Record<string, string> }) =>
+      executeLoan(payload, headers),
   });
 
 export const useBankList = () =>

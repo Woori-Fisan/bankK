@@ -60,6 +60,9 @@ public enum ErrorCode {
     //조회
     INQUIRY_ACCOUNT_NOTFOUND("INQUIRY_001", "계좌 정보를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
     INQUIRY_INVALID_DATE_RANGE("INQUIRY_002", "조회 기간을 확인해주세요.", HttpStatus.BAD_REQUEST),
+
+    // 암호화 키
+    RSA_KEY_NOT_FOUND("KEY_001", "유효한 RSA 키를 찾을 수 없습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     ;
 
     private final String code;

@@ -4,9 +4,11 @@ import com.woorifisan.bank.domain.account.mapper.AccountMapper;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
 import com.woorifisan.bank.domain.loan.dto.response.AvailableProductDto;
+import com.woorifisan.bank.domain.loan.dto.response.SensitiveLoanEvaluateResponse;
 import com.woorifisan.bank.domain.loan.mapper.LoanLedgerMapper;
 import com.woorifisan.bank.domain.loan.mapper.LoanProductMapper;
 import com.woorifisan.bank.domain.loan.model.LoanLedger;
+import com.woorifisan.bank.global.security.service.SecurityService;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -14,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.crypto.SecretKey;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,11 +55,12 @@ public class LoanReviewAsyncService {
     private final CustomerMapper customerMapper;
     private final AccountMapper accountMapper;
     private final RestTemplate restTemplate;
+    private final SecurityService securityService;
 
     // 비동기 심사 메인 — sendWebhook(HTTP 재시도 최대 3회) 중 DB 커넥션 점유를 막기 위해 @Transactional 제거
     // 각 mapper 호출은 트랜잭션 없이 auto-commit으로 처리됨 (단일 쿼리라 원자성 유지)
     @Async("loanReviewExecutor")
-    public void processReview(String loanNo, String requestKey) {
+    public void processReview(String loanNo, String requestKey, SecretKey cek) {
         log.info("[심사] 비동기 심사 시작 - loanNo: {}", loanNo);
         try {
             Thread.sleep(3000); // 데모용 딜레이 — "심사 중입니다" 화면이 보이도록
@@ -81,7 +85,7 @@ public class LoanReviewAsyncService {
             if (creditScore < CREDIT_SCORE_MIN) {
                 String reason = "신용점수 미달 (" + creditScore + "점)";
                 updateRejected(loanNo, creditScore, BigDecimal.ZERO, BigDecimal.ZERO, reason);
-                sendWebhook(requestKey, loanNo, "REJECTED", null, null, reason, null);
+                sendWebhook(requestKey, loanNo, "REJECTED", null, null, reason, null, cek);
                 return;
             }
 
@@ -92,7 +96,7 @@ public class LoanReviewAsyncService {
             if (appliedRate.compareTo(new BigDecimal("20")) > 0) {
                 String reason = "법정최고금리 초과 (" + appliedRate + "%)";
                 updateRejected(loanNo, creditScore, BigDecimal.ZERO, BigDecimal.ZERO, reason);
-                sendWebhook(requestKey, loanNo, "REJECTED", null, null, reason, null);
+                sendWebhook(requestKey, loanNo, "REJECTED", null, null, reason, null, cek);
                 return;
             }
 
@@ -106,7 +110,7 @@ public class LoanReviewAsyncService {
                 BigDecimal dsr = calculateDsr(activeLoans, ledger.getRequestedAmount(), appliedRate, ledger.getRequestedPeriod());
                 String reason = "DSR 초과 또는 한도 부족 (" + dsr + "%)";
                 updateRejected(loanNo, creditScore, dsr, BigDecimal.ZERO, reason);
-                sendWebhook(requestKey, loanNo, "REJECTED", null, null, reason, null);
+                sendWebhook(requestKey, loanNo, "REJECTED", null, null, reason, null, cek);
                 return;
             }
 
@@ -131,7 +135,7 @@ public class LoanReviewAsyncService {
 
             log.info("[심사] 심사 완료 APPROVED - loanNo: {}, limit: {}", loanNo, approvedLimit);
             // 9단계: Platform 에 webhook 전송 → SSE 로 프론트에 결과 전달
-            sendWebhook(requestKey, loanNo, "APPROVED", approvedLimit, appliedRate, null, products);
+            sendWebhook(requestKey, loanNo, "APPROVED", approvedLimit, appliedRate, null, products, cek);
 
         } catch (Exception e) {
             // 예상치 못한 오류 발생 시 SYSTEM_ERROR 로 저장하고 webhook 전송
@@ -143,7 +147,7 @@ public class LoanReviewAsyncService {
                     .rejectReason("시스템 내부 오류")
                     .build();
             loanLedgerMapper.updateReviewResult(forError);
-            sendWebhook(requestKey, loanNo, "SYSTEM_ERROR", null, null, "시스템 내부 오류", null);
+            sendWebhook(requestKey, loanNo, "SYSTEM_ERROR", null, null, "시스템 내부 오류", null, cek);
         }
     }
 
@@ -166,18 +170,24 @@ public class LoanReviewAsyncService {
     // Webhook 전송
     private void sendWebhook(String requestKey, String loanNo, String status,
             BigDecimal approvedLimit, BigDecimal interestRate,
-            String rejectReason, List<AvailableProductDto> products) {
+            String rejectReason, List<AvailableProductDto> products, SecretKey cek) {
         String url = platformCallbackUrl + "/api/v1/loan/callback";
 
-        // null 값은 payload 에 포함하지 않음 (APPROVED 일 때 rejectReason, REJECTED 일 때 products 등)
+        // 민감 정보 암호화 (resPayload 생성)
+        SensitiveLoanEvaluateResponse sensitive = SensitiveLoanEvaluateResponse.builder()
+                .approvedLimit(approvedLimit)
+                .interestRate(interestRate)
+                .rejectReason(rejectReason)
+                .availableProducts(products)
+                .build();
+        String resPayload = securityService.encryptResponse(sensitive, cek);
+
+        // Platform이 세션 식별을 위해 필요한 필드는 평문으로 유지
         Map<String, Object> body = new HashMap<>();
         body.put("requestKey", requestKey);
         body.put("loanNo", loanNo);
         body.put("status", status);
-        if (approvedLimit != null) body.put("approvedLimit", approvedLimit);
-        if (interestRate != null) body.put("interestRate", interestRate);
-        if (rejectReason != null) body.put("rejectReason", rejectReason);
-        if (products != null) body.put("availableProducts", products);
+        body.put("resPayload", resPayload);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

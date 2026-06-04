@@ -4,6 +4,7 @@ import PinpadModal from '../pinpad/PinpadModal';
 import type { LoanData, LoanProduct } from '../../pages/LoanApplication';
 import { useExecuteLoan, extractApiError } from '../../hooks/useLoan';
 import { formatAmount } from '../../utils/formatter';
+import { prepareSecureRequest, decryptBankResponse } from '../../utils/bankCrypto';
 import type { ExecutionResponse } from '../../api/loanApi';
 
 interface LoanExecutionConfirmProps {
@@ -35,15 +36,40 @@ const LoanExecutionConfirm: React.FC<LoanExecutionConfirmProps> = ({
         setIsPinpadOpen(false);
         setSubmitError(null);
 
-        try {
-            const result = await executeMutation.mutateAsync({
-                evaluationId,
-                loanProductCode: product.loanProductCode,
-                depositAccountNo: loanData.accountNo!,
+        // 1. 보안 요청 준비 (암호화 + 서명 + 키ID 통합 처리)
+        const secureRequest = await prepareSecureRequest(
+            {
                 accountPassword: pin,
+                depositAccountNo: loanData.accountNo!,
+            },
+            {
+                loanNo: evaluationId,
+                productId: product.id,
                 executeAmount: product.executeAmount ?? product.limit,
                 repaymentPeriod: product.period ?? 12,
+                repaymentType: '원리금균등',
+            },
+            loanData.bankCode!,
+        );
+
+        if (!secureRequest) {
+            setSubmitError('보안 요청 준비 중 오류가 발생했습니다.');
+            return;
+        }
+
+        const { payload, headers, aesKey } = secureRequest;
+
+        try {
+            const result = await executeMutation.mutateAsync({
+                payload,
+                headers,
             });
+
+            // 2. 응답 복호화 (메모리에 보관 중이던 aesKey 사용)
+            if (result.resPayload) {
+                const decrypted = await decryptBankResponse(result.resPayload, aesKey);
+                result.borrowerName = decrypted.customerName;
+            }
 
             onNext(result);
         } catch (err) {

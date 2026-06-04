@@ -28,7 +28,6 @@ axiosInstance.interceptors.response.use(
       const newAccessToken = await refreshAccessToken();
       
       if (newAccessToken) {
-        useAuthStore.getState().setAccessToken(newAccessToken);
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return axiosInstance(originalRequest);
       }

@@ -115,14 +115,13 @@ public class LoanService {
         log.info("[심사신청] 은행 API 전달 시작 - requestKey: {}, staffId: {}, bankCode: {}",
                 request.getRequestKey(), staffId, request.getBankCode());
 
-        // 3. Platform DTO → Bank 전용 DTO 변환
+        // 3. Platform DTO → Bank 전용 DTO 변환 (Pass-through)
         BankLoanEvaluateRequest bankData = BankLoanEvaluateRequest.builder()
+                .reqPayload(request.getReqPayload())
+                .bankKeyId(request.getBankKeyId())
                 .requestKey(request.getRequestKey())
-                .customerName(request.getCustomerName())
-                .customerRrnPrefix(request.getCustomerRrnPrefix())
                 .depositBankCode(request.getDepositBankCode())
-                .depositAccountNo(request.getDepositAccountNo())
-                // 프론트에서 금액/기간을 안 보낸 경우 기본값 적용 (1억 / 60개월)
+                // 프론트에서 금액/기간을 안 보낸 경우 기본값 적용
                 .requestedAmount(request.getRequestedAmount() != null
                         ? request.getRequestedAmount() : new BigDecimal("100000000"))
                 .requestedPeriod(request.getRequestedPeriod() != null
@@ -132,18 +131,24 @@ public class LoanService {
                 .documentCollected(hasAgreed(request, "DOCUMENT_COLLECT"))
                 .build();
 
-        // 4. Bank API 호출 (multipart pass-through — 파일은 메모리에서 직접 전달, 디스크 저장 없음)
+        // 4. Bank API 호출 (multipart pass-through)
         Map<String, Object> data = bankLoanClient.submitEvaluation(bankData, files);
         String loanNo = Objects.toString(data.get("loanNo"), null);
         String status = Objects.toString(data.get("status"), "SUBMITTED");
+        String resPayload = Objects.toString(data.get("resPayload"), null);
+
         log.info("[심사신청] 접수 완료 - loanNo: {}, requestKey: {}", loanNo, request.getRequestKey());
-        // 프론트에는 loanNo + SUBMITTED 만 반환. 심사 결과는 SSE로 별도 수신
-        return new LoanEvaluateResponse(loanNo, status);
+        
+        return LoanEvaluateResponse.builder()
+                .loanNo(loanNo)
+                .status(status)
+                .resPayload(resPayload)
+                .build();
     }
 
     // Webhook 수신 처리
     public void handleCallback(LoanCallbackRequest callback, String secret) {
-        // 1. X-Webhook-Secret 헤더 검증 — 위조 요청 차단
+        // 1. X-Webhook-Secret 헤더 검증
         if (!webhookSecret.equals(secret)) {
             log.warn("[Webhook] 인증 실패 - requestKey: {}", callback.getRequestKey());
             throw new BusinessException(ErrorCode.LOAN_WEBHOOK_SECRET_INVALID);
@@ -154,57 +159,32 @@ public class LoanService {
             log.warn("[Webhook] requestKey 누락 - loanNo: {}", callback.getLoanNo());
             return;
         }
-        // 2. Map에서 emitter 꺼내기 (이후 중복 webhook이 와도 처리 안 함)
+        // 2. Map에서 emitter 꺼내기
         SseEmitter emitter = pendingEmitters.remove(requestKey);
         if (emitter == null) {
-            // 60초 타임아웃으로 이미 만료된 경우 — 정상적인 케이스이므로 에러 아님
             log.warn("[Webhook] SSE 에미터 없음 (이미 만료) - requestKey: {}", requestKey);
             return;
         }
 
         try {
-            // 3. Webhook 데이터를 프론트 형식으로 변환
-            LoanEvaluationResultResponse result = buildSseResult(callback);
+            // 3. Webhook 암호화 데이터를 그대로 담아 프론트 형식으로 변환 (Pass-through)
+            LoanEvaluationResultResponse result = LoanEvaluationResultResponse.builder()
+                    .evaluationStatus(callback.getStatus())
+                    .evaluationId(callback.getLoanNo())
+                    .resPayload(callback.getResPayload())
+                    .build();
+            
             // 4. SSE result 이벤트로 프론트에 심사 결과 전송
             emitter.send(SseEmitter.event().name("result")
                     .data(objectMapper.writeValueAsString(result)));
-            // 5. 연결 종료 → onCompletion 콜백이 Map 정리
+            
+            // 5. 연결 종료
             emitter.complete();
             log.info("[Webhook] SSE 전송 완료 - loanNo: {}, status: {}", callback.getLoanNo(), callback.getStatus());
         } catch (Exception e) {
             log.error("[Webhook] SSE 전송 실패 - requestKey: {}", requestKey, e);
             emitter.completeWithError(e);
         }
-    }
-
-    // Bank webhook 데이터 → 프론트 SSE 응답 DTO 변환
-    private LoanEvaluationResultResponse buildSseResult(LoanCallbackRequest callback) {
-        var builder = LoanEvaluationResultResponse.builder()
-                .evaluationStatus(callback.getStatus())
-                .evaluationId(callback.getLoanNo());
-
-        if ("APPROVED".equals(callback.getStatus())) {
-            // APPROVED: 승인 한도 + 선택 가능한 상품 목록 포함
-            List<AvailableProductDto> products = callback.getAvailableProducts() == null
-                    ? List.of()
-                    : callback.getAvailableProducts().stream()
-                            .map(p -> AvailableProductDto.builder()
-                                    .loanProductCode(Objects.toString(p.get("productId"), null))
-                                    .loanProductName(Objects.toString(p.get("productName"), null))
-                                    .minAmount(toBigDecimal(p.get("minLimit")))
-                                    .maxAmount(toBigDecimal(p.get("maxLimit")))
-                                    .interestRate(toBigDecimal(p.get("minRate")))
-                                    .loanPeriodMonths(36)
-                                    .build())
-                            .toList();
-            builder.approvedLimit(callback.getApprovedLimit())
-                   .availableProducts(products);
-        } else {
-            // REJECTED / SYSTEM_ERROR: 거절 사유 포함
-            builder.rejectionMessage(callback.getRejectReason());
-        }
-
-        return builder.build();
     }
 
     // 계약 서류 조회
@@ -231,43 +211,36 @@ public class LoanService {
     // 대출 실행
     public LoanExecuteResponse executeLoan(LoanExecuteRequest request, Long staffId) {
         log.info("[대출실행] 요청 - staffId: {}, loanNo: {}, amount: {}",
-                staffId, request.getEvaluationId(), request.getExecuteAmount());
+                staffId, request.getLoanNo(), request.getExecuteAmount());
 
-        // loanProductCode는 프론트에서 String으로 넘어오지만, Bank API는 Long productId를 기대함
-        long productId;
-        try {
-            productId = Long.parseLong(request.getLoanProductCode());
-        } catch (NumberFormatException e) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT);
-        }
-
-        // Platform DTO → Bank 전용 DTO 변환
+        // Platform DTO → Bank 전용 DTO 변환 (Pass-through)
         BankLoanExecuteRequest bankRequest = BankLoanExecuteRequest.builder()
-                .loanNo(request.getEvaluationId())
-                .productId(productId)
+                .reqPayload(request.getReqPayload())
+                .bankKeyId(request.getBankKeyId())
+                .loanNo(request.getLoanNo())
+                .productId(request.getProductId())
                 .loanAmount(request.getExecuteAmount())
                 .repaymentPeriod(request.getRepaymentPeriod())
-                .repaymentType("원리금균등")
-                .accountPassword(request.getAccountPassword())
+                .repaymentType(request.getRepaymentType())
                 .build();
 
         Map<String, Object> data = bankLoanClient.executeLoan(bankRequest);
         log.info("[대출실행] 완료 - loanNo: {}", data.get("loanNo"));
 
-        // Bank 응답 → Platform 응답 DTO 변환
+        // Bank 응답 → Platform 응답 DTO 변환 (Pass-through)
         return LoanExecuteResponse.builder()
-                .loanId(Objects.toString(data.get("loanNo"), null))
-                .borrowerName(Objects.toString(data.get("customerName"), null))
-                // 입금 거래번호: Bank가 별도 제공하지 않아 Platform에서 임의 생성
-                .depositTransactionId("TXN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase())
-                .loanBalance(toBigDecimal(data.get("loanAmount")))
+                .resPayload(Objects.toString(data.get("resPayload"), null))
+                .loanNo(Objects.toString(data.get("loanNo"), null))
                 .executeAmount(toBigDecimal(data.get("loanAmount")))
                 .interestRate(toBigDecimal(data.get("interestRate")))
                 .repaymentPeriod(data.get("repaymentPeriod") != null
                         ? Integer.parseInt(data.get("repaymentPeriod").toString()) : 0)
                 .monthlyPayment(toBigDecimal(data.get("monthlyPayment")))
-                .repaymentStartDate(Objects.toString(data.get("startDate"), null))
+                .repaymentType(Objects.toString(data.get("repaymentType"), null))
+                .startDate(Objects.toString(data.get("startDate"), null))
                 .maturityDate(Objects.toString(data.get("endDate"), null))
+                .linkedAccountId(data.get("linkedAccountId") != null 
+                        ? Long.parseLong(data.get("linkedAccountId").toString()) : null)
                 .build();
     }
 
