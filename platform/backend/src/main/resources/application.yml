@@ -130,7 +130,7 @@ logging:
   config: classpath:logback-spring.xml
 
   file:
-    path: ${LOG_PATH:./logs}
+    path: ${LOGGING_PATH:./logs}
 
 bank:
   core:
