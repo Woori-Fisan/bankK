@@ -1,6 +1,19 @@
 import React from 'react';
 import { Bot } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
+import type { Schema } from 'hast-util-sanitize';
+
+const CHAT_SANITIZE_SCHEMA: Schema = {
+    tagNames: ['p', 'strong', 'em', 'del', 'br', 'hr',
+               'ul', 'ol', 'li',
+               'h1', 'h2', 'h3',
+               'code', 'pre',
+               'blockquote'],
+    attributes: {
+        code: ['className'],
+    },
+};
 
 interface ChatMessageProps {
     role: 'user' | 'assistant';
@@ -31,7 +44,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, isLoading }) =
                     </div>
                 ) : (
                     <div className="text-sm whitespace-pre-wrap break-words markdown-content">
-                        <ReactMarkdown 
+                        <ReactMarkdown
+                            rehypePlugins={[[rehypeSanitize, CHAT_SANITIZE_SCHEMA]]}
                             components={{
                                 p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                                 ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
