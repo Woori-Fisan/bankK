@@ -58,23 +58,23 @@ public class TransferService {
     }
 
     /**
-     * 이체 실행
+     * 이체 실행 (통합 API 연동)
      * @param request 이체 실행 요청 정보
      * @param jwsSignature 단말기 JWS 서명
      * @param withdrawKeyId 출금 은행 키 ID
-     * @param depositKeyId 입금 은행 키 ID
+     * @param depositKeyId 입금 은행 키 ID (통합 이체에서는 출금 은행 키 위주로 사용되나 인터페이스 유지)
      * @return 이체 처리 결과
      */
     @Transactional
     public TransferResponse executeTransfer(TransferRequest request, String jwsSignature, String withdrawKeyId, String depositKeyId) {
-        log.info("이체 실행 요청 수신 - 출금은행: {}, 입금은행: {}, 금액: {}", 
+        log.info("이체 실행 요청 수신 (통합) - 출금은행: {}, 입금은행: {}, 금액: {}", 
                 request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
 
-        // Saga 패턴의 오케스트레이션 방식을 적용하여 원자성을 보장합니다.
-        // 당행/타행 구분 없이 무조건 출금 후 입금 방식으로 처리하며, E2EE Pass-through를 수행합니다.
+        // 은행 측에서 통합 이체 로직을 처리하므로, 플랫폼은 출금 은행으로 단일 요청을 보냅니다.
+        // E2EE 암호문은 출금 은행의 공개키로 암호화된 것을 사용합니다.
 
-        // 1. [Step 1: 출금] 출금 은행 API 호출
-        BankTransferWithdrawRequest withdrawRequest = BankTransferWithdrawRequest.of(
+        // 1. 통합 이체 요청 DTO 생성
+        BankTransferWithdrawRequest executeRequest = BankTransferWithdrawRequest.of(
                 request.getWithdrawReqPayload(),
                 withdrawKeyId,
                 request.getWithdrawalBankCode(),
@@ -82,52 +82,21 @@ public class TransferService {
                 request.getAmount()
         );
 
-        BankTransferResponse withdrawResponse = bankExternalClient.fetchTransferWithdraw(
+        // 2. 출금 은행의 통합 이체 API 호출
+        BankTransferResponse response = bankExternalClient.fetchTransferExecute(
                 request.getWithdrawalBankCode(),
-                withdrawRequest
+                executeRequest
         );
-        log.info("이체 Step 1 성공 [출금 완료] - 거래ID: {}", withdrawResponse.getTransactionId());
 
-        try {
-            // 2. [Step 2: 입금] 입금 은행 API 호출
-            BankDepositRequest depositRequest = BankDepositRequest.of(
-                    request.getDepositReqPayload(),
-                    depositKeyId,
-                    request.getAmount(),
-                    request.getWithdrawalBankCode()
-            );
+        log.info("통합 이체 성공 - 거래ID: {}", response.getTransactionId());
 
-            BankTransferResponse depositResponse = bankExternalClient.fetchDeposit(
-                    request.getDepositBankCode(),
-                    depositRequest
-            );
-            log.info("이체 Step 2 성공 [입금 완료] - 거래ID: {}", depositResponse.getTransactionId());
-
-            // 3. 최종 응답 반환 (출금 잔액 정보를 포함한 응답을 위해 withdrawResponse의 데이터를 활용할 수도 있음)
-            return TransferResponse.builder()
-                    .transactionId(depositResponse.getTransactionId())
-                    .transactionDate(formatTransactionDate(depositResponse.getTransactionDate()))
-                    .balanceAfter(withdrawResponse.getBalanceAfter())
-                    .resPayload(withdrawResponse.getResPayload()) // 출금 은행의 암호화된 응답 페이로드 전달
-                    .build();
-
-        } catch (Exception e) {
-            // 4. [Step 3: 보상 트랜잭션] 입금 실패 시 출금 은행으로 자금 복구(환불) 호출
-            log.error("이체 Step 2 실패 [입금 에러]. 보상 트랜잭션(환불)을 시작합니다. 에러: {}", e.getMessage());
-            
-            try {
-
-                bankExternalClient.fetchRefund(request.getWithdrawalBankCode(), withdrawRequest);
-                log.info("보상 트랜잭션 성공 [자금 복구 완료] - 출금 계좌로 금액이 환불되었습니다.");
-            } catch (Exception refundError) {
-                // 보상 트랜잭션까지 실패한 경우 (매우 위험한 상태 - 수동 개입 필요)
-                log.error("!!! [심각] 보상 트랜잭션 실패 !!! 자금 불일치 발생 가능성. 수동 확인이 필요합니다. 에러: {}", refundError.getMessage());
-            }
-
-            // 원래 발생했던 예외를 다시 던져서 사용자에게 에러 알림
-            if (e instanceof BusinessException) throw (BusinessException) e;
-            throw new BusinessException(ErrorCode.BANK_API_ERROR, "이체 중 입금에 실패하여 환불 처리를 시도했습니다.");
-        }
+        // 3. 최종 응답 반환
+        return TransferResponse.builder()
+                .transactionId(response.getTransactionId())
+                .transactionDate(formatTransactionDate(response.getTransactionDate()))
+                .balanceAfter(response.getBalanceAfter())
+                .resPayload(response.getResPayload())
+                .build();
     }
 
     /**
