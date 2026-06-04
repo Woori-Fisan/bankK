@@ -9,7 +9,6 @@ import com.woorifisan.platform.domain.bank.model.Bank;
 import com.woorifisan.platform.domain.loan.dto.request.LoanCallbackRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
-import com.woorifisan.platform.domain.loan.dto.response.AvailableProductDto;
 import com.woorifisan.platform.domain.loan.dto.response.LoanContractDocumentsResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluateResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluationResultResponse;
@@ -18,11 +17,16 @@ import com.woorifisan.platform.domain.loan.dto.response.LoanRequiredDocumentsRes
 import com.woorifisan.platform.domain.loan.dto.response.TermsDocumentDto;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -33,13 +37,16 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequiredArgsConstructor
 public class LoanService {
 
-    // SSE 연결을 60초 유지. Bank 비동기 심사가 이 안에 끝나야 프론트에 결과 전달 가능
-    private static final long SSE_TIMEOUT_MS = 60_000L;
+    // SSE 연결을 120초 유지. heartbeat로 프록시 타임아웃 우회 + 은행 심사 여유 시간 확보
+    private static final long SSE_TIMEOUT_MS = 120_000L;
 
     // requestKey → SseEmitter 매핑 테이블.
-    // static: 인스턴스가 여러 개여도(멀티스레드 환경) 동일한 Map을 공유해야 하기 때문
+    // Spring Bean은 싱글톤이므로 인스턴스 변수로 선언해도 스레드 간 안전하게 공유됨
     // ConcurrentHashMap: 여러 스레드(HTTP 요청 스레드, Webhook 수신 스레드)가 동시에 put/remove해도 안전
-    private static final ConcurrentHashMap<String, SseEmitter> pendingEmitters = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, SseEmitter> pendingEmitters = new ConcurrentHashMap<>();
+
+    private static final String LOAN_RESULT_KEY_PREFIX = "loan:result:";
+    private static final long LOAN_RESULT_TTL_SECONDS = 300L; // 5분
 
     @Value("${bank.webhook.secret}")
     private String webhookSecret;
@@ -47,6 +54,7 @@ public class LoanService {
     private final BankLoanClient bankLoanClient;
     private final BankMapper bankMapper;
     private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, String> redisTemplate;
 
     // SSE 구독
     public SseEmitter subscribe(String requestKey) {
@@ -76,6 +84,20 @@ public class LoanService {
         } catch (Exception ignored) {}
 
         return emitter;
+    }
+
+    // 15초마다 모든 활성 SSE 연결에 heartbeat 전송 — 프록시 유휴 연결 강제 종료 방지
+    @Scheduled(fixedRate = 15_000)
+    public void sendHeartbeats() {
+        if (pendingEmitters.isEmpty()) return;
+        pendingEmitters.forEach((key, emitter) -> {
+            try {
+                emitter.send(SseEmitter.event().name("heartbeat").data("ping"));
+            } catch (Exception e) {
+                pendingEmitters.remove(key);
+                try { emitter.complete(); } catch (Exception ignored) {}
+            }
+        });
     }
 
     // 심사 서류 조회
@@ -146,28 +168,60 @@ public class LoanService {
         if (requestKey == null) {
             return;
         }
-        // 2. Map에서 emitter 꺼내기
+
+        // 2. SSE 연결 유무와 무관하게 Redis에 결과 먼저 저장 (연결 끊김 시 polling으로 복구 가능)
+        try {
+            LoanEvaluationResultResponse cached = LoanEvaluationResultResponse.builder()
+                    .evaluationStatus(callback.getStatus())
+                    .evaluationId(callback.getLoanNo())
+                    .resPayload(callback.getResPayload())
+                    .build();
+            redisTemplate.opsForValue().set(
+                    LOAN_RESULT_KEY_PREFIX + requestKey,
+                    objectMapper.writeValueAsString(cached),
+                    LOAN_RESULT_TTL_SECONDS,
+                    TimeUnit.SECONDS
+            );
+        } catch (Exception e) {
+        }
+
+        // 3. Map에서 emitter 꺼내기
         SseEmitter emitter = pendingEmitters.remove(requestKey);
         if (emitter == null) {
             return;
         }
 
         try {
-            // 3. Webhook 암호화 데이터를 그대로 담아 프론트 형식으로 변환 (Pass-through)
+            // 4. Webhook 암호화 데이터를 그대로 담아 프론트 형식으로 변환 (Pass-through)
             LoanEvaluationResultResponse result = LoanEvaluationResultResponse.builder()
                     .evaluationStatus(callback.getStatus())
                     .evaluationId(callback.getLoanNo())
                     .resPayload(callback.getResPayload())
                     .build();
-            
-            // 4. SSE result 이벤트로 프론트에 심사 결과 전송
+
+            // 5. SSE result 이벤트로 프론트에 심사 결과 전송
             emitter.send(SseEmitter.event().name("result")
                     .data(objectMapper.writeValueAsString(result)));
-            
-            // 5. 연결 종료
+
+            // 6. 연결 종료
             emitter.complete();
         } catch (Exception e) {
-            emitter.completeWithError(e);
+            if (isClientDisconnected(e)) {
+                try { emitter.complete(); } catch (Exception ignored) {}
+            } else {
+                try { emitter.completeWithError(e); } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    // Redis에서 심사 결과 조회 (SSE 실패 시 polling fallback용)
+    public LoanEvaluationResultResponse getResult(String requestKey) {
+        String json = redisTemplate.opsForValue().get(LOAN_RESULT_KEY_PREFIX + requestKey);
+        if (json == null) return null;
+        try {
+            return objectMapper.readValue(json, LoanEvaluationResultResponse.class);
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -193,7 +247,7 @@ public class LoanService {
 
     // 대출 실행
     public LoanExecuteResponse executeLoan(LoanExecuteRequest request, Long staffId) {
-        
+
         // Platform DTO → Bank 전용 DTO 변환 (Pass-through)
         BankLoanExecuteRequest bankRequest = BankLoanExecuteRequest.builder()
                 .reqPayload(request.getReqPayload())
@@ -225,6 +279,25 @@ public class LoanService {
     }
 
     // Helpers
+
+    // 클라이언트가 먼저 연결을 끊은 경우인지 확인 (정상적인 SSE 만료/탭 닫기)
+    private boolean isClientDisconnected(Exception e) {
+        if (e instanceof AsyncRequestNotUsableException) {
+            return true;
+        }
+        Throwable cause = e.getCause();
+        if (cause instanceof IOException) {
+            String msg = cause.getMessage();
+            return msg != null && (
+                msg.contains("Broken pipe") ||
+                msg.contains("Connection reset") ||
+                msg.contains("중단") ||
+                msg.contains("closed")
+            );
+        }
+        return false;
+    }
+
     // documents 리스트에서 특정 documentType 동의 여부 확인
     private boolean hasAgreed(LoanEvaluateRequest request, String type) {
         if (request.getDocuments() == null) return false;
@@ -236,4 +309,5 @@ public class LoanService {
         if (value == null) return BigDecimal.ZERO;
         try { return new BigDecimal(value.toString()); } catch (NumberFormatException e) { return BigDecimal.ZERO; }
     }
+
 }

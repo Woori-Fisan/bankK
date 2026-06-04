@@ -76,6 +76,19 @@ public class BankExternalClient {
     }
 
     /**
+     * 특정 은행의 통합 이체 API를 호출합니다.
+     */
+    public BankTransferResponse fetchTransferExecute(String bankCode, BankTransferWithdrawRequest request) {
+        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
+        if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+
+        String url = bankProperty.getUrl("execute");
+        log.info("외부 은행 API 호출 [통합이체] - URL: {}, 은행코드: {}", url, bankCode);
+
+        return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {}, bankCode);
+    }
+
+    /**
      * 특정 은행의 입금 API를 호출합니다.
      */
     public BankTransferResponse fetchDeposit(String bankCode, BankDepositRequest request) {

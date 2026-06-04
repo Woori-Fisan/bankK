@@ -4,6 +4,7 @@ import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedDepositData;
 import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedRecipientData;
 import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedWithdrawData;
 import com.woorifisan.bank.domain.account.dto.request.DepositRequest;
+import com.woorifisan.bank.domain.account.dto.request.InternalDepositRequest;
 import com.woorifisan.bank.domain.account.dto.request.RecipientRequest;
 import com.woorifisan.bank.domain.account.dto.request.TransferRequest;
 import com.woorifisan.bank.domain.account.dto.response.RecipientResponse;
@@ -14,6 +15,7 @@ import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.global.config.BankNetworkConfig;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.security.service.SecurityService;
 import com.woorifisan.bank.global.response.ErrorCode;
@@ -26,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 /**
  * 이체 서비스
@@ -41,6 +44,8 @@ public class TransferService {
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final PasswordEncoder passwordEncoder;
     private final SecurityService securityService;
+    private final BankNetworkConfig bankNetworkConfig;
+    private final RestTemplate restTemplate;
 
     private static final String CURRENT_BANK_CODE = "020"; // 우리은행 코드 임시 정의
 
@@ -248,6 +253,132 @@ public class TransferService {
         ));
 
         return TransferResponse.of(txId, getCurrentTimestamp(), newBalance);
+    }
+
+    /**
+     * 통합 이체 실행 (BaaS용 단일 엔드포인트)
+     * 1. 출금 은행(당행)에서 출금 처리
+     * 2. 입금 은행이 당행이면 직접 입금, 타행이면 타행 API 호출
+     */
+    @Transactional
+    public TransferResponse executeTransfer(TransferRequest request) {
+        log.info("통합 이체 실행 요청 수신 - 출금은행: {}, 입금은행: {}, 금액: {}", 
+                request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
+
+        // 1. 출금 처리 (당행 계좌에서 돈이 나감)
+        // 기존 withdrawTransfer 로직 재활용 (복호화 및 잔액 차감 포함)
+        TransferResponse withdrawalResponse = withdrawTransfer(request);
+        log.info("통합 이체 Step 1: 출금 성공 - 거래ID: {}", withdrawalResponse.getTransactionId());
+
+        // 2. 당행/타행 여부 판단
+        if (CURRENT_BANK_CODE.equals(request.getDepositBankCode())) {
+            // [당행 이체] 직접 입금 처리
+            log.info("통합 이체 Step 2: 당행 이체 진행");
+            
+            // withdrawTransfer에서 이미 복호화된 데이터가 필요하므로, 로직상 결합이 필요함
+            // 여기서는 편의상 내부 입금 로직을 직접 호출하거나 캡슐화된 메서드 사용
+            SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
+                    securityService.decryptWithKey(request, DecryptedWithdrawData.class);
+            DecryptedWithdrawData decryptedData = decryptionResult.getData();
+
+            depositInternal(decryptedData.getDepositAccountNo(), request.getAmount(), 
+                    request.getWithdrawalBankCode(), decryptedData.getWithdrawalAccountNo());
+            
+            return withdrawalResponse;
+        } else {
+            // [타행 이체] 타행 입금 API 호출
+            log.info("통합 이체 Step 2: 타행 이체 진행 (타행코드: {})", request.getDepositBankCode());
+            
+            SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
+                    securityService.decryptWithKey(request, DecryptedWithdrawData.class);
+            DecryptedWithdrawData decryptedData = decryptionResult.getData();
+
+            try {
+                // 타행 입금 API 호출 (실제로는 WebClient 등으로 타행 URL 호출)
+                callExternalBankDeposit(request.getDepositBankCode(), InternalDepositRequest.builder()
+                        .depositAccountNo(decryptedData.getDepositAccountNo())
+                        .amount(request.getAmount())
+                        .withdrawalBankCode(request.getWithdrawalBankCode())
+                        .withdrawalAccountNo(decryptedData.getWithdrawalAccountNo())
+                        .build());
+                
+                return withdrawalResponse;
+            } catch (Exception e) {
+                log.error("타행 입금 호출 실패, 환불 처리를 시작합니다: {}", e.getMessage());
+                // 보상 트랜잭션: 환불
+                refundTransfer(request);
+                throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH, "타행 입금 처리 중 오류가 발생하여 환불되었습니다.");
+            }
+        }
+    }
+
+    /**
+     * 내부 입금 처리 (은행 간 통신용)
+     */
+    @Transactional
+    public TransferResponse internalDeposit(InternalDepositRequest request) {
+        log.info("내부 입금 요청 수신 - 출금은행: {}, 금액: {}", request.getWithdrawalBankCode(), request.getAmount());
+
+        return depositInternal(request.getDepositAccountNo(), request.getAmount(), 
+                request.getWithdrawalBankCode(), request.getWithdrawalAccountNo());
+    }
+
+    /**
+     * 공통 입금 로직 (당행 내부용)
+     */
+    private TransferResponse depositInternal(String depositAccountNo, BigDecimal amount, String withdrawBankCode, String withdrawAccountNo) {
+        // 1. 계좌 조회
+        Account receiver = accountMapper.findByAccountNoPlain(depositAccountNo)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+        
+        receiver = accountMapper.findByIdForUpdate(receiver.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+
+        // 2. 잔액 업데이트
+        BigDecimal newBalance = receiver.getBalance().add(amount);
+        int updatedCount = accountMapper.updateBalance(receiver.getId(), amount, receiver.getVersion());
+        if (updatedCount == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
+        }
+
+        // 3. 원장 기록
+        String txId = UUID.randomUUID().toString();
+        transactionLedgerMapper.insert(TransactionLedger.of(
+                txId, 
+                receiver.getId(), 
+                "TRANSFER",
+                amount, 
+                newBalance, 
+                withdrawBankCode, 
+                withdrawAccountNo, 
+                "이체입금(통합/" + withdrawBankCode + "/" + withdrawAccountNo + ")", 
+                "SUCCESS"
+        ));
+
+        return TransferResponse.of(txId, getCurrentTimestamp(), newBalance);
+    }
+
+    /**
+     * 타행 입금 API 호출 (실제 구현)
+     */
+    private void callExternalBankDeposit(String targetBankCode, InternalDepositRequest internalRequest) {
+        BankNetworkConfig.BankProperty bankProperty = bankNetworkConfig.getBankProperty(targetBankCode);
+        if (bankProperty == null) {
+            log.error("타행 네트워크 설정 정보를 찾을 수 없습니다: {}", targetBankCode);
+            throw new BusinessException(ErrorCode.BANK_NOT_FOUND, "지원하지 않는 입금 은행입니다.");
+        }
+
+        String url = bankProperty.getInternalDepositUrl();
+        log.info("타행 입금 API 호출 실행 - URL: {}, 대상계좌: {}", url, internalRequest.getDepositAccountNo());
+
+        try {
+            // 은행 간 통신은 정형화된 JSON을 사용하며, ApiResponse 구조를 따릅니다.
+            restTemplate.postForEntity(url, internalRequest, Object.class);
+            log.info("타행 입금 API 호출 성공");
+        } catch (Exception e) {
+            log.error("타행 입금 API 통신 중 오류 발생: {}", e.getMessage());
+            throw new BusinessException(ErrorCode.BANK_NOT_FOUND, "타행 통신 중 오류가 발생했습니다.");
+        }
     }
 
     private void verifyCustomerIdentification(Long customerId, String requestRrnPrefix) {

@@ -24,8 +24,8 @@ spring:
 
   mvc:
     async:
-      # SSE 연결이 최대 60초 유지되므로 그보다 긴 65초로 설정.
-      request-timeout: 65000
+      # SSE 연결이 최대 120초 유지되므로 그보다 긴 125초로 설정.
+      request-timeout: 125000
 
   servlet:
     multipart:
@@ -155,5 +155,19 @@ bank:
         deposit: "/transfer/deposit"
         recipient: "/transfer/recipient"
         refund: "/transfer/refund"
+        execute: "/transfer/execute"
         transfer: "/transfer"
         public-key: "/keys/public"
+#    "088":
+#      base-url: http://localhost:9090/api/v1/baas
+#      endpoints:
+#        balance: "/account/balance"
+#        history: "/account/transactions"
+#        withdraw: "/transfer/withdraw"
+#        withdrawal: "/transfer/withdrawal"
+#        deposit: "/transfer/deposit"
+#        recipient: "/transfer/recipient"
+#        refund: "/transfer/refund"
+#        execute: "/transfer/execute"
+#        transfer: "/transfer"
+#        public-key: "/keys/public"
