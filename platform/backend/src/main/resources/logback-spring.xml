@@ -1,72 +1,114 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-    <!-- ── 프로퍼티 ──────────────────────────────────── -->
-    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="${LOGGING_PATH:-./logs"/>
-    <property name="LOG_FILE" value="${LOG_PATH}/application.log"/>
+    <!-- 로그 저장 경로 -->
+    <springProperty scope="context"
+                    name="LOG_PATH"
+                    source="logging.file.path"
+                    defaultValue="./logs"/>
 
-    <!-- ── 콘솔 (개발용) ─────────────────────────────── -->
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <property name="LOG_FILE"
+              value="${LOG_PATH}/application.log"/>
+
+    <!-- 콘솔 로그 -->
+    <appender name="CONSOLE"
+              class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS}{Asia/Seoul} [%thread] %-5level %logger{36} [traceId=%X{traceId}, staffId=%X{staffId}] - %msg%n</pattern>
+            <pattern>
+                %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36}
+                [traceId=%X{traceId}, staffId=%X{staffId}] - %msg%n
+            </pattern>
         </encoder>
     </appender>
 
-    <!-- ── JSON 파일 (Fluent Bit 수집용) ─────────────── -->
-    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- JSON 파일 로그 -->
+    <appender name="JSON_FILE"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
         <file>${LOG_FILE}</file>
+
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/application.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>
+                ${LOG_PATH}/application.%d{yyyy-MM-dd}.log
+            </fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
+
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <timeZone>Asia/Seoul</timeZone>
             <includeContext>false</includeContext>
+
             <fieldNames>
                 <version>[ignore]</version>
                 <levelValue>[ignore]</levelValue>
-                <logger>[ignore]</logger>
-                <thread>[ignore]</thread>
             </fieldNames>
+
+            <customFields>
+                {"service":"agency-platform"}
+            </customFields>
+
             <includeMdc>true</includeMdc>
+
             <excludeMdcKeyName>password</excludeMdcKeyName>
             <excludeMdcKeyName>token</excludeMdcKeyName>
         </encoder>
     </appender>
 
-    <!-- ── 비동기 래퍼 (메인 스레드 블로킹 방지) ─────── -->
-    <appender name="ASYNC_JSON_FILE" class="ch.qos.logback.classic.AsyncAppender">
+    <!-- 비동기 파일 로그 -->
+    <appender name="ASYNC_FILE_LOG"
+              class="ch.qos.logback.classic.AsyncAppender">
+
         <appender-ref ref="JSON_FILE"/>
-        <discardingThreshold>20</discardingThreshold>
+
         <queueSize>512</queueSize>
+        <discardingThreshold>20</discardingThreshold>
         <maxFlushTime>1000</maxFlushTime>
     </appender>
 
-    <!-- ── 프로파일별 설정 ────────────────────────────── -->
-    <!-- DB INSERT는 모든 환경에서 모니터링 WAS가 담당 (Fluent Bit → HTTP endpoint) -->
+    <!-- DB 로그 -->
+    <appender name="DB_LOG"
+              class="com.woorifisan.platform.global.logging.appender.SystemLogAppender"/>
 
-    <!-- 로컬 개발: 콘솔 + 파일 -->
+    <!-- 비동기 DB 로그 -->
+    <appender name="ASYNC_DB_LOG"
+              class="ch.qos.logback.classic.AsyncAppender">
+
+        <appender-ref ref="DB_LOG"/>
+
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <maxFlushTime>2000</maxFlushTime>
+        <neverBlock>true</neverBlock>
+    </appender>
+
+    <!-- local -->
     <springProfile name="local">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="ASYNC_JSON_FILE"/>
+            <appender-ref ref="ASYNC_FILE_LOG"/>
+            <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
-        <logger name="com.woorifisan.platform" level="DEBUG"/>
+
+        <logger name="com.woorifisan.platform"
+                level="DEBUG"/>
     </springProfile>
 
-    <!-- 개발 서버: 콘솔 + 파일 -->
+    <!-- dev -->
     <springProfile name="dev">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="ASYNC_JSON_FILE"/>
+            <appender-ref ref="ASYNC_FILE_LOG"/>
+            <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
-        <logger name="com.woorifisan.platform" level="DEBUG"/>
+
+        <logger name="com.woorifisan.platform"
+                level="DEBUG"/>
     </springProfile>
 
-    <!-- 운영: 파일 -->
+    <!-- prod -->
     <springProfile name="prod">
         <root level="INFO">
-            <appender-ref ref="ASYNC_JSON_FILE"/>
+            <appender-ref ref="ASYNC_FILE_LOG"/>
+            <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
     </springProfile>
 
