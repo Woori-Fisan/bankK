@@ -5,7 +5,7 @@
     <springProperty scope="context"
                     name="LOG_PATH"
                     source="logging.file.path"
-                    defaultValue="${LOGGING_PATH:-./logs"/>
+                    defaultValue="${LOGGING_PATH:-./logs}"/>
 
     <property name="LOG_FILE"
               value="${LOG_PATH}/application.log"/>
@@ -15,7 +15,7 @@
               class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>
-                %d{yyyy-MM-dd HH:mm:ss.SSS}{Asia/Seoul} [%thread] %-5level %logger{36}
+                %d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} [%thread] %-5level %logger{36}
                 [traceId=%X{traceId}, staffId=%X{staffId}] - %msg%n
             </pattern>
         </encoder>
