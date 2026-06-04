@@ -5,10 +5,10 @@ import com.woorifisan.platform.domain.bank.dto.request.TransferRequest;
 import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.external.client.BankExternalClient;
+import com.woorifisan.platform.domain.bank.external.dto.BankDepositRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferWithdrawRequest;
-import com.woorifisan.platform.domain.bank.external.dto.BankDepositRequest;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import java.time.LocalDateTime;
@@ -39,8 +39,6 @@ public class TransferService {
      */
     @Transactional(readOnly = true)
     public TransferRecipientResponse getRecipient(TransferRecipientRequest request, String bankKeyId) {
-        log.info("수취인 조회 요청 중계 - 은행코드: {}, 키ID: {}", request.getDepositBankCode(), bankKeyId);
-
         // [AOP로 위임] 단말기 JWS 서명 검증 및 무결성 체크는 TerminalSignatureAspect에서 수행됨
 
         // 1. 은행 코어에 전달할 요청 DTO 생성 (Zero-Knowledge Pass-through)
@@ -67,9 +65,6 @@ public class TransferService {
      */
     @Transactional
     public TransferResponse executeTransfer(TransferRequest request, String jwsSignature, String withdrawKeyId, String depositKeyId) {
-        log.info("이체 실행 요청 수신 - 출금은행: {}, 입금은행: {}, 금액: {}", 
-                request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
-
         // Saga 패턴의 오케스트레이션 방식을 적용하여 원자성을 보장합니다.
         // 당행/타행 구분 없이 무조건 출금 후 입금 방식으로 처리하며, E2EE Pass-through를 수행합니다.
 
@@ -86,7 +81,6 @@ public class TransferService {
                 request.getWithdrawalBankCode(),
                 withdrawRequest
         );
-        log.info("이체 Step 1 성공 [출금 완료] - 거래ID: {}", withdrawResponse.getTransactionId());
 
         try {
             // 2. [Step 2: 입금] 입금 은행 API 호출
@@ -101,14 +95,13 @@ public class TransferService {
                     request.getDepositBankCode(),
                     depositRequest
             );
-            log.info("이체 Step 2 성공 [입금 완료] - 거래ID: {}", depositResponse.getTransactionId());
 
             // 3. 최종 응답 반환 (출금 잔액 정보를 포함한 응답을 위해 withdrawResponse의 데이터를 활용할 수도 있음)
             return TransferResponse.builder()
                     .transactionId(depositResponse.getTransactionId())
                     .transactionDate(formatTransactionDate(depositResponse.getTransactionDate()))
                     .balanceAfter(withdrawResponse.getBalanceAfter())
-                    .resPayload(withdrawResponse.getResPayload()) // 출금 은행의 암호화된 응답 페이로드 전달
+                    .resPayload(withdrawResponse.getResPayload())
                     .build();
 
         } catch (Exception e) {
@@ -116,9 +109,7 @@ public class TransferService {
             log.error("이체 Step 2 실패 [입금 에러]. 보상 트랜잭션(환불)을 시작합니다. 에러: {}", e.getMessage());
             
             try {
-
                 bankExternalClient.fetchRefund(request.getWithdrawalBankCode(), withdrawRequest);
-                log.info("보상 트랜잭션 성공 [자금 복구 완료] - 출금 계좌로 금액이 환불되었습니다.");
             } catch (Exception refundError) {
                 // 보상 트랜잭션까지 실패한 경우 (매우 위험한 상태 - 수동 개입 필요)
                 log.error("!!! [심각] 보상 트랜잭션 실패 !!! 자금 불일치 발생 가능성. 수동 확인이 필요합니다. 에러: {}", refundError.getMessage());
@@ -143,7 +134,6 @@ public class TransferService {
                     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             return bankDate.format(DATE_FORMATTER);
         } catch (Exception e) {
-            log.warn("은행 응답 날짜 파싱 실패, 현재 날짜를 사용합니다: {}", e.getMessage());
             return LocalDateTime.now().format(DATE_FORMATTER);
         }
     }

@@ -5,11 +5,9 @@ import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.external.client.BankExternalClient;
 import com.woorifisan.platform.domain.bank.external.dto.BankWithdrawalRequest;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WithdrawalService {
@@ -25,8 +23,6 @@ public class WithdrawalService {
      */
     @Transactional
     public TransferResponse executeWithdraw(WithdrawalRequest request, String bankKeyId) {
-        log.info("현금 출금 요청 중계 - 은행코드: {}, 키ID: {}", request.getWithdrawalBankCode(), bankKeyId);
-
         // 1. 외부 은행 코어로 전달할 요청 DTO 생성 (Zero-Knowledge Pass-through)
         BankWithdrawalRequest bankRequest = BankWithdrawalRequest.of(
                 request.getReqPayload(),
@@ -34,7 +30,6 @@ public class WithdrawalService {
                 request.getAmount()
         );
 
-        // 2. 외부 클라이언트를 통해 은행 코어 API 호출 및 결과 직접 반환
         return bankExternalClient.withdraw(request.getWithdrawalBankCode(), bankRequest);
     }
 }
