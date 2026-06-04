@@ -8,5 +8,6 @@ import lombok.Getter;
 public class TokenRefreshResponse {
 
     private String accessToken;
-    private int accessTokenExpiresIn;   // 초 단위 (900 = 15분)
+    private long accessTokenExpiresIn;   // 초 단위
+    private long refreshTokenExpiresIn;  // 초 단위
 }

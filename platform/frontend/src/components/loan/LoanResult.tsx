@@ -117,13 +117,13 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
             {executionResult && (
                 <LoanReceiptDocument
                     innerRef={receiptDocRef}
-                    loanId={executionResult.loanId}
-                    borrowerName={executionResult.borrowerName}
+                    loanId={executionResult.loanNo}
+                    borrowerName={executionResult.borrowerName ?? loanData.userName ?? ''}
                     executeAmount={executionResult.executeAmount}
                     interestRate={executionResult.interestRate}
                     repaymentPeriod={executionResult.repaymentPeriod}
                     monthlyPayment={executionResult.monthlyPayment}
-                    repaymentStartDate={executionResult.repaymentStartDate}
+                    repaymentStartDate={executionResult.startDate}
                     maturityDate={executionResult.maturityDate}
                     bank={loanData.bank ?? ''}
                     accountNo={loanData.accountNo ?? ''}

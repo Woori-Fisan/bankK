@@ -5,6 +5,7 @@ import com.woorifisan.monitoring.global.response.ErrorCode;
 import com.woorifisan.monitoring.global.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -27,11 +28,24 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Validation 예외 처리
+     * Validation 예외 처리 (@RequestBody + @Valid)
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     protected ResponseEntity<ApiResponse<?>> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         log.error("MethodArgumentNotValidException: {}", e.getMessage());
+        String errorMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
+        return new ResponseEntity<>(
+                ApiResponse.error(ErrorCode.INVALID_INPUT.getCode(), errorMessage),
+                ErrorCode.INVALID_INPUT.getHttpStatus()
+        );
+    }
+
+    /**
+     * Validation 예외 처리 (@ModelAttribute + @Valid)
+     */
+    @ExceptionHandler(BindException.class)
+    protected ResponseEntity<ApiResponse<?>> handleBindException(BindException e) {
+        log.error("BindException: {}", e.getMessage());
         String errorMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
         return new ResponseEntity<>(
                 ApiResponse.error(ErrorCode.INVALID_INPUT.getCode(), errorMessage),

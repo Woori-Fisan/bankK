@@ -11,6 +11,7 @@ import com.woorifisan.platform.domain.loan.dto.response.LoanRequiredDocumentsRes
 import com.woorifisan.platform.domain.loan.service.LoanService;
 import com.woorifisan.platform.global.config.swagger.CustomExceptionDescription;
 import com.woorifisan.platform.global.config.swagger.SwaggerResponseDescription;
+import com.woorifisan.platform.global.security.annotation.VerifyTerminalSignature;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -67,14 +68,20 @@ public class LoanController {
     @Operation(summary = "심사 신청 (multipart)",
                description = "파일 + JSON 데이터를 동시에 은행으로 전달. 은행이 즉시 loanNo를 반환하고, 심사는 @Async 후 Webhook으로 결과 통보.")
     @CustomExceptionDescription(SwaggerResponseDescription.BANK_LOAN)
+    @VerifyTerminalSignature
     // JSON + 파일을 한 요청에 받기 위해 multipart 선언
     @PostMapping(value = "/evaluation", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<LoanEvaluateResponse> evaluateLoan(
+            @RequestHeader("x-bank-key-id") String bankKeyId,
             // multipart의 data 파트를 JSON으로 역직렬화 + @Valid 검증
             @RequestPart("data") @Valid LoanEvaluateRequest request,
             // multipart의 files 파트들을 List로 수집
             @RequestPart("files") List<MultipartFile> files,
             @AuthenticationPrincipal Long staffId) {
+
+        // 헤더의 키 ID를 바디 필드에 주입하여 은행이 식별할 수 있도록 함
+        request.setBankKeyId(bankKeyId);
+
         return ApiResponse.success(loanService.evaluateLoan(request, files, staffId));
     }
 
@@ -107,11 +114,18 @@ public class LoanController {
     // 대출 실행
     @Operation(summary = "대출 실행", description = "최종 계약 동의 후 대출을 실행합니다.")
     @CustomExceptionDescription(SwaggerResponseDescription.BANK_LOAN)
+    @VerifyTerminalSignature
     @PostMapping("/contract/execution")
     public ApiResponse<LoanExecuteResponse> executeLoan(
+            @RequestHeader("x-bank-key-id") String bankKeyId,
             @Valid @RequestBody LoanExecuteRequest request,
             @AuthenticationPrincipal Long staffId) {
+
+        // 헤더의 키 ID를 바디 필드에 주입하여 은행이 식별할 수 있도록 함
+        request.setBankKeyId(bankKeyId);
+
         return ApiResponse.success(loanService.executeLoan(request, staffId));
     }
 
 }
+

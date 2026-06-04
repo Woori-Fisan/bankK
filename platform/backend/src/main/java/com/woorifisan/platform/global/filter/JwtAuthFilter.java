@@ -6,16 +6,16 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import java.io.IOException;
-import java.util.List;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -37,15 +37,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (token != null) {
             try {
-                // 토큰 유효성 검증
                 jwtProvider.validateToken(token);
 
-                // staffId, role 추출
-                Long staffId = jwtProvider.extractStaffId(token);
-                String role = jwtProvider.extractRole(token);
+                Long staffId  = jwtProvider.extractStaffId(token);
+                Long agencyId = jwtProvider.extractAgencyId(token);
+                String role   = jwtProvider.extractRole(token);
 
-                // SecurityContext에 인증 정보 저장
-                // staffId를 principal로 저장 → @AuthenticationPrincipal Long staffId 로 꺼낼 수 있음
+                MDC.put("staffId",  String.valueOf(staffId));
+                MDC.put("agencyCode", String.valueOf(agencyId));
+
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 staffId,
@@ -57,12 +57,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             } catch (BusinessException e) {
                 log.warn("JWT 인증 실패 - {}", e.getMessage());
-                // SecurityContext 비워두면 Spring Security가 401 처리
                 SecurityContextHolder.clearContext();
             }
         }
 
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            MDC.remove("staffId");
+            MDC.remove("agencyCode");
+        }
     }
 
     // Authorization 헤더에서 Bearer 토큰 추출

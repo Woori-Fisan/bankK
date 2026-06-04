@@ -7,7 +7,7 @@ import type { WithdrawData, WithdrawResult } from '../types/withdraw';
 import { executeWithdraw } from '../api/withdraw';
 import { fetchBankList, type BankOption } from '../api/loanApi';
 import PageHeader from '../components/common/PageHeader';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { formatAmount } from '../utils/formatter';
 

@@ -1,22 +1,18 @@
 package com.woorifisan.platform.domain.bank.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.woorifisan.platform.global.security.dto.SecureResponse;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
+import lombok.experimental.SuperBuilder;
 
 @Getter
-@Builder
+@SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class BalanceInquiryResponse {
+public class BalanceInquiryResponse extends SecureResponse {
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING)
-    private BigDecimal balance;
     private String status;
 
 }

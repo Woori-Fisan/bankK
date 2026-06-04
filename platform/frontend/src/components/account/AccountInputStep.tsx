@@ -14,8 +14,6 @@ interface AccountInputStepProps {
         bankCode: string; 
         accountNo: string; 
         customerRrnPrefix: string;
-        encryptedKey: string;
-        jwsSignature: string;
     }) => void;
     apiError?: string;
     clearApiError?: () => void;

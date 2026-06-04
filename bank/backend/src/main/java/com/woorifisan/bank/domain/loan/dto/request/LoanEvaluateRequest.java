@@ -1,5 +1,6 @@
 package com.woorifisan.bank.domain.loan.dto.request;
 
+import com.woorifisan.bank.global.security.dto.SecureRequest;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -7,26 +8,20 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
-// Platform → Bank 로 전달되는 대출 심사 요청 DTO
-// Platform이 프론트로부터 받은 값을 그대로 Bank에 multipart/form-data 로 포워딩
+/**
+ * 암호화된 대출 심사 요청 DTO
+ * 민감 정보는 reqPayload 내에 암호화되어 전달됩니다.
+ */
 @Getter
-@NoArgsConstructor // JSON 역직렬화 시 기본 생성자가 필요
-public class LoanEvaluateRequest {
-
-    @NotBlank
-    private String customerName;       // 고객 성명
-
-    @NotBlank
-    private String customerRrnPrefix;  // 주민등록번호 앞 7자리
+@SuperBuilder
+@NoArgsConstructor
+public class LoanEvaluateRequest extends SecureRequest {
 
     // Bank 자신의 bank.code 와 일치해야됨
     @NotBlank
     private String depositBankCode;
-
-    // 평문 계좌번호
-    @NotBlank
-    private String depositAccountNo;
 
     // 최소 100,000원 이상 신청 가능
     @NotNull
