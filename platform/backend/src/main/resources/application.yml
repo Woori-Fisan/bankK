@@ -21,8 +21,8 @@ spring:
 
   mvc:
     async:
-      # SSE 연결이 최대 60초 유지되므로 그보다 긴 65초로 설정.
-      request-timeout: 65000
+      # SSE 연결이 최대 120초 유지되므로 그보다 긴 125초로 설정.
+      request-timeout: 125000
 
   servlet:
     multipart:
