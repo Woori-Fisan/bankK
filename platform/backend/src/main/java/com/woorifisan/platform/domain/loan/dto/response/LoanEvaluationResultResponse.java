@@ -16,7 +16,7 @@ import java.util.List;
  */
 @Getter
 @SuperBuilder
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class LoanEvaluationResultResponse extends SecureResponse {
 
