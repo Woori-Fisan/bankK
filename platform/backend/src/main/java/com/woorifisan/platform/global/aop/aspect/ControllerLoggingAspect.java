@@ -21,8 +21,6 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -35,8 +33,6 @@ import org.springframework.web.multipart.MultipartFile;
 public class ControllerLoggingAspect {
 
     private final ObjectMapper objectMapper;
-
-    private static final String MDC_STAFF_ID = "staffId";
 
     // Client IP 추출 헤더 우선순위
     private static final List<String> IP_HEADER_CANDIDATES = List.of(
@@ -74,17 +70,6 @@ public class ControllerLoggingAspect {
         String   argsJson  = serialize(args);
         String   className = joinPoint.getSignature().getDeclaringType().getSimpleName();
         String   methodName = joinPoint.getSignature().getName();
-
-        // staffId 추출 및 MDC 적재
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null) {
-            Object principal = auth.getPrincipal();
-            if (principal instanceof Long id) {
-                MDC.put(MDC_STAFF_ID, String.valueOf(id));
-            } else if (principal instanceof String s) {
-                MDC.put(MDC_STAFF_ID, s);
-            }
-        }
 
         Map<String, Object> httpContext = new HashMap<>();
         httpContext.put("bankKeyId", null); // 추후 구현 예정
@@ -126,8 +111,6 @@ public class ControllerLoggingAspect {
             httpContext.put("logType", "CONTROLLER_ERR");
             log.error("[Error] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
             throw e;
-        } finally {
-            MDC.remove(MDC_STAFF_ID);
         }
     }
 

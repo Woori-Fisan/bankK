@@ -12,6 +12,7 @@ public class BizLogInsertDTO {
     private String logType;
     private String traceId;
     private String staffId;
+    private String agencyCode;
     private String bankCode;
     private String targetCode;
     private String bankKeyId;

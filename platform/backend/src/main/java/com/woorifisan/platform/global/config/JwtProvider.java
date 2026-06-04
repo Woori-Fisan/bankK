@@ -34,13 +34,13 @@ public class JwtProvider {
     }
 
     // Access Token 생성
-    public String generateAccessToken(Long staffId, String loginId, String role) {
-        return buildToken(staffId, loginId, role, accessTokenExpiration);
+    public String generateAccessToken(Long staffId, Long agencyId, String loginId, String role) {
+        return buildToken(staffId, agencyId, loginId, role, accessTokenExpiration);
     }
 
     // Refresh Token 생성
-    public String generateRefreshToken(Long staffId, String loginId, String role) {
-        return buildToken(staffId, loginId, role, refreshTokenExpiration);
+    public String generateRefreshToken(Long staffId, Long agencyId, String loginId, String role) {
+        return buildToken(staffId, agencyId, loginId, role, refreshTokenExpiration);
     }
 
     public long getAccessTokenExpiration() {
@@ -52,12 +52,13 @@ public class JwtProvider {
     }
 
     // 토큰 생성 공통 메서드
-    private String buildToken(Long staffId, String loginId, String role, long expiration) {
+    private String buildToken(Long staffId, Long agencyId, String loginId, String role, long expiration) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
                 .subject(String.valueOf(staffId))
+                .claim("agencyId", agencyId)
                 .claim("loginId", loginId)
                 .claim("role", role)
                 .issuedAt(now)
@@ -69,6 +70,11 @@ public class JwtProvider {
     // 토큰에서 staffId 추출
     public Long extractStaffId(String token) {
         return Long.parseLong(parseClaims(token).getSubject());
+    }
+
+    // 토큰에서 agencyId 추출
+    public Long extractAgencyId(String token) {
+        return parseClaims(token).get("agencyId", Long.class);
     }
 
     // 토큰에서 loginId 추출
