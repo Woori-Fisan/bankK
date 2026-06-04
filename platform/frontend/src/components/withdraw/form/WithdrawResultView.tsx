@@ -52,9 +52,8 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
                             <div>
                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-4">최종 출금 금액</span>
                                 <div className="flex items-baseline justify-center gap-2">
-                                    <span className="text-xl font-bold text-slate-400">원</span>
                                     <span className="text-6xl font-black text-slate-900 tracking-tighter">
-                                        {formatAmount(data.amount)}
+                                        ₩ {formatAmount(data.amount)}
                                     </span>
                                 </div>
                             </div>

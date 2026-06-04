@@ -2,7 +2,11 @@ import React from 'react';
 import { useTransferStore } from '../../../store/useTransferStore';
 import AmountInput from '../../common/AmountInput';
 
-const AmountInputSection: React.FC = () => {
+interface AmountInputSectionProps {
+    label?: string;
+}
+
+const AmountInputSection: React.FC<AmountInputSectionProps> = ({ label = "이체 금액 (KRW)" }) => {
     const { amount, balance, updateData } = useTransferStore();
     const availableBalance = Number(balance) || 0;
 
@@ -26,7 +30,7 @@ const AmountInputSection: React.FC = () => {
 
     return (
         <AmountInput 
-            label="이체 금액 (KRW)"
+            label={label}
             value={amount}
             onChange={handleAmountChange}
             onQuickAdd={addAmount}

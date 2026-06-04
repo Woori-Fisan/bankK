@@ -1,13 +1,13 @@
-import { AlertCircle, ChevronRight, Info, User, AlertTriangle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { isValidAccountNumber } from '../../utils/validator';
 import { fetchBankList, type BankOption } from '../../api/loanApi';
-import { Button } from '../common/Button';
-import Card from '../common/Card';
 import PageHeader from '../common/PageHeader';
-import RrnInput from '../common/RrnInput';
-import AccountInputSection from '../common/AccountInputSection';
 import { useEffect, useState } from 'react';
-import Input from '../common/Input';
+import CommonConfirmModal from '../common/CommonConfirmModal';
+
+// Sub-components
+import AccountMainSection from './sections/AccountMainSection';
+import AccountSideSummary from './sections/AccountSideSummary';
 
 interface AccountInputStepProps {
     onNext: (data: { 
@@ -66,10 +66,6 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
         if (clearApiError) clearApiError();
     };
 
-    const handleBlur = () => {
-        // Validation logic if needed on blur
-    };
-
     const handleSubmit = () => {
         const newErrors = {
             userName: formData.userName ? '' : '고객 성명을 입력해 주세요.',
@@ -116,183 +112,66 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* 1. 입력 영역 (2컬럼) */}
                     <div className="lg:col-span-2 space-y-8">
-                        <Card padding="lg" className="border-slate-100 shadow-sm">
-                            <div className="space-y-10">
-                                {/* 1. 고객 성명 */}
-                                <div className="space-y-6">
-                                    <div className="flex items-center gap-2 px-1">
-                                        <User className="w-4 h-4 text-emerald-500" />
-                                        <h3 className="text-sm font-bold text-slate-700">고객 정보</h3>
-                                    </div>
-                                    <div className="max-w-md">
-                                        <Input
-                                            label="고객 성명"
-                                            placeholder="예) 홍길동"
-                                            value={formData.userName}
-                                            onChange={(e) => {
-                                                setFormData(prev => ({ ...prev, userName: e.target.value }));
-                                                setFieldErrors(prev => ({ ...prev, userName: '' }));
-                                            }}
-                                            error={fieldErrors.userName}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* 2. 주민등록번호 */}
-                                <div className="pt-8 border-t border-slate-50">
-                                    <RrnInput 
-                                        rrnFront={formData.rrnFront}
-                                        rrnBack={formData.rrnBack}
-                                        onRrnFrontChange={(val) => handleRrnChange('rrnFront', val)}
-                                        onRrnBackChange={(val) => handleRrnChange('rrnBack', val)}
-                                        onBlur={handleBlur}
-                                        error={fieldErrors.rrn}
-                                    />
-                                </div>
-
-                                {/* 3. 계좌 정보 */}
-                                <div className="pt-8 border-t border-slate-50">
-                                    <AccountInputSection 
-                                        title="조회 계좌 정보"
-                                        bankCode={formData.bankCode}
-                                        accountNumber={formData.accountNo}
-                                        banks={banks}
-                                        onBankChange={(name, code) => {
-                                            setFormData(prev => ({ ...prev, bankName: name, bankCode: code }));
-                                            setFieldErrors(prev => ({ ...prev, bankCode: '' }));
-                                        }}
-                                        onAccountChange={(val) => {
-                                            setFormData(prev => ({ ...prev, accountNo: val }));
-                                            setFieldErrors(prev => ({ ...prev, accountNo: '' }));
-                                        }}
-                                        error={{
-                                            bankCode: fieldErrors.bankCode,
-                                            accountNumber: fieldErrors.accountNo
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        </Card>
-
-                        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex items-start gap-4">
-                            <Info className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
-                            <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                                입력하신 정보는 본인 확인 및 계좌 조회를 위해 해당 금융기관으로 안전하게 전송됩니다. 
-                                중계 플랫폼에는 고객님의 개인정보를 별도로 저장하지 않습니다.
-                            </p>
-                        </div>
+                        <AccountMainSection
+                            formData={formData}
+                            onNameChange={(val) => handleChange('userName', val)}
+                            onRrnFrontChange={(val) => handleRrnChange('rrnFront', val)}
+                            onRrnBackChange={(val) => handleRrnChange('rrnBack', val)}
+                            onBankChange={(name, code) => {
+                                setFormData(prev => ({ ...prev, bankName: name, bankCode: code }));
+                                setFieldErrors(prev => ({ ...prev, bankCode: '' }));
+                            }}
+                            onAccountChange={(val) => {
+                                setFormData(prev => ({ ...prev, accountNo: val }));
+                                setFieldErrors(prev => ({ ...prev, accountNo: '' }));
+                            }}
+                            banks={banks}
+                            fieldErrors={fieldErrors}
+                        />
                     </div>
 
-                    {/* 2. 요약 및 실행 영역 (1컬럼) */}
-                    <div className="lg:col-span-1 space-y-6">
-                        <div className="sticky top-10 space-y-6">
-                            <Card padding="lg" className="bg-white border-slate-100 shadow-sm flex flex-col justify-between min-h-[420px]">
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">조회 요약</span>
-                                    </div>
-                                    
-                                    <div className="space-y-6">
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase">고객명</p>
-                                            <p className="text-sm font-black text-slate-900">{formData.userName || '미입력'}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase">대상 은행</p>
-                                            <p className="text-sm font-black text-slate-900">{formData.bankName || '은행 미선택'}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase">계좌 번호</p>
-                                            <p className="text-sm font-black text-slate-900">{formData.accountNo || '번호 미입력'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <Button
-                                    onClick={handleSubmit}
-                                    disabled={isNextDisabled}
-                                    variant={isNextDisabled ? 'secondary' : 'primary'}
-                                    size="xl"
-                                    fullWidth
-                                    className={`h-16 rounded-2xl text-lg font-black shadow-lg transition-all group ${
-                                        isNextDisabled ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-white hover:bg-slate-800'
-                                    }`}
-                                >
-                                    계좌 조회하기
-                                    <ChevronRight className={`w-5 h-5 ml-2 transition-transform ${isNextDisabled ? '' : 'group-hover:translate-x-1'}`} />
-                                </Button>
-                            </Card>
-                        </div>
+                    <div className="lg:col-span-1">
+                        <AccountSideSummary
+                            userName={formData.userName}
+                            bankName={formData.bankName}
+                            accountNo={formData.accountNo}
+                            onSubmit={handleSubmit}
+                            isNextDisabled={isNextDisabled}
+                        />
                     </div>
                 </div>
             </div>
 
-            {/* 최종 확인 모달 */}
-            {isConfirmOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-                        {/* 헤더 */}
-                        <div className="bg-emerald-600 px-10 py-8 flex items-center gap-6">
-                            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
-                                <AlertTriangle className="w-8 h-8 text-white" />
+            <CommonConfirmModal
+                isOpen={isConfirmOpen}
+                onClose={() => setIsConfirmOpen(false)}
+                onConfirm={handleActualSubmit}
+                title="조회 정보 확인"
+                description="입력하신 내용이 정확한지 확인해 주세요."
+                items={[
+                    { label: '성명', value: formData.userName },
+                    { 
+                        label: '주민등록번호', 
+                        value: (
+                            <span className="font-mono tracking-widest">
+                                {formData.rrnFront}-{formData.rrnBack}●●●●●●
+                            </span>
+                        ) 
+                    },
+                    { 
+                        label: '대상 계좌', 
+                        value: (
+                            <div className="text-right">
+                                <p className="text-sm font-bold text-emerald-600 font-mono">{formData.bankName}</p>
+                                <p className="text-lg font-black text-slate-900">{formData.accountNo}</p>
                             </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-white">조회 정보 확인</h3>
-                                <p className="text-emerald-100 mt-1 font-medium">
-                                    입력하신 내용이 정확한지 확인해 주세요.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="p-10 space-y-8">
-                            <div className="bg-slate-50 rounded-3xl p-8 space-y-5 border border-slate-100">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">성명</span>
-                                    <span className="text-lg font-black text-slate-900">{formData.userName}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">주민등록번호</span>
-                                    <span className="text-lg font-black text-slate-900 font-mono tracking-widest">
-                                        {formData.rrnFront}-{formData.rrnBack}●●●●●●
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-center pt-5 border-t border-slate-200/50">
-                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">대상 계좌</span>
-                                    <div className="text-right">
-                                        <p className="text-sm font-bold text-emerald-600 font-mono">{formData.bankName}</p>
-                                        <p className="text-lg font-black text-slate-900">{formData.accountNo}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 버튼 */}
-                        <div className="px-10 pb-10 grid grid-cols-2 gap-4">
-                            <Button
-                                onClick={() => setIsConfirmOpen(false)}
-                                variant="secondary"
-                                size="xl"
-                                className="h-16 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200"
-                            >
-                                수정하기
-                            </Button>
-                            <Button
-                                onClick={handleActualSubmit}
-                                variant="primary"
-                                size="xl"
-                                className="h-16 rounded-2xl bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-900/20"
-                            >
-                                확인 완료
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                        )
+                    }
+                ]}
+            />
         </div>
     );
 };
 
 export default AccountInputStep;
-

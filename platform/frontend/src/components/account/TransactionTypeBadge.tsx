@@ -6,7 +6,7 @@ interface TransactionTypeBadgeProps {
     type?: string; // 보조 정보로 활용 가능
 }
 
-const TransactionTypeBadge: React.FC<TransactionTypeBadgeProps> = ({ amount, type }) => {
+const TransactionTypeBadge: React.FC<TransactionTypeBadgeProps> = ({ amount }) => {
     const amountNum = Number(amount);
     const isWithdrawal = amountNum < 0;
 

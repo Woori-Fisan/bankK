@@ -35,15 +35,6 @@ export const formatToKorean = (amount: number | string) => {
 };
 
 /**
- * 계좌번호에 하이픈을 추가하거나 마스킹 처리를 할 때 사용할 수 있는 유틸리티입니다.
- * (필요에 따라 구현을 확장할 수 있습니다.)
- */
-export const formatAccountNumber = (accNo: string) => {
-    if (!accNo) return '';
-    return accNo; // 기본적으로는 그대로 반환하되, 필요시 정규식 적용
-};
-
-/**
  * 날짜 문자열을 다양한 형식으로 변환합니다.
  * @param {string} dateStr - 변환할 날짜 문자열 (ISO 형식 등)
  * @param {boolean} includeTime - 시간 포함 여부

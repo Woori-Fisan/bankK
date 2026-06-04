@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import SuccessSummarySection from '../section/SuccessSummarySection';
-import ResultDetailSection from '../section/ResultDetailSection';
+import SuccessSummarySection from '../sections/SuccessSummarySection';
+import ResultDetailSection from '../sections/ResultDetailSection';
 import { useTransferStore } from '../../../store/useTransferStore';
 import { formatAmount } from '../../../utils/formatter';
 import Card from '../../common/Card';
