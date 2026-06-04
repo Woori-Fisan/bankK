@@ -20,7 +20,6 @@ import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -46,9 +45,9 @@ public class LoanService {
     private static final long SSE_TIMEOUT_MS = 120_000L;
 
     // requestKey → SseEmitter 매핑 테이블.
-    // static: 인스턴스가 여러 개여도(멀티스레드 환경) 동일한 Map을 공유해야 하기 때문
+    // Spring Bean은 싱글톤이므로 인스턴스 변수로 선언해도 스레드 간 안전하게 공유됨
     // ConcurrentHashMap: 여러 스레드(HTTP 요청 스레드, Webhook 수신 스레드)가 동시에 put/remove해도 안전
-    private static final ConcurrentHashMap<String, SseEmitter> pendingEmitters = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, SseEmitter> pendingEmitters = new ConcurrentHashMap<>();
 
     private static final String LOAN_RESULT_KEY_PREFIX = "loan:result:";
     private static final long LOAN_RESULT_TTL_SECONDS = 300L; // 5분
@@ -97,17 +96,15 @@ public class LoanService {
     @Scheduled(fixedRate = 15_000)
     public void sendHeartbeats() {
         if (pendingEmitters.isEmpty()) return;
-        // ConcurrentHashMap 순회 중 remove 안전을 위해 keySet 복사
-        List<String> keys = new ArrayList<>(pendingEmitters.keySet());
-        for (String key : keys) {
-            SseEmitter emitter = pendingEmitters.get(key);
-            if (emitter == null) continue;
+        pendingEmitters.forEach((key, emitter) -> {
             try {
                 emitter.send(SseEmitter.event().name("heartbeat").data("ping"));
             } catch (Exception e) {
                 log.debug("[Heartbeat] 전송 실패 - requestKey: {} (연결 종료됨)", key);
+                pendingEmitters.remove(key);
+                try { emitter.complete(); } catch (Exception ignored) {}
             }
-        }
+        });
     }
 
     // 심사 서류 조회
