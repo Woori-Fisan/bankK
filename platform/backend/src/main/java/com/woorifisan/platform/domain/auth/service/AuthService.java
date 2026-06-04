@@ -194,11 +194,12 @@ public class AuthService {
 
     // 로그인 실패 처리
     private void handleLoginFailure(PlatformUser user) {
-        int failedCount = user.getFailedLoginCount() + 1;
-        authMapper.increaseFailedLoginCount(user.getId());
+        // increment + 잠금 판단을 단일 원자적 UPDATE로 수행 (병렬 요청 레이스 컨디션 방지)
+        authMapper.increaseFailedLoginCount(user.getId(), MAX_FAILED_LOGIN_COUNT);
 
-        if (failedCount >= MAX_FAILED_LOGIN_COUNT) {
-            authMapper.updateIsLocked(user.getId(), true);
+        // DB에서 갱신된 잠금 상태를 재조회하여 판단 (인메모리 stale 값 사용 금지)
+        PlatformUser updated = authMapper.findByLoginId(user.getLoginId());
+        if (updated != null && updated.isLocked()) {
             throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
         }
     }
