@@ -54,7 +54,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
         accountNo: '',
         accountHolder: '',
     });
-    const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoanData | 'submit', string>>>({});
+    const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoanData | 'submit' | 'fileUpload', string>>>({});
 
     const [isUploading, setIsUploading] = useState(false);
     const [files, setFiles] = useState<{ id: number; name: string; file: File }[]>([]);
@@ -102,15 +102,45 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
         setAgreedDocs((prev) => prev.map((d) => ({ ...d, agreed: !allAgreed })));
     };
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+    const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files;
         if (!selected) return;
         const fileArray = Array.from(selected);
         e.target.value = '';
-        setFiles((prev) => [
-            ...prev,
-            ...fileArray.map((file, i) => ({ id: Date.now() + i, name: file.name.normalize('NFC'), file })),
-        ]);
+
+        const valid: { id: number; name: string; file: File }[] = [];
+        const rejected: string[] = [];
+
+        for (let i = 0; i < fileArray.length; i++) {
+            const file = fileArray[i];
+            const name = file.name.normalize('NFC');
+
+            if (file.size > MAX_FILE_SIZE) {
+                rejected.push(`${name} — 파일 크기가 10MB를 초과합니다.`);
+                continue;
+            }
+
+            const header = new Uint8Array(await file.slice(0, 5).arrayBuffer());
+            if (!PDF_MAGIC.every((b, idx) => header[idx] === b)) {
+                rejected.push(`${name} — PDF 파일이 아닙니다.`);
+                continue;
+            }
+
+            valid.push({ id: Date.now() + i, name, file });
+        }
+
+        if (rejected.length > 0) {
+            setFieldErrors((prev) => ({ ...prev, fileUpload: rejected.join('\n') }));
+        } else {
+            setFieldErrors((prev) => { const next = { ...prev }; delete next.fileUpload; return next; });
+        }
+
+        if (valid.length > 0) {
+            setFiles((prev) => [...prev, ...valid]);
+        }
     };
 
     const handleFileDelete = (id: number) => {
@@ -592,6 +622,15 @@ ${body}
                     <p className="text-base font-medium text-gray-600 mb-1">클릭하거나 파일을 드래그하세요</p>
                     <p className="text-sm text-gray-400">PDF 파일만 업로드 가능합니다</p>
                 </div>
+
+                {/* 파일 유효성 오류 */}
+                {fieldErrors.fileUpload && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+                        {fieldErrors.fileUpload.split('\n').map((msg, idx) => (
+                            <p key={idx} className="text-sm text-red-600">{msg}</p>
+                        ))}
+                    </div>
+                )}
 
                 {/* 업로드된 파일 목록 */}
                 {files.length > 0 && (

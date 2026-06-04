@@ -224,10 +224,24 @@ public class LoanService {
                 // E2EE 복호화: MultipartFile에서 바이트 배열을 읽어 복호화 수행
                 byte[] encryptedBytes = file.getBytes();
                 byte[] decryptedBytes = securityService.decryptFile(encryptedBytes, cek);
-                
+
+                // 복호화 후 매직 바이트 검사: %PDF- (0x25 0x50 0x44 0x46 0x2D)
+                if (decryptedBytes.length < 5
+                        || decryptedBytes[0] != 0x25 || decryptedBytes[1] != 0x50
+                        || decryptedBytes[2] != 0x44 || decryptedBytes[3] != 0x46
+                        || decryptedBytes[4] != 0x2D) {
+                    savedPaths.forEach(p -> {
+                        try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                    });
+                    try { Files.deleteIfExists(loanDir); } catch (IOException ignored) {}
+                    throw new BusinessException(ErrorCode.LOAN_INVALID_FILE);
+                }
+
                 // 복호화된 원본 데이터를 파일로 저장
                 Files.write(target, decryptedBytes);
                 savedPaths.add(target);
+            } catch (BusinessException e) {
+                throw e;
             } catch (IOException | RuntimeException e) {
                 // 저장 성공한 파일들 전부 삭제 후 예외
                 savedPaths.forEach(p -> {
