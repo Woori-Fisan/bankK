@@ -109,7 +109,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
         e.target.value = '';
         setFiles((prev) => [
             ...prev,
-            ...fileArray.map((file, i) => ({ id: Date.now() + i, name: file.name, file })),
+            ...fileArray.map((file, i) => ({ id: Date.now() + i, name: file.name.normalize('NFC'), file })),
         ]);
     };
 
@@ -310,7 +310,7 @@ ${body}
         }
     };
 
-    const fileNames = files.map((f) => f.name.toLowerCase());
+    const fileNames = files.map((f) => f.name.normalize('NFC').toLowerCase());
 
     const coveredDocs = REQUIRED_DOCS.map((doc) => ({
         ...doc,
