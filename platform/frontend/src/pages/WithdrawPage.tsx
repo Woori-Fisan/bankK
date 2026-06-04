@@ -48,8 +48,6 @@ const WithdrawPage: React.FC = () => {
 
             // 출금 실행 API 호출
             const response = await executeWithdraw({
-                encryptedKey: 'DUMMY_ENCRYPTED_KEY', // 추후 RSA 구현체와 연동
-                jwsSignature: 'DUMMY_JWS_SIGNATURE', // 추후 JWS 구현체와 연동
                 withdrawalBankCode: bankCode,
                 withdrawalAccountNo: withdrawData.sourceAccount.accountNumber,
                 withdrawalPassword: pin, // 실제 운영환경에서는 암호화된 값 전송

@@ -1,16 +1,22 @@
 package com.woorifisan.bank.domain.loan.dto.response;
 
+import com.woorifisan.bank.global.security.dto.SecureResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
+/**
+ * 대출 실행 완료 응답 DTO (E2EE 적용)
+ * 민감 정보인 customerName은 resPayload에 암호화되어 담깁니다.
+ */
 @Getter
-@Builder
-public class LoanExecuteResponse {
+@SuperBuilder
+@NoArgsConstructor
+public class LoanExecuteResponse extends SecureResponse {
 
     private String loanNo;
-    private String customerName;
     private BigDecimal loanAmount;
     private BigDecimal interestRate;
     private String repaymentType;

@@ -4,13 +4,12 @@ import { UserRound, Lock } from 'lucide-react';
 import LoginInput from './LoginInput';
 import { useAuthCrypto } from '../../hooks/useAuthCrypto';
 import { login } from '../../api/auth';
-import { decodeJwt } from '../../utils/jwt';
 
 import { useAuth } from '../../hooks/useAuth';
 
 const LoginForm: React.FC = () => {
     const navigate = useNavigate();
-    const { setUserId, setUserRole, setAccessToken, setLoginTime, setTokenExpiry, clearAuth } = useAuth();
+    const { setLoginTime, clearAuth } = useAuth();
 
     const [employeeId, setEmployeeId] = useState('');
     const [password, setPassword] = useState('');
@@ -48,10 +47,7 @@ const LoginForm: React.FC = () => {
                 setLoginMessage(response.message || '로그인 성공!');
                 setLoginSuccess(true);
                 
-                // 사용자 ID 저장
-                setUserId(employeeId);
-
-                // 접속 시간 저장
+                // 접속 시간 저장 (userId, tokenExpiry, userRole 등은 login() 내부에서 처리됨)
                 const now = new Date();
                 const formattedTime = now.getFullYear() + '.' + 
                     String(now.getMonth() + 1).padStart(2, '0') + '.' + 
@@ -62,21 +58,6 @@ const LoginForm: React.FC = () => {
                 setLoginTime(formattedTime);
                 localStorage.setItem('loginTime', formattedTime);
                 
-                // 액세스 토큰 저장
-                if (response.accessToken) {
-                    setAccessToken(response.accessToken);
-                    const decoded = decodeJwt(response.accessToken);
-                    if (decoded && decoded.exp) {
-                        setTokenExpiry(decoded.exp * 1000);
-                    }
-                }
-
-                // role 정보가 있다면 Zustand 스토어에 저장 (권한 기반 UI 노출용)
-                // login API의 responseData (response.data?.data) 에 role이 포함되어 있다고 가정
-                const role = (response as any).role || (response as any).userRole;
-                if (role) {
-                    setUserRole(role);
-                }
                 navigate('/main');
             } else {
                 setLoginMessage(response.message || '로그인 실패. 다시 시도해주세요.');

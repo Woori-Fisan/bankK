@@ -1,20 +1,20 @@
 package com.woorifisan.platform.domain.bank.dto.response;
 
+import com.woorifisan.platform.global.security.dto.SecureResponse;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 /**
- * 수취인 조회 응답 DTO
+ * 수취인 조회 응답 DTO (부분 암호화 적용)
  */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class TransferRecipientResponse {
+@SuperBuilder
+public class TransferRecipientResponse extends SecureResponse {
 
-    private String depositorName;
     private String depositBankName;
-    private String depositBankAccountNo;
     private String accountStatus;
 
 }

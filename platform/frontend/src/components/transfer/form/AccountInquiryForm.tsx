@@ -3,7 +3,7 @@ import StepHeaderSection from '../section/StepHeaderSection';
 import InquiryInputSection from '../section/InquiryInputSection';
 import StepActionSection from '../section/StepActionSection';
 import { useTransferStore } from '../../../store/useTransferStore';
-import { getBalance } from '../../../api/transfer';
+import { fetchBalance } from '../../../api/inquiry';
 
 const AccountInquiryForm: React.FC = () => {
     const { fromBank, fromAccountNumber, customerRrnPrefix, nextStep, updateData } = useTransferStore();
@@ -20,13 +20,11 @@ const AccountInquiryForm: React.FC = () => {
         setError(null);
 
         try {
-            // 실제 API 호출 (보안 필드는 현재 요구사항에 따라 더미 데이터로 전송)
-            const response = await getBalance({
-                bankCode: fromBank, // 실제로는 은행명 대신 코드가 필요할 수 있으나 현재는 입력된 값 그대로 사용
+            // 암호화된 fetchBalance 호출 (더미 필드 제거)
+            const response = await fetchBalance({
+                bankCode: fromBank,
                 accountNo: fromAccountNumber,
-                customerRrnPrefix: customerRrnPrefix,
-                encryptedKey: 'TEMP_ENCRYPTED_KEY',
-                jwsSignature: 'TEMP_JWS_SIGNATURE'
+                customerRrnPrefix: customerRrnPrefix
             });
 
             if (response.success) {
