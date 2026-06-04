@@ -3,6 +3,7 @@ import { NavLink, Link } from 'react-router-dom';
 import {
     LayoutDashboard,
     Activity,
+    BarChart2,
     Landmark,
 } from 'lucide-react';
 
@@ -46,6 +47,7 @@ const Sidebar: React.FC = () => {
             <nav className="flex-1">
                 <SidebarItem icon={LayoutDashboard} label="비즈니스 로그 검색" to="/dashboard" />
                 <SidebarItem icon={Activity} label="실시간 로그" to="/metrics" />
+                <SidebarItem icon={BarChart2} label="실시간 메트릭" to="/metric-dashboard" />
             </nav>
         </aside>
     );
