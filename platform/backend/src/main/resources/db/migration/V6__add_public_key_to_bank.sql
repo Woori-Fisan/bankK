@@ -1,0 +1,3 @@
+ALTER TABLE bank
+    ADD COLUMN public_key VARCHAR(2048) NULL
+    COMMENT 'RSA 공개키';

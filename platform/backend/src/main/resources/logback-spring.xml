@@ -5,7 +5,7 @@
     <springProperty scope="context"
                     name="LOG_PATH"
                     source="logging.file.path"
-                    defaultValue="./logs"/>
+                    defaultValue="${LOGGING_PATH:-./logs"/>
 
     <property name="LOG_FILE"
               value="${LOG_PATH}/application.log"/>
@@ -15,7 +15,7 @@
               class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>
-                %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36}
+                %d{yyyy-MM-dd HH:mm:ss.SSS}{Asia/Seoul} [%thread] %-5level %logger{36}
                 [traceId=%X{traceId}, staffId=%X{staffId}] - %msg%n
             </pattern>
         </encoder>
@@ -35,19 +35,17 @@
         </rollingPolicy>
 
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <timeZone>Asia/Seoul</timeZone>
             <includeContext>false</includeContext>
 
             <fieldNames>
                 <version>[ignore]</version>
                 <levelValue>[ignore]</levelValue>
+                <logger>[ignore]</logger>
+                <thread>[ignore]</thread>
             </fieldNames>
 
-            <customFields>
-                {"service":"agency-platform"}
-            </customFields>
-
             <includeMdc>true</includeMdc>
-
             <excludeMdcKeyName>password</excludeMdcKeyName>
             <excludeMdcKeyName>token</excludeMdcKeyName>
         </encoder>
@@ -64,28 +62,11 @@
         <maxFlushTime>1000</maxFlushTime>
     </appender>
 
-    <!-- DB 로그 -->
-    <appender name="DB_LOG"
-              class="com.woorifisan.platform.global.logging.appender.SystemLogAppender"/>
-
-    <!-- 비동기 DB 로그 -->
-    <appender name="ASYNC_DB_LOG"
-              class="ch.qos.logback.classic.AsyncAppender">
-
-        <appender-ref ref="DB_LOG"/>
-
-        <queueSize>1024</queueSize>
-        <discardingThreshold>0</discardingThreshold>
-        <maxFlushTime>2000</maxFlushTime>
-        <neverBlock>true</neverBlock>
-    </appender>
-
     <!-- local -->
     <springProfile name="local">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_FILE_LOG"/>
-            <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
 
         <logger name="com.woorifisan.platform"
@@ -97,7 +78,6 @@
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_FILE_LOG"/>
-            <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
 
         <logger name="com.woorifisan.platform"
@@ -108,7 +88,6 @@
     <springProfile name="prod">
         <root level="INFO">
             <appender-ref ref="ASYNC_FILE_LOG"/>
-            <appender-ref ref="ASYNC_DB_LOG"/>
         </root>
     </springProfile>
 
