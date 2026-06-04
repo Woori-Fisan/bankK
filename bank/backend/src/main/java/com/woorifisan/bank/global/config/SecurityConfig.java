@@ -31,6 +31,7 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/api/v1/baas/account/**",
             "/api/v1/baas/withdrawals/**",
+            "/api/v1/baas/keys/**",
             // 테스트 용 임시 통과 URL -> 플랫폼 개발 완료 시 삭제
             // mTLS 구현 전 임시 개방 — mTLS 적용 후 제거
             "/api/v1/loan/**",

@@ -18,6 +18,10 @@ export interface LoanDocument {
   agreedAt: string;
 }
 
+/**
+ * 대출 심사 신청 요청 (E2EE 적용 전 원본 데이터 구조)
+ * prepareSecureRequest에 의해 reqPayload로 변환됩니다.
+ */
 export interface EvaluationRequest {
   requestKey: string;
   bankCode: string;
@@ -34,6 +38,7 @@ export interface EvaluationRequest {
 export interface EvaluationResponse {
   loanNo: string;
   status: string;
+  resPayload?: string;
 }
 
 export interface AvailableProduct {
@@ -45,12 +50,17 @@ export interface AvailableProduct {
   loanPeriodMonths: number;
 }
 
+/**
+ * SSE로 push되는 심사 결과 (E2EE 적용)
+ * 민감 정보는 resPayload에 암호화되어 담깁니다.
+ */
 export interface EvaluationStatusResponse {
   evaluationStatus: 'APPROVED' | 'REJECTED' | 'SYSTEM_ERROR';
   evaluationId: string | null;
-  approvedLimit: number | null;
-  rejectionMessage: string | null;
-  availableProducts: AvailableProduct[] | null;
+  approvedLimit?: number | null;
+  rejectionMessage?: string | null;
+  availableProducts?: AvailableProduct[] | null;
+  resPayload?: string;
 }
 
 export interface ContractDocument {
@@ -68,26 +78,31 @@ export interface ContractDocumentsResponse {
   documents: ContractDocument[];
 }
 
+/**
+ * 대출 실행 요청 (E2EE 적용 전 원본 데이터 구조)
+ */
 export interface ExecutionRequest {
-  evaluationId: string;
-  loanProductCode: string;
+  loanNo: string;
+  productId: number;
   depositAccountNo: string;
   accountPassword: string;
   executeAmount: number;
   repaymentPeriod: number;
+  repaymentType: string;
 }
 
 export interface ExecutionResponse {
-  loanId: string;
-  borrowerName: string;
-  depositTransactionId: string;
-  loanBalance: number;
+  loanNo: string;
   executeAmount: number;
   interestRate: number;
   repaymentPeriod: number;
   monthlyPayment: number;
-  repaymentStartDate: string;
+  repaymentType: string;
+  startDate: string;
   maturityDate: string;
+  linkedAccountId: number;
+  resPayload?: string;
+  borrowerName?: string; // 복호화된 고객 성명을 담을 필드 추가
 }
 
 export const fetchReviewDocuments = async (): Promise<ReviewDocumentsResponse> => {
@@ -98,8 +113,9 @@ export const fetchReviewDocuments = async (): Promise<ReviewDocumentsResponse> =
 };
 
 export const submitLoanEvaluation = async (
-  payload: EvaluationRequest,
+  payload: any,
   files: File[],
+  headers?: Record<string, string>
 ): Promise<EvaluationResponse> => {
   const formData = new FormData();
   formData.append(
@@ -110,7 +126,7 @@ export const submitLoanEvaluation = async (
   const { data } = await axiosInstance.post<ApiResponse<EvaluationResponse>>(
     '/loan/evaluation',
     formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } },
+    { headers: { 'Content-Type': 'multipart/form-data', ...headers } },
   );
   return data.data!;
 };
@@ -125,10 +141,14 @@ export const fetchContractDocuments = async (
   return data.data!;
 };
 
-export const executeLoan = async (payload: ExecutionRequest): Promise<ExecutionResponse> => {
+export const executeLoan = async (
+  payload: any,
+  headers?: Record<string, string>
+): Promise<ExecutionResponse> => {
   const { data } = await axiosInstance.post<ApiResponse<ExecutionResponse>>(
     '/loan/contract/execution',
     payload,
+    { headers }
   );
   return data.data!;
 };

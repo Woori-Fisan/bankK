@@ -5,7 +5,7 @@ import AmountInputSection from '../sections/AmountInputSection';
 import WithdrawFeeSection from '../sections/WithdrawFeeSection';
 import { formatAmount } from '../../../utils/formatter';
 import type { WithdrawData } from '../../../types/withdraw';
-import { getBalance } from '../../../api/transfer';
+import { fetchBalance } from '../../../api/inquiry';
 
 export interface WithdrawEntryFormProps {
     initialData?: WithdrawData;
@@ -56,12 +56,10 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
             };
             const bankCode = bankCodeMap[sourceAccount.bankName] || '020';
 
-            const response = await getBalance({
+            const response = await fetchBalance({
                 bankCode: bankCode,
                 accountNo: sourceAccount.accountNumber,
-                customerRrnPrefix: birthDate,
-                encryptedKey: 'DUMMY_ENCRYPTED_KEY',
-                jwsSignature: 'DUMMY_JWS_SIGNATURE',
+                customerRrnPrefix: birthDate
             });
 
             if (response.success && response.data) {

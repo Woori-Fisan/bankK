@@ -15,12 +15,7 @@ const RecipientInputForm: React.FC = () => {
         setError(null);
 
         try {
-            const response = await getRecipient({
-                depositBankCode: toBank,
-                depositAccountNo: toAccountNumber,
-                encryptedKey: 'TEMP_ENCRYPTED_KEY',
-                jwsSignature: 'TEMP_JWS_SIGNATURE'
-            });
+            const response = await getRecipient(toBank, toAccountNumber);
 
             if (response.success) {
                 const { depositorName, depositBankName, depositBankAccountNo } = response.data;

@@ -35,21 +35,6 @@ jwt:
   access-expiration: 900000       # 15분 (ms)
   refresh-expiration: 28800000    # 8시간 (ms)
 
-# ── Actuator / Prometheus (Observability) ────────
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health, prometheus, info, metrics
-  endpoint:
-    health:
-      show-details: always
-    prometheus:
-      enabled: true
-  metrics:
-    tags:
-      application: ${spring.application.name}
-
 # Swagger
 springdoc:
   swagger-ui:

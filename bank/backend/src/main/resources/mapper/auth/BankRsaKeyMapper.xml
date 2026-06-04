@@ -4,4 +4,24 @@
     <select id="findById" resultType="BankRsaKey">
         SELECT * FROM bank_rsa_key_ledger WHERE id = #{id}
     </select>
+
+    <select id="findLatestActiveKey" resultType="BankRsaKey">
+        SELECT * FROM bank_rsa_key_ledger
+        WHERE status = 'ACTIVE'
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findByKeyId" resultType="BankRsaKey">
+        SELECT * FROM bank_rsa_key_ledger
+        WHERE key_id = #{keyId}
+    </select>
+
+    <insert id="insert" parameterType="BankRsaKey" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO bank_rsa_key_ledger (
+            key_id, public_key, private_key_enc, status, valid_from, valid_to
+        ) VALUES (
+            #{keyId}, #{publicKey}, #{privateKeyEnc}, #{status}, #{validFrom}, #{validTo}
+        )
+    </insert>
 </mapper>

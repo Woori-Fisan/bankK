@@ -1,34 +1,43 @@
 package com.woorifisan.bank.domain.account.dto.response;
 
+import com.woorifisan.bank.global.security.dto.SecureResponse;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
- * 수취인 확인 응답 DTO
+ * 수취인 확인 응답 DTO (부분 암호화 적용)
  */
 @Getter
-@Builder
+@SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class RecipientResponse {
+public class RecipientResponse extends SecureResponse {
 
-    private String depositorName;
+    private String depositBankName; // 평문
 
-    private String depositBankName;
+    private String accountStatus; // 평문
 
-    private String depositAccountNo;
+    /**
+     * 암호화될 민감 데이터 구조 정의
+     */
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class SensitiveData {
+        private String depositorName;
+        private String depositAccountNo;
+    }
 
-    private String accountStatus;
-
-    public static RecipientResponse of(String depositorName, String depositBankName, String depositAccountNo, String accountStatus) {
+    public static RecipientResponse of(String resPayload, String depositBankName, String accountStatus) {
         return RecipientResponse.builder()
-                .depositorName(depositorName)
+                .resPayload(resPayload)
                 .depositBankName(depositBankName)
-                .depositAccountNo(depositAccountNo)
                 .accountStatus(accountStatus)
                 .build();
     }
 }
+

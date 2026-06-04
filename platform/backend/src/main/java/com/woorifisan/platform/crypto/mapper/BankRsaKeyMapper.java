@@ -12,4 +12,6 @@ public interface BankRsaKeyMapper {
             @Param("keyId") String keyId,
             @Param("publicKey") String publicKey
     );
+
+    com.woorifisan.platform.crypto.dto.response.BankRsaKeyResponse findKeyInfoByBankCode(@Param("bankCode") String bankCode);
 }
