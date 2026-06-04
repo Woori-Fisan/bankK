@@ -8,12 +8,15 @@ import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
 import com.woorifisan.bank.domain.document.mapper.CommonDocumentMapper;
 import com.woorifisan.bank.domain.document.model.CommonDocument;
+import com.woorifisan.bank.domain.loan.dto.decrypted.DecryptedLoanEvaluateRequest;
+import com.woorifisan.bank.domain.loan.dto.decrypted.DecryptedLoanExecuteRequest;
 import com.woorifisan.bank.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.bank.domain.loan.dto.request.LoanExecuteRequest;
 import com.woorifisan.bank.domain.loan.dto.response.LoanAcceptResponse;
 import com.woorifisan.bank.domain.loan.dto.response.LoanEvaluationStatusResponse;
 import com.woorifisan.bank.domain.loan.dto.response.LoanExecuteResponse;
 import com.woorifisan.bank.domain.loan.dto.response.LoanProductResponse;
+import com.woorifisan.bank.domain.loan.dto.response.SensitiveLoanExecuteResponse;
 import com.woorifisan.bank.domain.loan.dto.response.TermsResponse;
 import com.woorifisan.bank.domain.loan.mapper.LoanLedgerMapper;
 import com.woorifisan.bank.domain.loan.mapper.LoanProductMapper;
@@ -22,6 +25,7 @@ import com.woorifisan.bank.domain.loan.model.LoanProduct;
 import com.woorifisan.bank.domain.terms.mapper.BankTermsMapper;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
+import com.woorifisan.bank.global.security.service.SecurityService;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -35,6 +39,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import javax.crypto.SecretKey;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -67,6 +72,7 @@ public class LoanService {
     private final CommonDocumentMapper commonDocumentMapper;
     private final BCryptPasswordEncoder passwordEncoder;
     private final LoanReviewAsyncService loanReviewAsyncService;
+    private final SecurityService securityService;
 
     // 심사 약관 조회
     @Transactional(readOnly = true)
@@ -97,6 +103,12 @@ public class LoanService {
     @Transactional
     public LoanAcceptResponse acceptLoan(LoanEvaluateRequest request, List<MultipartFile> files) {
 
+        // 0. 복호화 및 민감 정보 획득 (CEK 추출 포함)
+        SecurityService.DecryptionResult<DecryptedLoanEvaluateRequest> result =
+                securityService.decryptWithKey(request, DecryptedLoanEvaluateRequest.class);
+        DecryptedLoanEvaluateRequest decrypted = result.getData();
+        final SecretKey cek = result.getCek();
+
         // 1. 약관 동의 플래그 검증 — 세 가지 모두 true 여야 접수 가능
         if (!Boolean.TRUE.equals(request.getIsCreditInfoAgreed())
                 || !Boolean.TRUE.equals(request.getIsProductTermsAgreed())
@@ -118,7 +130,7 @@ public class LoanService {
         }
 
         // 4. 입금 계좌 조회 및 상태 확인
-        Account account = accountMapper.findByAccountNoPlain(request.getDepositAccountNo())
+        Account account = accountMapper.findByAccountNoPlain(decrypted.getDepositAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
         if ("LOCKED".equals(account.getStatus())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_LOCKED);
@@ -129,8 +141,8 @@ public class LoanService {
         // 5. 계좌 소유자와 요청 고객 정보 일치 여부 확인 (본인 확인)
         Customer customer = customerMapper.findById(account.getCustomerId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_CUSTOMER_NOT_FOUND));
-        if (!customer.getRrnPrefix().equals(request.getCustomerRrnPrefix())
-                || !customer.getCustomerName().equals(request.getCustomerName())) {
+        if (!customer.getRrnPrefix().equals(decrypted.getCustomerRrnPrefix())
+                || !customer.getCustomerName().equals(decrypted.getCustomerName())) {
             throw new BusinessException(ErrorCode.LOAN_CUSTOMER_IDENTITY_MISMATCH);
         }
 
@@ -141,8 +153,8 @@ public class LoanService {
 
         String loanNo = generateLoanNo();
 
-        // 7. 파일을 on-premises 스토리지에 저장. 실패 시 저장된 파일 cleanup 후 예외
-        List<Path> savedPaths = saveFiles(loanNo, files);
+        // 7. 파일을 on-premises 스토리지에 저장 (E2EE 복호화 포함). 실패 시 저장된 파일 cleanup 후 예외
+        List<Path> savedPaths = saveFiles(loanNo, files, cek);
 
         // 8. loan_ledger SUBMITTED 상태로 생성
         LoanLedger ledger = LoanLedger.builder()
@@ -178,16 +190,19 @@ public class LoanService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                loanReviewAsyncService.processReview(finalLoanNo, finalRequestKey);
+                loanReviewAsyncService.processReview(finalLoanNo, finalRequestKey, cek);
             }
         });
 
-        return new LoanAcceptResponse(loanNo, "SUBMITTED");
+        return LoanAcceptResponse.builder()
+                .loanNo(loanNo)
+                .status("SUBMITTED")
+                .build();
     }
 
     // 파일을 {documentStoragePath}/{loanNo}/ 경로에 저장
     // 중간에 실패하면 이미 저장된 파일을 모두 삭제하고 예외 던지기
-    private List<Path> saveFiles(String loanNo, List<MultipartFile> files) {
+    private List<Path> saveFiles(String loanNo, List<MultipartFile> files, SecretKey cek) {
         List<Path> savedPaths = new ArrayList<>();
         Path loanDir = Paths.get(documentStoragePath, loanNo);
         try {
@@ -204,16 +219,22 @@ public class LoanService {
                     : "unnamed";
             String fileName = UUID.randomUUID() + "_" + cleanFileName;
             Path target = loanDir.resolve(fileName);
-            try (var inputStream = file.getInputStream()) {
-                Files.copy(inputStream, target);
+            
+            try {
+                // E2EE 복호화: MultipartFile에서 바이트 배열을 읽어 복호화 수행
+                byte[] encryptedBytes = file.getBytes();
+                byte[] decryptedBytes = securityService.decryptFile(encryptedBytes, cek);
+                
+                // 복호화된 원본 데이터를 파일로 저장
+                Files.write(target, decryptedBytes);
                 savedPaths.add(target);
-            } catch (IOException e) {
+            } catch (IOException | RuntimeException e) {
                 // 저장 성공한 파일들 전부 삭제 후 예외
                 savedPaths.forEach(p -> {
                     try { Files.deleteIfExists(p); } catch (IOException ignored) {}
                 });
                 try { Files.deleteIfExists(loanDir); } catch (IOException ignored) {}
-                log.error("[접수] 파일 저장 실패 - loanNo: {}, file: {}", loanNo, file.getOriginalFilename(), e);
+                log.error("[접수] 파일 복호화 및 저장 실패 - loanNo: {}, file: {}", loanNo, file.getOriginalFilename(), e);
                 throw new BusinessException(ErrorCode.LOAN_STORAGE_ERROR);
             }
         }
@@ -263,6 +284,11 @@ public class LoanService {
     @Transactional
     public LoanExecuteResponse executeLoan(LoanExecuteRequest request) {
 
+        // 0. 복호화 및 민감 정보 획득 (CEK 추출 포함)
+        SecurityService.DecryptionResult<DecryptedLoanExecuteRequest> result =
+                securityService.decryptWithKey(request, DecryptedLoanExecuteRequest.class);
+        DecryptedLoanExecuteRequest decrypted = result.getData();
+
         // 1. 상태 검증: APPROVED 건만 실행 가능
         LoanLedger loanLedger = loanLedgerMapper.findByLoanNo(request.getLoanNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_NOT_FOUND));
@@ -295,13 +321,19 @@ public class LoanService {
         // 잔액 업데이트 전 다른 트랜잭션의 동시 접근 차단
         Account account = accountMapper.findByIdForUpdate(loanLedger.getLinkedAccountId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
+
+        // 복호화된 계좌번호와 원장의 연결 계좌번호 일치 확인
+        if (!account.getAccountNo().equals(decrypted.getDepositAccountNo())) {
+            throw new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND);
+        }
+
         if ("LOCKED".equals(account.getStatus())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_LOCKED);
         } else if (!"NORMAL".equals(account.getStatus())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_ABNORMAL);
         }
         // bcrypt 해시와 비교
-        if (!passwordEncoder.matches(request.getAccountPassword(), account.getPassword())) {
+        if (!passwordEncoder.matches(decrypted.getAccountPassword(), account.getPassword())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_PASSWORD_MISMATCH);
         }
 
@@ -340,9 +372,13 @@ public class LoanService {
                 txId, account.getId(), "LOAN", request.getLoanAmount(), balanceAfter,
                 null, null, product.getProductName() + " 대출 실행", "SUCCESS"));
 
+        // 8. 민감 정보 암호화 (추출된 CEK 사용)
+        SensitiveLoanExecuteResponse sensitive = new SensitiveLoanExecuteResponse(customer.getCustomerName());
+        String resPayload = securityService.encryptResponse(sensitive, result.getCek());
+
         return LoanExecuteResponse.builder()
+                .resPayload(resPayload)
                 .loanNo(request.getLoanNo())
-                .customerName(customer.getCustomerName())
                 .loanAmount(request.getLoanAmount())
                 .interestRate(interestRate)
                 .repaymentType(request.getRepaymentType())

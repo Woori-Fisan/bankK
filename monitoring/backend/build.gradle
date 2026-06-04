@@ -48,9 +48,6 @@ repositories {
 	mavenCentral()
 }
 
-ext {
-	set('datasourceMicrometerVersion', "1.4.1")
-}
 
 dependencies {
 	// Web & Security
@@ -66,11 +63,6 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
-
-	// Actuator + Prometheus + DB Metrics
-	implementation 'org.springframework.boot:spring-boot-starter-actuator'
-	implementation 'io.micrometer:micrometer-registry-prometheus'
-	implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot'
 
     // Redis
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
@@ -97,11 +89,6 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
-dependencyManagement {
-	imports {
-		mavenBom "net.ttddyy.observation:datasource-micrometer-bom:${datasourceMicrometerVersion}"
-	}
-}
 
 tasks.named('test') {
 	useJUnitPlatform()

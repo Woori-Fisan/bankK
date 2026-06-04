@@ -39,7 +39,7 @@ const AccountInquiry: React.FC = () => {
                 size: pageSize // 일관된 사이즈 사용
             });
 
-            if (historyRes.success && historyRes.data.history) {
+            if (historyRes.success && historyRes.data?.history) {
                 const mappedTransactions: Transaction[] = historyRes.data.history.map((h: any) => ({
                     id: h.txId,
                     date: h.txDate,
@@ -52,9 +52,10 @@ const AccountInquiry: React.FC = () => {
                 }));
                 setTransactions(mappedTransactions);
 
-                // 백엔드의 HistoryInquiryResponse.builder()에 정의된 데이터 사용
                 setTotalItems(historyRes.data.totalCount || 0);
                 setTotalPages(historyRes.data.totalPages || 0);
+            } else if (!historyRes.success) {
+                throw new Error(historyRes.error?.message || '거래 내역을 불러오지 못했습니다.');
             }
         } catch (err) {
             console.error('Transaction Load Error:', err);
@@ -80,9 +81,10 @@ const AccountInquiry: React.FC = () => {
         try {
             // 잔액 조회
             const balanceRes = await fetchBalance(data);
-            if (balanceRes.success) {
-                setBalanceData(balanceRes.data);
+            if (!balanceRes.success) {
+                throw new Error(balanceRes.error?.message || '잔액 정보를 불러오지 못했습니다.');
             }
+            setBalanceData(balanceRes.data);
             
             // 거래 내역 조회 (초기 로딩 - 초기화된 필터값 사용)
             await loadTransactions(data, defaultFilters, 1);
@@ -91,15 +93,7 @@ const AccountInquiry: React.FC = () => {
             setStep(2);
         } catch (err: any) {
             console.error('Account Inquiry Error:', err);
-            
-            // 백엔드 에러 응답 구조: { success: false, error: { code, message } } 대응
-            const errorMessage = 
-                err.response?.data?.error?.message || 
-                err.response?.data?.message || 
-                err.message || 
-                '계좌 정보를 불러오는 중 오류가 발생했습니다.';
-                
-            setApiError(errorMessage); // 화면 상단 배너용 에러 상태 업데이트
+            setApiError(err.message || '계좌 정보를 불러오는 중 오류가 발생했습니다.');
         } finally {
             setIsLoading(false);
         }
@@ -115,11 +109,7 @@ const AccountInquiry: React.FC = () => {
             await loadTransactions(accountInfo, filters, 1);
         } catch (err: any) {
             console.error('Search Error:', err);
-            const errorMessage = 
-                err.response?.data?.error?.message || 
-                err.response?.data?.message || 
-                '거래 내역 검색 중 오류가 발생했습니다.';
-            setApiError(errorMessage);
+            setApiError(err.message || '거래 내역 검색 중 오류가 발생했습니다.');
         }
         setIsLoading(false);
     };
@@ -134,11 +124,7 @@ const AccountInquiry: React.FC = () => {
             await loadTransactions(accountInfo, currentFilters, page);
         } catch (err: any) {
             console.error('Page Change Error:', err);
-            const errorMessage = 
-                err.response?.data?.error?.message || 
-                err.response?.data?.message || 
-                '페이지 이동 중 오류가 발생했습니다.';
-            setApiError(errorMessage);
+            setApiError(err.message || '페이지 이동 중 오류가 발생했습니다.');
         }
         setIsLoading(false);
     };

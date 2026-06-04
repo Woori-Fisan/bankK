@@ -9,6 +9,7 @@ import { useReviewDocuments, useSubmitLoanEvaluation, useBankList, extractApiErr
 import type { ReviewDocument, EvaluationStatusResponse } from '../../api/loanApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { isValidAccountNumber } from '../../utils/validator';
+import { prepareSecureRequest, decryptBankResponse, encryptFileWithKey } from '../../utils/bankCrypto';
 
 interface AgreedDoc extends ReviewDocument {
     agreed: boolean;
@@ -210,10 +211,40 @@ ${body}
         const controller = new AbortController();
         sseControllerRef.current = controller;
 
+        // 1. 보안 요청 준비 (암호화 + 서명 + 키ID 통합 처리)
+        const agreedAt = new Date().toISOString();
+        const documents = agreedDocs
+            .filter((d) => d.agreed)
+            .map((d) => ({ documentType: d.documentType, agreedAt }));
+
+        const secureRequest = await prepareSecureRequest(
+            {
+                customerName: formData.userName!,
+                customerRrnPrefix: rrnPrefix,
+                depositAccountNo: formData.accountNo!,
+            },
+            {
+                requestKey,
+                bankCode: formData.bankCode!,
+                customerPhone: formData.phone ?? '',
+                depositBankCode: formData.bankCode!,
+                documents,
+            },
+            formData.bankCode!
+        );
+
+        if (!secureRequest) {
+            setIsUploading(false);
+            setFieldErrors({ submit: '보안 요청 준비 중 오류가 발생했습니다.' });
+            return;
+        }
+
+        const { payload, headers, aesKey } = secureRequest;
+
         fetchEventSource(`/api/v1/loan/subscribe?requestKey=${encodeURIComponent(requestKey)}`, {
             headers: { Authorization: `Bearer ${accessToken}` },
             signal: controller.signal,
-            onmessage(event) {
+            async onmessage(event) {
                 if (event.event === 'timeout') {
                     onSseError(new Error('심사 결과를 받지 못했습니다. 처음부터 다시 신청해주세요.'));
                     controller.abort();
@@ -222,10 +253,29 @@ ${body}
                 if (event.event !== 'result') return;
                 try {
                     const parsed: EvaluationStatusResponse = JSON.parse(event.data);
+
+                    // 2. 응답 복호화 (메모리에 보관 중이던 aesKey 사용)
+                    if (parsed.resPayload) {
+                        const decrypted = await decryptBankResponse(parsed.resPayload, aesKey);
+                        if (decrypted.availableProducts) {
+                            parsed.availableProducts = decrypted.availableProducts.map((p: any) => ({
+                                loanProductCode: String(p.productId),
+                                loanProductName: p.productName,
+                                minAmount: p.minLimit,
+                                maxAmount: p.maxLimit,
+                                interestRate: p.minRate,
+                                loanPeriodMonths: 36,
+                            }));
+                        }
+                        parsed.approvedLimit = decrypted.approvedLimit;
+                        parsed.rejectionMessage = decrypted.rejectReason;
+                    }
+
                     onSseMessage(parsed);
                     controller.abort();
-                } catch {
-                    onSseError(new Error('응답 파싱 오류'));
+                } catch (e) {
+                    console.error('SSE decryption error:', e);
+                    onSseError(new Error('심사 결과 해독 중 오류가 발생했습니다.'));
                     controller.abort();
                 }
             },
@@ -237,23 +287,19 @@ ${body}
         });
 
         try {
-            const agreedAt = new Date().toISOString();
-            const documents = agreedDocs
-                .filter((d) => d.agreed)
-                .map((d) => ({ documentType: d.documentType, agreedAt }));
+            // 3. 파일 암호화 루프 (JSON 암호화에 사용된 동일 AES 키 재사용)
+            const encryptedFiles = await Promise.all(
+                files.map(async (f) => {
+                    const encryptedBlob = await encryptFileWithKey(f.file, aesKey);
+                    // 원본 파일명 유지 (은행이 파일명으로 서류 종류를 식별함)
+                    return new File([encryptedBlob], f.name, { type: 'application/octet-stream' });
+                })
+            );
 
             const result = await submitMutation.mutateAsync({
-                payload: {
-                    requestKey,
-                    bankCode: formData.bankCode!,
-                    customerName: formData.userName!,
-                    customerRrnPrefix: rrnPrefix,
-                    customerPhone: formData.phone ?? '',
-                    depositBankCode: formData.bankCode!,
-                    depositAccountNo: formData.accountNo!,
-                    documents,
-                },
-                files: files.map((f) => f.file),
+                payload,
+                files: encryptedFiles,
+                headers,
             });
 
             onNext({ ...formData, rrn: `${rrnFront}-${rrnBack}` }, result.loanNo);
