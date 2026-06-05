@@ -31,4 +31,8 @@ public class InternalDepositRequest {
 
     private String withdrawalAccountNo;
 
+    @NotBlank(message = "트랜잭션 ID는 필수입니다.")
+    private String txId;
+
 }
+

@@ -10,6 +10,12 @@
         VALUES (#{txId}, #{accountId}, #{txType}, #{amount}, #{balanceAfter}, #{targetBankCode}, #{targetAccount}, #{description}, #{status}, #{transactedAt})
     </insert>
 
+    <update id="updateStatus">
+        UPDATE transaction_ledger
+        SET status = #{status}
+        WHERE tx_id = #{txId}
+    </update>
+
     <select id="findHistoryList" resultType="TransactionLedger">
         SELECT *
         FROM transaction_ledger
