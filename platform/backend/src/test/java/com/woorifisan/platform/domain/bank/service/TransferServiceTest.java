@@ -79,7 +79,7 @@ class TransferServiceTest {
 
         // then
         assertThat(response.getTransactionId()).isEqualTo(mockTransferResponse.getTransactionId());
-        assertThat(response.getTransactionDate()).isEqualTo("2026-05-27");
+        assertThat(response.getTransactionDate()).isEqualTo("2026-05-27 10:00:00");
         assertThat(response.getBalanceAfter()).isEqualByComparingTo(new BigDecimal("500000"));
         assertThat(response.getResPayload()).isEqualTo("withdraw-res-jwe");
     }
