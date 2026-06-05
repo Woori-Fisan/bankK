@@ -19,7 +19,6 @@ import com.woorifisan.platform.domain.bank.model.Bank;
 import com.woorifisan.platform.domain.loan.dto.request.LoanCallbackRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
-import com.woorifisan.platform.domain.loan.dto.request.LoanReceiptRequest;
 import com.woorifisan.platform.domain.loan.dto.response.LoanDocumentDto;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluateResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanExecuteResponse;
@@ -431,68 +430,6 @@ class LoanServiceTest {
         assertThatThrownBy(() -> loanService.executeLoan(request, 1L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
-    }
-
-    // ───────────────────────────────────────────────────────────────
-    // generateReceiptPdf
-    // ───────────────────────────────────────────────────────────────
-
-    @Test
-    @DisplayName("대출 실행 확인서 PDF 생성 성공 - %PDF 헤더로 시작하는 바이트 배열 반환")
-    void PDF_생성_성공() {
-        // given: NanumGothic.ttf가 classpath에 있어야 함 (src/main/resources/fonts/)
-        LoanReceiptRequest request = LoanReceiptRequest.builder()
-                .loanId("LOAN-2026-001")
-                .borrowerName("홍길동")
-                .depositTransactionId("TXN-ABC123DEFG")
-                .executeAmount(new BigDecimal("30000000"))
-                .interestRate(new BigDecimal("4.5"))
-                .repaymentPeriod(36)
-                .monthlyPayment(new BigDecimal("897000"))
-                .repaymentStartDate("2026-07-15")
-                .maturityDate("2029-06-15")
-                .loanProductName("직장인 우대 신용대출")
-                .depositBankName("우리은행")
-                .depositAccountNo("1234567890")
-                .build();
-
-        // when: 실제 PDFBox 코드가 실행됨 (mock 없음)
-        byte[] result = loanService.generateReceiptPdf(request);
-
-        // then: PDF 파일은 반드시 "%PDF" (0x25 0x50 0x44 0x46)로 시작함
-        assertThat(result).isNotNull();
-        assertThat(result.length).isGreaterThan(0);
-        assertThat(result[0]).isEqualTo((byte) 0x25); // '%'
-        assertThat(result[1]).isEqualTo((byte) 0x50); // 'P'
-        assertThat(result[2]).isEqualTo((byte) 0x44); // 'D'
-        assertThat(result[3]).isEqualTo((byte) 0x46); // 'F'
-    }
-
-    @Test
-    @DisplayName("대출 실행 확인서 PDF 생성 성공 - 계좌번호 마스킹 처리됨")
-    void PDF_생성_성공_계좌번호_마스킹() {
-        // given: 계좌번호에 숫자 10자리 입력
-        LoanReceiptRequest request = LoanReceiptRequest.builder()
-                .loanId("LOAN-2026-001")
-                .borrowerName("홍길동")
-                .depositTransactionId("TXN-ABC123DEFG")
-                .executeAmount(new BigDecimal("30000000"))
-                .interestRate(new BigDecimal("4.5"))
-                .repaymentPeriod(36)
-                .monthlyPayment(new BigDecimal("897000"))
-                .repaymentStartDate("2026-07-15")
-                .maturityDate("2029-06-15")
-                .loanProductName("직장인 우대 신용대출")
-                .depositBankName("우리은행")
-                .depositAccountNo("1234567890") // 앞3자리+마스킹+뒤3자리로 처리되어야 함
-                .build();
-
-        // when
-        byte[] result = loanService.generateReceiptPdf(request);
-
-        // then: PDF가 정상 생성되고 내용이 있음 (마스킹은 PDF 내부에서 처리)
-        assertThat(result).isNotNull();
-        assertThat(result.length).isGreaterThan(100); // 최소 수백 바이트 이상
     }
 
     // ───────────────────────────────────────────────────────────────

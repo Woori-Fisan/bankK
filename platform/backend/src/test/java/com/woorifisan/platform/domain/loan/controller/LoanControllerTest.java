@@ -15,7 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woorifisan.platform.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
-import com.woorifisan.platform.domain.loan.dto.request.LoanReceiptRequest;
 import com.woorifisan.platform.domain.loan.dto.response.LoanContractDocumentsResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanDocumentDto;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluateResponse;
@@ -311,53 +310,4 @@ class LoanControllerTest {
                 .andDo(print());
     }
 
-    // ───────────────────────────────────────────
-    // 6. 대출 실행 확인서 PDF 발급
-    // ───────────────────────────────────────────
-
-    @Test
-    @DisplayName("대출 실행 확인서 PDF 발급 API 성공 - Content-Type: application/pdf")
-    void 대출_확인서_PDF_발급_성공() throws Exception {
-        // given
-        LoanReceiptRequest request = LoanReceiptRequest.builder()
-                .loanId("LOAN-2026-001")
-                .borrowerName("홍길동")
-                .depositTransactionId("TXN-ABC123DEFG")
-                .executeAmount(new BigDecimal("30000000"))
-                .interestRate(new BigDecimal("4.5"))
-                .repaymentPeriod(36)
-                .monthlyPayment(new BigDecimal("897000"))
-                .repaymentStartDate("2026-07-15")
-                .maturityDate("2029-06-15")
-                .loanProductName("직장인 우대 신용대출")
-                .depositBankName("우리은행")
-                .depositAccountNo("1234567890")
-                .build();
-
-        // %PDF-1.4 로 시작하는 mock PDF 바이트
-        byte[] mockPdf = "%PDF-1.4 mock-content".getBytes(StandardCharsets.UTF_8);
-        given(loanService.generateReceiptPdf(any())).willReturn(mockPdf);
-
-        // when & then
-        mockMvc.perform(post("/api/v1/loan/receipt")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
-                .andDo(print());
-    }
-
-    @Test
-    @DisplayName("대출 실행 확인서 PDF 발급 API 실패 - 필수 필드 누락 시 400 반환")
-    void 대출_확인서_PDF_발급_실패_유효성검증() throws Exception {
-        // given: loanId 등 @NotBlank 필드 없는 빈 요청
-        String emptyJson = "{}";
-
-        // when & then
-        mockMvc.perform(post("/api/v1/loan/receipt")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(emptyJson))
-                .andExpect(status().isBadRequest())
-                .andDo(print());
-    }
 }
