@@ -22,6 +22,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -105,14 +106,18 @@ public class TransferService {
     }
 
     /**
-     * 이체 환불 실행 (개별 트랜잭션 위임)
+     * 이체 환불 실행 (개별 트랜잭션 위임 및 복호화 처리)
      */
     public TransferResponse refundTransfer(TransferRequest request) {
-        return transferTxService.refundTransfer(request);
+        SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
+                securityService.decryptWithKey(request, DecryptedWithdrawData.class);
+        return transferTxService.refundTransfer(request, decryptionResult.getData());
     }
 
     public TransferResponse refundTransfer(TransferRequest request, String originalTxId) {
-        return transferTxService.refundTransfer(request, originalTxId);
+        SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
+                securityService.decryptWithKey(request, DecryptedWithdrawData.class);
+        return transferTxService.refundTransfer(request, decryptionResult.getData(), originalTxId);
     }
 
     /**
@@ -133,6 +138,7 @@ public class TransferService {
      * 통합 이체 실행 흐름 제어 (코디네이터)
      * - DB 커넥션 점유 시간을 최소화하기 위해 외부 API 호출은 비트랜잭션 구간에서 수행합니다.
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public TransferResponse executeTransfer(TransferRequest request) {
         log.info("통합 이체 실행 요청 수신 - 출금은행: {}, 입금은행: {}, 금액: {}", 
                 request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
@@ -168,7 +174,7 @@ public class TransferService {
                 return withdrawalResponse;
             } catch (Exception e) {
                 log.error("당행 입금 처리 중 오류 발생, 환불 처리를 시작합니다: {}", e.getMessage());
-                transferTxService.refundTransfer(request, txId);
+                transferTxService.refundTransfer(request, decryptedData, txId);
                 throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH, "당행 입금 처리 중 오류가 발생하여 환불되었습니다.");
             }
         } else {
@@ -202,7 +208,7 @@ public class TransferService {
                 } else {
                     log.error("타행 거래 상태 조회 결과: 미처리 확인. 환불 처리를 시작합니다.");
                     // 보상 트랜잭션: 환불
-                    transferTxService.refundTransfer(request, txId);
+                    transferTxService.refundTransfer(request, decryptedData, txId);
                     throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH, "타행 입금 처리 중 오류가 발생하여 환불되었습니다.");
                 }
             }

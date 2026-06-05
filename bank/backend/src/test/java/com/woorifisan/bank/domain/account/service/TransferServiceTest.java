@@ -114,13 +114,16 @@ class TransferServiceTest {
         // given
         TransferRequest request = TransferRequest.builder().build();
         TransferResponse mockResponse = TransferResponse.builder().build();
-        given(transferTxService.refundTransfer(request)).willReturn(mockResponse);
+
+        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
+                .willReturn(new SecurityService.DecryptionResult<>(DecryptedWithdrawData.builder().build(), new SecretKeySpec(new byte[16], "AES")));
+        given(transferTxService.refundTransfer(eq(request), any())).willReturn(mockResponse);
 
         // when
         TransferResponse response = transferService.refundTransfer(request);
 
         // then
-        verify(transferTxService).refundTransfer(request);
+        verify(transferTxService).refundTransfer(eq(request), any());
         assertEquals(mockResponse, response);
     }
 
@@ -181,7 +184,7 @@ class TransferServiceTest {
         verify(transferTxService).updateLedgerStatus("mock-tx-id", "SUCCESS");
         
         // 이중 지급을 차단하기 위해 환불이 호출되지 않았음을 검증
-        verify(transferTxService, never()).refundTransfer(any(), anyString());
+        verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
     }
 
     @Test
@@ -231,7 +234,7 @@ class TransferServiceTest {
 
         // 상태를 알 수 없으므로 성공 마킹(SUCCESS)이나 실패 마킹(FAILED)이 진행되지 않고 PENDING으로 남아있어야 함
         verify(transferTxService, never()).updateLedgerStatus(anyString(), anyString());
-        verify(transferTxService, never()).refundTransfer(any(), anyString());
+        verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
     }
 
     @Test
@@ -284,7 +287,7 @@ class TransferServiceTest {
 
         // 상태를 알 수 없으므로 성공 마킹(SUCCESS)이나 실패 마킹(FAILED)이 진행되지 않고 PENDING으로 남아있어야 함
         verify(transferTxService, never()).updateLedgerStatus(anyString(), anyString());
-        verify(transferTxService, never()).refundTransfer(any(), anyString());
+        verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
     }
 
     @Test
@@ -337,6 +340,6 @@ class TransferServiceTest {
 
         // 상태를 알 수 없으므로 성공 마킹(SUCCESS)이나 실패 마킹(FAILED)이 진행되지 않고 PENDING으로 남아있어야 함
         verify(transferTxService, never()).updateLedgerStatus(anyString(), anyString());
-        verify(transferTxService, never()).refundTransfer(any(), anyString());
+        verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
     }
 }

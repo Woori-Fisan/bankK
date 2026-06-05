@@ -130,15 +130,12 @@ class TransferTxServiceTest {
                 .depositAccountNo("999-999")
                 .build();
 
-        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
-                .willReturn(new SecurityService.DecryptionResult<>(originalData, new SecretKeySpec(new byte[16], "AES")));
-
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
         given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000"), sender.getVersion())).willReturn(1);
 
         // when
-        TransferResponse response = transferTxService.refundTransfer(request);
+        TransferResponse response = transferTxService.refundTransfer(request, originalData);
 
         // then
         assertNotNull(response);

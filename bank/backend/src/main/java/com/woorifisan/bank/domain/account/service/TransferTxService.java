@@ -102,38 +102,33 @@ public class TransferTxService {
 
     /**
      * 이체 환불 실행 (독립 트랜잭션)
+     * - 중복 복호화 방지를 위해 이미 복호화된 DecryptedWithdrawData를 직접 전달받습니다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public TransferResponse refundTransfer(TransferRequest request) {
-        return refundTransfer(request, null);
+    public TransferResponse refundTransfer(TransferRequest request, DecryptedWithdrawData originalWithdrawData) {
+        return refundTransfer(request, originalWithdrawData, null);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public TransferResponse refundTransfer(TransferRequest request, String originalTxId) {
+    public TransferResponse refundTransfer(TransferRequest request, DecryptedWithdrawData originalWithdrawData, String originalTxId) {
         log.info("이체 환불 실행 (독립 트랜잭션) - 원래 입금하려던 은행: {}, 금액: {}, 원 거래ID: {}", 
                 request.getDepositBankCode(), request.getAmount(), originalTxId);
 
-        // 1. 복호화
-        SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
-                securityService.decryptWithKey(request, DecryptedWithdrawData.class);
-        
-        DecryptedWithdrawData originalWithdrawData = decryptionResult.getData();
-
-        // 2. 원래 출금 계좌(환불받을 계좌) 조회
+        // 1. 원래 출금 계좌(환불받을 계좌) 조회
         Account account = accountMapper.findByAccountNoPlain(originalWithdrawData.getWithdrawalAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         
         account = accountMapper.findByIdForUpdate(account.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
 
-        // 3. 잔액 복구 (입금)
+        // 2. 잔액 복구 (입금)
         BigDecimal newBalance = account.getBalance().add(request.getAmount());
         int updatedCount = accountMapper.updateBalance(account.getId(), request.getAmount(), account.getVersion());
         if (updatedCount == 0) {
             throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
         }
 
-        // 4. 원장 기록 및 원래 원장 상태 업데이트
+        // 3. 원장 기록 및 원래 원장 상태 업데이트
         if (originalTxId != null) {
             transactionLedgerMapper.updateStatus(originalTxId, "FAILED");
         }
