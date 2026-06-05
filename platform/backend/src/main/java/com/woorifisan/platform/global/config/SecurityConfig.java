@@ -71,7 +71,8 @@ public class SecurityConfig {
                                         "connect-src 'self'; " +
                                         "object-src 'none'; " +
                                         "base-uri 'self'; " +
-                                        "form-action 'self'"
+                                        "form-action 'self'; " +
+                                        "frame-ancestors 'none'"
                         ))
                         // 이 앱이 다른 사이트의 iframe에 삽입되는 것을 차단 -> Clickjacking 방어
                         .frameOptions(FrameOptionsConfig::deny)
