@@ -5,9 +5,11 @@ import com.woorifisan.platform.domain.loan.dto.request.LoanCallbackRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.platform.domain.loan.dto.response.LoanContractDocumentsResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluateResponse;
+import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluationResultResponse;
 import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
 import com.woorifisan.platform.domain.loan.dto.response.LoanExecuteResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanRequiredDocumentsResponse;
+import org.springframework.http.HttpStatus;
 import com.woorifisan.platform.domain.loan.service.LoanService;
 import com.woorifisan.platform.global.config.swagger.CustomExceptionDescription;
 import com.woorifisan.platform.global.config.swagger.SwaggerResponseDescription;
@@ -62,6 +64,20 @@ public class LoanController {
             // 프론트가 생성한 UUID — 이 키로 emitter를 Map에 등록하고, 나중에 webhook이 오면 꺼내서 push
             @RequestParam @NotBlank(message = "requestKey는 필수입니다.") String requestKey) {
         return loanService.subscribe(requestKey);
+    }
+
+    // 심사 결과 직접 조회 (SSE 실패 시 polling fallback)
+    @Operation(summary = "심사 결과 직접 조회 (Polling fallback)",
+               description = "SSE 연결 실패 시 Redis 캐시에서 결과를 조회합니다. 결과 없으면 204, 있으면 200 반환.")
+    @GetMapping("/result")
+    public ResponseEntity<ApiResponse<LoanEvaluationResultResponse>> getResult(
+            @RequestParam @NotBlank(message = "requestKey는 필수입니다.") String requestKey,
+            @AuthenticationPrincipal Long staffId) {
+        LoanEvaluationResultResponse result = loanService.getResult(requestKey);
+        if (result == null) {
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        }
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     // 대출 심사 신청

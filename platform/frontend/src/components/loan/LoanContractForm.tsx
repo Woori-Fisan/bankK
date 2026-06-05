@@ -11,6 +11,7 @@ import LoanSideSummary from './sections/LoanSideSummary';
 import LoanTermsModal from './modals/LoanTermsModal';
 import LoanConfirmModal from './modals/LoanConfirmModal';
 import PinpadModal from '../pinpad/PinpadModal';
+import { decryptBankResponse, prepareSecureRequest } from '../../utils/bankCrypto';
 
 interface AgreedContractDoc extends ContractDocument {
     agreed: boolean;
@@ -73,15 +74,41 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
         setIsPinpadOpen(false);
         setSubmitError(null);
 
-        try {
-            const result = await executeMutation.mutateAsync({
-                evaluationId,
-                loanProductCode: product.loanProductCode,
-                depositAccountNo: loanData.accountNo!,
+        // 1. 보안 요청 준비 (암호화 + 서명 + 키ID 통합 처리)
+        const secureRequest = await prepareSecureRequest(
+            {
                 accountPassword: pin,
+                depositAccountNo: loanData.accountNo!,
+            },
+            {
+                loanNo: evaluationId,
+                productId: product.id,
                 executeAmount: product.executeAmount ?? product.limit,
                 repaymentPeriod: product.period ?? 12,
+                repaymentType: '원리금균등',
+            },
+            loanData.bankCode!,
+        );
+
+        if (!secureRequest) {
+            setSubmitError('보안 요청 준비 중 오류가 발생했습니다.');
+            return;
+        }
+
+        const { payload, headers, aesKey } = secureRequest;
+
+        try {
+            const result = await executeMutation.mutateAsync({
+                payload,
+                headers,
             });
+
+            // 3. 응답 복호화 (메모리에 보관 중이던 aesKey 사용)
+            if (result.resPayload) {
+                const decrypted = await decryptBankResponse(result.resPayload, aesKey);
+                // 복호화된 데이터(예: 고객 성명 등)를 결과 객체에 병합
+                Object.assign(result, decrypted);
+            }
 
             onNext(result);
         } catch (err) {

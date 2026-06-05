@@ -122,6 +122,7 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
                 : [],
             period: p.loanPeriodMonths,
         }));
+
         onApproved({
             status: 'APPROVED',
             limit: sseData!.approvedLimit ?? undefined,

@@ -5,7 +5,8 @@ import PageHeader from '../../common/PageHeader';
 import AmountInputSection from '../sections/AmountInputSection';
 import BalanceCalculationSection from '../sections/BalanceCalculationSection';
 import { useTransferStore } from '../../../store/useTransferStore';
-import { getBalance, getRecipient } from '../../../api/transfer';
+import { fetchBalance } from '../../../api/inquiry';
+import { getRecipient } from '../../../api/transfer';
 import { fetchBankList, type BankOption } from '../../../api/loanApi';
 
 // Sub-components
@@ -46,12 +47,10 @@ const TransferEntryForm: React.FC = () => {
         setIsSenderInquiring(true);
         setError(null);
         try {
-            const response = await getBalance({
+            const response = await fetchBalance({
                 bankCode: fromBank,
                 accountNo: fromAccountNumber,
-                customerRrnPrefix: customerRrnPrefix,
-                encryptedKey: 'TEMP_ENCRYPTED_KEY',
-                jwsSignature: 'TEMP_JWS_SIGNATURE'
+                customerRrnPrefix: customerRrnPrefix
             });
             if (response.success) {
                 updateData({ balance: response.data.balance });
@@ -70,12 +69,7 @@ const TransferEntryForm: React.FC = () => {
         setIsRecipientInquiring(true);
         setError(null);
         try {
-            const response = await getRecipient({
-                depositBankCode: toBank,
-                depositAccountNo: toAccountNumber,
-                encryptedKey: 'TEMP_ENCRYPTED_KEY',
-                jwsSignature: 'TEMP_JWS_SIGNATURE'
-            });
+            const response = await getRecipient(toBank, toAccountNumber);
             if (response.success) {
                 updateData({ 
                     toName: response.data.depositorName,

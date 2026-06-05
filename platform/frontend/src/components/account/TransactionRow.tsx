@@ -39,6 +39,32 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ tx }) => {
         return types[type] || type;
     };
 
+    const formatTargetDisplay = (description: string) => {
+        const bankMap: Record<string, string> = {
+            '020': '우리은행',
+            '088': '신한은행',
+            '004': '국민은행'
+        };
+
+        if (!description) return '-';
+
+        // 설명(적요) 내에 은행 코드가 포함되어 있는지 확인
+        for (const [code, name] of Object.entries(bankMap)) {
+            if (description.includes(code)) {
+                // 은행 코드(code/) 뒤에 오는 계좌번호 패턴(숫자와 하이픈) 추출
+                const regex = new RegExp(`${code}/([0-9-]+)`);
+                const match = description.match(regex);
+                
+                if (match && match[1]) {
+                    return `${name} ${match[1]}`;
+                }
+                return name;
+            }
+        }
+
+        return description;
+    };
+
     return (
         <tr className="hover:bg-emerald-50/30 transition-all duration-200 group">
             <td className="px-6 py-5 whitespace-nowrap">
@@ -54,15 +80,15 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ tx }) => {
             <td className="px-6 py-5">
                 <div className="flex flex-col">
                     <span className="text-gray-900 font-black text-base group-hover:text-emerald-900 transition-colors">
-                        {tx.target || tx.description || '-'}
+                        {formatTargetDisplay(tx.description)}
                     </span>
                     <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
                             {formatTxType(tx.type)}
                         </span>
-                        {tx.target && tx.description && (
+                        {tx.description && (
                             <span className="text-gray-400 text-xs">
-                                {tx.description}
+                                {formatTargetDisplay(tx.description)}
                             </span>
                         )}
                     </div>

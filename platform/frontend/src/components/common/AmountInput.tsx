@@ -80,7 +80,7 @@ const AmountInput: React.FC<AmountInputProps> = ({
               size="md"
               onClick={() => onQuickAdd(val * 10000)}
               disabled={disabled}
-              className="flex-1 rounded-xl min-w-[70px]"
+              className="flex-1 text-xs p-1 rounded-xl min-w-[70px]"
             >
               +{val}만
             </Button>

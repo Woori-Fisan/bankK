@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 import type { WithdrawData } from '../../../types/withdraw';
-import { getBalance } from '../../../api/transfer';
+import { fetchBalance } from '../../../api/inquiry';
 import type { BankOption } from '../../../api/loanApi';
 
 // Sub-components
@@ -44,7 +44,7 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
         setSourceAccount(prev => ({ ...prev, balance: undefined }));
 
         try {
-            const response = await getBalance({
+            const response = await fetchBalance({
                 bankCode: sourceAccount.bankCode,
                 accountNo: sourceAccount.accountNumber,
                 customerRrnPrefix: birthDate

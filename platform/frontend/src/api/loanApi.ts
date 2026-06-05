@@ -128,6 +128,7 @@ export const submitLoanEvaluation = async (
     formData,
     { headers: { 'Content-Type': 'multipart/form-data', ...headers } },
   );
+  
   return data.data!;
 };
 
@@ -183,4 +184,16 @@ export interface BankOption {
 export const fetchBankList = async (): Promise<BankOption[]> => {
   const { data } = await axiosInstance.get<ApiResponse<BankOption[]>>('/banks');
   return data.data!;
+};
+
+// SSE 연결 실패 시 Redis 캐시에서 결과를 직접 조회하는 polling fallback
+export const fetchLoanResult = async (
+  requestKey: string,
+): Promise<EvaluationStatusResponse | null> => {
+  const response = await axiosInstance.get<ApiResponse<EvaluationStatusResponse>>(
+    `/loan/result?requestKey=${encodeURIComponent(requestKey)}`,
+    { validateStatus: (status) => status === 200 || status === 204 },
+  );
+  if (response.status === 204) return null;
+  return response.data.data!;
 };

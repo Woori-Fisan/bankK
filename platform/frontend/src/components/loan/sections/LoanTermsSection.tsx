@@ -2,7 +2,7 @@ import React from 'react';
 import { FileText, Info, Loader2 } from 'lucide-react';
 import Card from '../../common/Card';
 import { Button } from '../../common/Button';
-import type { ReviewDocument, ContractDocument } from '../../../api/loanApi';
+import type { ReviewDocument } from '../../../api/loanApi';
 
 interface AgreedDoc extends ReviewDocument {
     agreed: boolean;
