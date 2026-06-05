@@ -10,7 +10,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement | HTMLSe
   as?: 'input' | 'select';
 }
 
-const Input = React.forwardRef<HTMLInputElement & HTMLSelectElement, InputProps>(
+const Input = React.forwardRef<HTMLInputElement | HTMLSelectElement, InputProps>(
   ({ label, icon: Icon, error, helperText, className, as = 'input', children, ...props }, ref) => {
     const Component = as as any;
     

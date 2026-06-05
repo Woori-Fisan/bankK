@@ -10,6 +10,7 @@ import PageHeader from '../components/common/PageHeader';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { formatAmount } from '../utils/formatter';
+import { prepareSecureRequest } from '../utils/bankCrypto';
 
 const WithdrawPage: React.FC = () => {
     const [step, setStep] = useState<'entry' | 'success' | 'failure'>('entry');
@@ -49,9 +50,8 @@ const WithdrawPage: React.FC = () => {
         setIsProcessing(true);
 
         try {
+            // API 레이어(api/withdraw.ts)에서 prepareSecureRequest를 수행하므로 raw 데이터를 전달합니다.
             const response = await executeWithdraw({
-                encryptedKey: 'DUMMY_ENCRYPTED_KEY',
-                jwsSignature: 'DUMMY_JWS_SIGNATURE',
                 withdrawalBankCode: withdrawData.sourceAccount.bankCode,
                 withdrawalAccountNo: withdrawData.sourceAccount.accountNumber,
                 withdrawalPassword: pin,

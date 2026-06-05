@@ -67,7 +67,7 @@ const TransferSenderSection: React.FC<TransferSenderSectionProps> = ({
                     <RrnInput 
                         label="3. 주민등록번호"
                         rrnFront={customerRrnPrefix.slice(0, 6)}
-                        rrnBack={customerRrnPrefix.slice(6, 7)}
+                        rrnBack={customerRrnPrefix.length >= 7 ? customerRrnPrefix.charAt(6) : ''}
                         onRrnFrontChange={onRrnFrontChange}
                         onRrnBackChange={onRrnBackChange}
                         onBlur={onBlur}

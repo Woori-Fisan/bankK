@@ -80,7 +80,7 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ tx }) => {
             <td className="px-6 py-5">
                 <div className="flex flex-col">
                     <span className="text-gray-900 font-black text-base group-hover:text-emerald-900 transition-colors">
-                        {formatTargetDisplay(tx.description)}
+                        {formatTargetDisplay(tx.description) || ''}
                     </span>
                     <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">

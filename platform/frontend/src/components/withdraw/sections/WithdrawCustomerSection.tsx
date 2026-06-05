@@ -60,7 +60,7 @@ const WithdrawCustomerSection: React.FC<WithdrawCustomerSectionProps> = ({
                     <RrnInput 
                         label="2. 주민등록번호"
                         rrnFront={birthDate.slice(0, 6)}
-                        rrnBack={birthDate.slice(6, 7)}
+                        rrnBack={birthDate.length >= 7 ? birthDate.charAt(6) : ''}
                         onRrnFrontChange={onRrnFrontChange}
                         onRrnBackChange={onRrnBackChange}
                         onBlur={onBlur}

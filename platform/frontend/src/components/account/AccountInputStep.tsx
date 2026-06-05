@@ -27,8 +27,6 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
         accountNo: '',
         rrnFront: '',
         rrnBack: '',
-        encryptedKey: 'ENC_AES_KEY_STRING',
-        jwsSignature: 'JWS_SIGNATURE_STRING',
     });
     
     const [banks, setBanks] = useState<BankOption[]>([]);
@@ -87,8 +85,6 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
             bankCode: formData.bankCode,
             accountNo: formData.accountNo,
             customerRrnPrefix: formData.rrnFront + formData.rrnBack,
-            encryptedKey: formData.encryptedKey,
-            jwsSignature: formData.jwsSignature
         });
     };
 

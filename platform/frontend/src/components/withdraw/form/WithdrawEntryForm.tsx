@@ -85,12 +85,22 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
                         onUserNameChange={(val) => { setUserName(val); setApiError(null); }}
                         birthDate={birthDate}
                         onRrnFrontChange={(val) => {
-                            setBirthDate(val + birthDate.slice(6, 7));
+                            // 앞자리 수정 시: 새 값(최대 6자) + 기존 뒷자리(있을 경우)
+                            const currentBack = birthDate.length >= 7 ? birthDate.charAt(6) : '';
+                            setBirthDate(val.slice(0, 6) + (val.length === 6 ? currentBack : ''));
                             setSourceAccount(prev => ({ ...prev, balance: undefined }));
                             setApiError(null);
                         }}
                         onRrnBackChange={(val) => {
-                            setBirthDate(birthDate.slice(0, 6) + val);
+                            // 뒷자리 수정 시: 기존 앞자리(6자 유지) + 새 뒷자리(1자)
+                            const currentFront = birthDate.slice(0, 6);
+                            if (currentFront.length === 6) {
+                                setBirthDate(currentFront + val.slice(0, 1));
+                            } else {
+                                // 앞자리가 아직 완성되지 않은 경우에도 뒷자리 위치를 보존하기 위해 
+                                // 내부적으로만 6자 공간을 확보 (패딩 대신 슬라이싱 활용)
+                                setBirthDate(currentFront.padEnd(6, ' ').slice(0, 6) + val.slice(0, 1));
+                            }
                             setSourceAccount(prev => ({ ...prev, balance: undefined }));
                             setApiError(null);
                         }}

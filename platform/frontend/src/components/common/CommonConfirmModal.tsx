@@ -34,6 +34,14 @@ const CommonConfirmModal: React.FC<CommonConfirmModalProps> = ({
 }) => {
     if (!isOpen) return null;
 
+    // Tailwind 정적 분석을 위해 그림자 클래스를 매핑하여 정의
+    const shadowMap: Record<string, string> = {
+        'bg-emerald-600': 'shadow-emerald-600/20',
+        'bg-blue-600': 'shadow-blue-600/20',
+        'bg-rose-600': 'shadow-rose-600/20',
+        'bg-slate-900': 'shadow-slate-900/20'
+    };
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
             <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-300">
@@ -87,7 +95,7 @@ const CommonConfirmModal: React.FC<CommonConfirmModalProps> = ({
                         onClick={onConfirm}
                         variant="primary"
                         size="xl"
-                        className={`h-16 rounded-2xl text-white hover:opacity-90 shadow-xl ${headerColor.replace('bg-', 'shadow-')}/20 ${headerColor}`}
+                        className={`h-16 rounded-2xl text-white hover:opacity-90 shadow-xl ${shadowMap[headerColor] || ''} ${headerColor}`}
                     >
                         {confirmButtonText}
                     </Button>

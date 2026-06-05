@@ -132,8 +132,17 @@ const TransferEntryForm: React.FC = () => {
                         balance={balance}
                         banks={banks}
                         onNameChange={(val) => updateData({ fromName: val, balance: '0' })}
-                        onRrnFrontChange={(val) => updateData({ customerRrnPrefix: val + customerRrnPrefix.slice(6, 7), balance: '0' })}
-                        onRrnBackChange={(val) => updateData({ customerRrnPrefix: customerRrnPrefix.slice(0, 6) + val, balance: '0' })}
+                        onRrnFrontChange={(val) => {
+                            const currentBack = customerRrnPrefix.length >= 7 ? customerRrnPrefix.charAt(6) : '';
+                            updateData({ customerRrnPrefix: val.slice(0, 6) + (val.length === 6 ? currentBack : ''), balance: '0' });
+                        }}
+                        onRrnBackChange={(val) => {
+                            const currentFront = customerRrnPrefix.slice(0, 6);
+                            const newRrn = currentFront.length === 6 
+                                ? currentFront + val.slice(0, 1)
+                                : currentFront.padEnd(6, ' ').slice(0, 6) + val.slice(0, 1);
+                            updateData({ customerRrnPrefix: newRrn, balance: '0' });
+                        }}
                         onBankChange={(name, code) => updateData({ fromBank: code, fromBankName: name, balance: '0' })}
                         onAccountChange={(val) => updateData({ fromAccountNumber: val, balance: '0' })}
                         onBlur={handleSenderInquiry}
