@@ -45,7 +45,12 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: 'monitoring/frontend/.nvmrc'
+          cache: npm
+          cache-dependency-path: monitoring/frontend/package-lock.json
+
+      - name: Setup npm
+        run: npm install -g npm@11.6.2
 
       # --------------------------------------------------
       # Install Dependencies
