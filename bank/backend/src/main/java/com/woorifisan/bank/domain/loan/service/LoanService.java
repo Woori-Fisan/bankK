@@ -28,13 +28,10 @@ import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -60,8 +57,6 @@ public class LoanService {
 
     @Value("${bank.document.storage.path}")
     private String documentStoragePath;
-
-    private static final BigDecimal MAX_LOAN_AMOUNT = new BigDecimal("100000000");
 
     private final CustomerMapper customerMapper;
     private final AccountMapper accountMapper;
@@ -230,10 +225,6 @@ public class LoanService {
                         || decryptedBytes[0] != 0x25 || decryptedBytes[1] != 0x50
                         || decryptedBytes[2] != 0x44 || decryptedBytes[3] != 0x46
                         || decryptedBytes[4] != 0x2D) {
-                    savedPaths.forEach(p -> {
-                        try { Files.deleteIfExists(p); } catch (IOException ignored) {}
-                    });
-                    try { Files.deleteIfExists(loanDir); } catch (IOException ignored) {}
                     throw new BusinessException(ErrorCode.LOAN_INVALID_FILE);
                 }
 
@@ -241,6 +232,10 @@ public class LoanService {
                 Files.write(target, decryptedBytes);
                 savedPaths.add(target);
             } catch (BusinessException e) {
+                savedPaths.forEach(p -> {
+                    try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                });
+                try { Files.deleteIfExists(loanDir); } catch (IOException ignored) {}
                 throw e;
             } catch (IOException | RuntimeException e) {
                 // 저장 성공한 파일들 전부 삭제 후 예외
