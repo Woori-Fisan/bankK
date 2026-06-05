@@ -5,16 +5,21 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
+import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedInquiryData;
 import com.woorifisan.bank.domain.account.dto.request.WithdrawalRequest;
 import com.woorifisan.bank.domain.account.mapper.AccountMapper;
 import com.woorifisan.bank.domain.account.mapper.TransactionLedgerMapper;
 import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
+import com.woorifisan.bank.global.security.service.SecurityService;
 import java.math.BigDecimal;
 import java.util.Optional;
+import javax.crypto.SecretKey;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +42,19 @@ class WithdrawalServiceLockTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private SecurityService securityService;
+
+    private void mockDecrypt(String accountNo, String rrnPrefix) {
+        DecryptedInquiryData data = new DecryptedInquiryData();
+        data.setAccountNo(accountNo);
+        data.setCustomerRrnPrefix(rrnPrefix);
+        SecurityService.DecryptionResult<DecryptedInquiryData> result =
+                new SecurityService.DecryptionResult<>(data, mock(SecretKey.class));
+        given(securityService.decryptWithKey(any(), eq(DecryptedInquiryData.class)))
+                .willReturn(result);
+    }
 
     @Test
     @DisplayName("실패: 출금 금액이 잔액보다 크면 사전 검증에서 INSUFFICIENT_BALANCE 예외가 발생해야 한다")
