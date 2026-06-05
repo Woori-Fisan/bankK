@@ -57,7 +57,7 @@ jobs:
       # --------------------------------------------------
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
       # --------------------------------------------------
       # Run Tests
