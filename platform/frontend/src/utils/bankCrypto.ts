@@ -124,7 +124,7 @@ export const decryptBankResponse = async (
             data
         );
 
-        return JSON.parse(new TextDecoder().decode(decryptedBuffer));
+        return JSON.parse(new TextDecoder('utf-8').decode(decryptedBuffer));
     } catch (error) {
         console.error('응답 복호화 실패:', error);
         throw new Error('응답 데이터를 해독할 수 없습니다.');

@@ -1,10 +1,7 @@
 package com.woorifisan.platform.domain.loan.dto.response;
 
 import com.woorifisan.platform.global.security.dto.SecureResponse;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
