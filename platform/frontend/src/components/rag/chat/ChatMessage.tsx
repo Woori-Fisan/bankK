@@ -9,7 +9,8 @@ const CHAT_SANITIZE_SCHEMA: Schema = {
                'ul', 'ol', 'li',
                'h1', 'h2', 'h3',
                'code', 'pre',
-               'blockquote'],
+               'blockquote',
+               'table', 'thead', 'tbody', 'tr', 'th', 'td'],
     attributes: {
         code: ['className'],
     },
