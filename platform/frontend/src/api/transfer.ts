@@ -78,7 +78,7 @@ export const getRecipient = async (
             response.data.data.resPayload,
             aesKey
         );
-
+        
         // 4. 평문 데이터와 복호화된 데이터를 병합하여 반환
         const finalData: DecryptedRecipientResult = {
             depositorName: decryptedSensitiveData.depositorName,
@@ -86,6 +86,7 @@ export const getRecipient = async (
             depositBankName: response.data.data?.depositBankName,
             accountStatus: response.data.data?.accountStatus
         };
+        
 
         return {
             success: true,

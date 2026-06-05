@@ -15,8 +15,10 @@ export interface WithdrawalRequest {
  * 출금 신청 시 내부 상태 관리용 데이터 구조
  */
 export interface WithdrawData {
+    userName?: string;
     sourceAccount: {
         bankName: string;
+        bankCode: string;
         accountNumber: string;
         balance?: number;
     };
