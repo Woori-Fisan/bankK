@@ -2,10 +2,12 @@ package com.woorifisan.bank.domain.account.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 
 import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedDepositData;
 import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedWithdrawData;
@@ -17,6 +19,7 @@ import com.woorifisan.bank.domain.account.mapper.TransactionLedgerMapper;
 import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.global.config.BankNetworkConfig;
 import com.woorifisan.bank.global.security.service.SecurityService;
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -29,6 +32,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.client.RestTemplate;
 
 @ExtendWith(MockitoExtension.class)
 class TransferServiceTest {
@@ -50,6 +54,12 @@ class TransferServiceTest {
 
     @Mock
     private SecurityService securityService;
+
+    @Mock
+    private BankNetworkConfig bankNetworkConfig;
+
+    @Mock
+    private RestTemplate restTemplate;
 
     private Account sender;
     private Account receiver;
@@ -107,11 +117,11 @@ class TransferServiceTest {
 
         given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decryptedData, new SecretKeySpec(new byte[16], "AES")));
-        
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
+        given(accountMapper.updateBalance(anyLong(), any(BigDecimal.class), anyInt())).willReturn(1);
         given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
 
         // when
@@ -143,9 +153,9 @@ class TransferServiceTest {
 
         given(securityService.decryptWithKey(any(), eq(DecryptedDepositData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decryptedData, new SecretKeySpec(new byte[16], "AES")));
-
         given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(receiver));
         given(accountMapper.findByIdForUpdate(2L)).willReturn(Optional.of(receiver));
+        given(accountMapper.updateBalance(anyLong(), any(BigDecimal.class), anyInt())).willReturn(1);
         given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
 
         // when
@@ -177,9 +187,9 @@ class TransferServiceTest {
 
         given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(originalData, new SecretKeySpec(new byte[16], "AES")));
-
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
+        given(accountMapper.updateBalance(anyLong(), any(BigDecimal.class), anyInt())).willReturn(1);
 
         // when
         TransferResponse response = transferService.refundTransfer(request);
@@ -191,4 +201,3 @@ class TransferServiceTest {
         verify(transactionLedgerMapper).insert(any());
     }
 }
-

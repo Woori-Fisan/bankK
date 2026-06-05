@@ -24,7 +24,6 @@ import com.woorifisan.bank.global.security.service.SecurityService;
 import java.util.List;
 import java.util.Optional;
 import javax.crypto.SecretKey;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -76,17 +75,13 @@ class AccountServiceTest {
     @DisplayName("거래 내역 조회 테스트")
     class GetTransactionHistoryList {
 
-        @BeforeEach
-        void setUp() {
-            given(securityService.encryptResponse(any(), any(SecretKey.class)))
-                    .willReturn("encrypted-payload");
-        }
-
         @Test
         @DisplayName("성공: 유효한 계좌와 본인 정보로 거래 내역을 조회할 수 있다")
         void 성공_거래내역조회() {
             // given
             mockDecrypt("acc-123", "900101");
+            given(securityService.encryptResponse(any(), any(SecretKey.class)))
+                    .willReturn("encrypted-payload");
 
             Account account = Account.builder()
                     .id(1L)
