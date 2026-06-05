@@ -1,5 +1,6 @@
 import axiosInstance from './axiosInstance';
 import { prepareSecureRequest, prepareTransferSecureRequest, decryptBankResponse } from '../utils/bankCrypto';
+import { extractApiErrorMessage } from '../utils/apiError';
 
 export interface ErrorResponse {
     code: string;
@@ -98,7 +99,7 @@ export const getRecipient = async (
         return {
             success: false,
             data: null as any,
-            error: { code: 'CLIENT_ERROR', message: '요청 처리 중 오류가 발생했습니다.' }
+            error: { code: 'CLIENT_ERROR', message: extractApiErrorMessage(error, '요청 처리 중 오류가 발생했습니다.') }
         };
     }
 };
@@ -153,7 +154,7 @@ export const executeTransfer = async (request: TransferRequest): Promise<ApiResp
         return {
             success: false,
             data: null as any,
-            error: { code: 'CLIENT_ERROR', message: '이체 요청 중 오류가 발생했습니다.' }
+            error: { code: 'CLIENT_ERROR', message: extractApiErrorMessage(error, '이체 요청 중 오류가 발생했습니다.') }
         };
     }
 };

@@ -49,15 +49,31 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, a
         if (raw === '') { setExecuteAmount(0); setAmountError(null); return; }
         const num = Number(raw);
         if (isNaN(num)) return;
-        const capped = Math.min(num, effectiveLimit);
-        setExecuteAmount(capped);
-        setAmountError(capped < 1_000_000 ? '최소 100만원 이상 입력해주세요.' : null);
+
+        if (num > effectiveLimit) {
+            setExecuteAmount(effectiveLimit);
+            setAmountError('한도 금액 이상의 입력은 불가능합니다.');
+        } else if (num < 1_000_000) {
+            setExecuteAmount(num);
+            setAmountError('최소 100만원 이상 입력해주세요.');
+        } else {
+            setExecuteAmount(num);
+            setAmountError(null);
+        }
     };
 
     const handleQuickAdd = (val: number) => {
-        const nextAmt = Math.min(executeAmount + val, effectiveLimit);
-        setExecuteAmount(nextAmt);
-        setAmountError(nextAmt < 1_000_000 ? '최소 100만원 이상 입력해주세요.' : null);
+        const nextAmt = executeAmount + val;
+        if (nextAmt > effectiveLimit) {
+            setExecuteAmount(effectiveLimit);
+            setAmountError('한도 금액 이상의 입력은 불가능합니다.');
+        } else if (nextAmt < 1_000_000) {
+            setExecuteAmount(nextAmt);
+            setAmountError('최소 100만원 이상 입력해주세요.');
+        } else {
+            setExecuteAmount(nextAmt);
+            setAmountError(null);
+        }
     };
 
     return (

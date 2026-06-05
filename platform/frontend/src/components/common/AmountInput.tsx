@@ -17,6 +17,7 @@ export interface AmountInputProps {
   className?: string;
   showKoreanUnit?: boolean;
   quickAddValues?: number[]; // [10, 50, 100] 등 (단위: 만)
+  error?: string;
 }
 
 const AmountInput: React.FC<AmountInputProps> = ({
@@ -31,6 +32,7 @@ const AmountInput: React.FC<AmountInputProps> = ({
   className,
   showKoreanUnit = true,
   quickAddValues = [10, 50, 100],
+  error,
 }) => {
   const numericValue = value.toString().replace(/[^0-9]/g, '');
 
@@ -61,9 +63,11 @@ const AmountInput: React.FC<AmountInputProps> = ({
           onChange={handleChange}
           disabled={disabled}
           className={cn(
-            'w-full pl-6 pr-16 py-6 text-4xl font-black text-right bg-slate-50 border-2 border-slate-50 rounded-2xl outline-none transition-all font-mono tracking-tight text-slate-900 placeholder:text-slate-300',
-            !disabled && 'focus:bg-white focus:border-emerald-500',
-            disabled && 'cursor-not-allowed'
+            'w-full pl-6 pr-16 py-6 text-4xl font-black text-right bg-slate-50 border-2 rounded-2xl outline-none transition-all font-mono tracking-tight text-slate-900 placeholder:text-slate-300',
+            error
+              ? 'border-rose-400 focus:border-rose-500 focus:bg-white'
+              : !disabled && 'border-slate-50 focus:bg-white focus:border-emerald-500',
+            disabled && 'cursor-not-allowed border-slate-50'
           )}
           placeholder={placeholder}
         />
@@ -99,6 +103,15 @@ const AmountInput: React.FC<AmountInputProps> = ({
           )}
         </div>
       )}
+
+      <p
+        className={cn(
+          "text-sm font-bold text-rose-500 mt-2 px-1 min-h-[20px] transition-all duration-200",
+          error ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1 select-none pointer-events-none"
+        )}
+      >
+        {error || '\u00A0'}
+      </p>
     </div>
   );
 };
