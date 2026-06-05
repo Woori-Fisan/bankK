@@ -96,10 +96,12 @@ public class TransferService {
     }
 
     /**
-     * 출금 이체 실행 (개별 트랜잭션 위임)
+     * 출금 이체 실행 (개별 트랜잭션 위임 및 복호화 처리)
      */
     public TransferResponse withdrawTransfer(TransferRequest request) {
-        return transferTxService.withdrawTransfer(request);
+        SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
+                securityService.decryptWithKey(request, DecryptedWithdrawData.class);
+        return transferTxService.withdrawTransfer(request, decryptionResult.getData(), decryptionResult.getCek());
     }
 
     /**
@@ -135,14 +137,15 @@ public class TransferService {
         log.info("통합 이체 실행 요청 수신 - 출금은행: {}, 입금은행: {}, 금액: {}", 
                 request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
 
-        // 1. 출금 처리 (독립 트랜잭션 - PENDING 상태로 시작)
-        TransferResponse withdrawalResponse = transferTxService.withdrawTransfer(request);
-        String txId = withdrawalResponse.getTransactionId();
-        log.info("통합 이체 Step 1: 출금 성공 (PENDING 상태) - 거래ID: {}", txId);
-
+        // 0. 복호화 단 한 번만 실행하여 CPU 오버헤드 최적화
         SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
                 securityService.decryptWithKey(request, DecryptedWithdrawData.class);
         DecryptedWithdrawData decryptedData = decryptionResult.getData();
+
+        // 1. 출금 처리 (독립 트랜잭션 - PENDING 상태로 시작)
+        TransferResponse withdrawalResponse = transferTxService.withdrawTransfer(request, decryptedData, decryptionResult.getCek());
+        String txId = withdrawalResponse.getTransactionId();
+        log.info("통합 이체 Step 1: 출금 성공 (PENDING 상태) - 거래ID: {}", txId);
 
         // 2. 당행/타행 여부 판단
         if (CURRENT_BANK_CODE.equals(request.getDepositBankCode())) {

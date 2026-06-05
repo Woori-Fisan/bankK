@@ -41,19 +41,14 @@ public class TransferTxService {
 
     /**
      * 출금 이체 실행 (독립 트랜잭션)
+     * - 중복 복호화 방지를 위해 이미 복호화된 DecryptedWithdrawData와 cek를 직접 파라미터로 전달받습니다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public TransferResponse withdrawTransfer(TransferRequest request) {
+    public TransferResponse withdrawTransfer(TransferRequest request, DecryptedWithdrawData decryptedData, javax.crypto.SecretKey cek) {
         log.info("출금 이체 실행 (독립 트랜잭션) - 출금은행: {}, 입금은행: {}, 금액: {}", 
                 request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
 
-        // 1. 복호화 및 CEK 추출
-        SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
-                securityService.decryptWithKey(request, DecryptedWithdrawData.class);
-        
-        DecryptedWithdrawData decryptedData = decryptionResult.getData();
-
-        // 2. 계좌 조회 및 검증
+        // 1. 계좌 조회 및 검증
         Account sender = accountMapper.findByAccountNoPlain(decryptedData.getWithdrawalAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         
@@ -67,7 +62,7 @@ public class TransferTxService {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
-        // 3. 잔액 업데이트 (비관적 락 적용을 위해 다시 조회)
+        // 2. 잔액 업데이트 (비관적 락 적용을 위해 다시 조회)
         sender = accountMapper.findByIdForUpdate(sender.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         
@@ -81,7 +76,7 @@ public class TransferTxService {
             throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
         }
 
-        // 4. 원장 기록 (최초 상태는 PENDING)
+        // 3. 원장 기록 (최초 상태는 PENDING)
         String txId = UUID.randomUUID().toString();
         transactionLedgerMapper.insert(TransactionLedger.of(
                 txId, 
@@ -95,12 +90,12 @@ public class TransferTxService {
                 "PENDING"
         ));
 
-        // 5. 결과 암호화
+        // 4. 결과 암호화
         TransferResponse.SensitiveData sensitiveData = TransferResponse.SensitiveData.builder()
                 .balanceAfter(newBalance)
                 .build();
         
-        String resPayload = securityService.encryptResponse(sensitiveData, decryptionResult.getCek());
+        String resPayload = securityService.encryptResponse(sensitiveData, cek);
 
         return TransferResponse.of(txId, getCurrentTimestamp(), newBalance, resPayload);
     }

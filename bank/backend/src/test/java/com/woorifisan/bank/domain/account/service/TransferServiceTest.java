@@ -95,13 +95,16 @@ class TransferServiceTest {
         // given
         TransferRequest request = TransferRequest.builder().build();
         TransferResponse mockResponse = TransferResponse.builder().build();
-        given(transferTxService.withdrawTransfer(request)).willReturn(mockResponse);
+        
+        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
+                .willReturn(new SecurityService.DecryptionResult<>(DecryptedWithdrawData.builder().build(), new SecretKeySpec(new byte[16], "AES")));
+        given(transferTxService.withdrawTransfer(eq(request), any(), any())).willReturn(mockResponse);
 
         // when
         TransferResponse response = transferService.withdrawTransfer(request);
 
         // then
-        verify(transferTxService).withdrawTransfer(request);
+        verify(transferTxService).withdrawTransfer(eq(request), any(), any());
         assertEquals(mockResponse, response);
     }
 
@@ -146,7 +149,7 @@ class TransferServiceTest {
         
         // 2. TransferTxService 출금 Mocking
         TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
-        given(transferTxService.withdrawTransfer(request)).willReturn(mockWithdrawalResponse);
+        given(transferTxService.withdrawTransfer(eq(request), any(), any())).willReturn(mockWithdrawalResponse);
 
         // 3. 타행 정보 및 API URL 설정 Mock
         BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
@@ -206,7 +209,7 @@ class TransferServiceTest {
         
         // 2. TransferTxService 출금 Mocking
         TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
-        given(transferTxService.withdrawTransfer(request)).willReturn(mockWithdrawalResponse);
+        given(transferTxService.withdrawTransfer(eq(request), any(), any())).willReturn(mockWithdrawalResponse);
 
         // 3. 타행 정보 및 API URL 설정 Mock
         BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
@@ -256,7 +259,7 @@ class TransferServiceTest {
         
         // 2. TransferTxService 출금 Mocking
         TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
-        given(transferTxService.withdrawTransfer(request)).willReturn(mockWithdrawalResponse);
+        given(transferTxService.withdrawTransfer(eq(request), any(), any())).willReturn(mockWithdrawalResponse);
 
         // 3. 타행 정보 및 API URL 설정 Mock
         BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
@@ -309,7 +312,7 @@ class TransferServiceTest {
         
         // 2. TransferTxService 출금 Mocking
         TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
-        given(transferTxService.withdrawTransfer(request)).willReturn(mockWithdrawalResponse);
+        given(transferTxService.withdrawTransfer(eq(request), any(), any())).willReturn(mockWithdrawalResponse);
 
         // 3. 타행 정보 및 API URL 설정 Mock
         BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();

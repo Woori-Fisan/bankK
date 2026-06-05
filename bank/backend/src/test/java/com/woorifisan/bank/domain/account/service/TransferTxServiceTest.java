@@ -93,8 +93,7 @@ class TransferTxServiceTest {
                 .depositAccountNo("999-999")
                 .build();
 
-        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
-                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, new SecretKeySpec(new byte[16], "AES")));
+        javax.crypto.SecretKey cek = new javax.crypto.spec.SecretKeySpec(new byte[16], "AES");
         
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
@@ -104,7 +103,7 @@ class TransferTxServiceTest {
         given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
 
         // when
-        TransferResponse response = transferTxService.withdrawTransfer(request);
+        TransferResponse response = transferTxService.withdrawTransfer(request, decryptedData, cek);
 
         // then
         assertNotNull(response);
