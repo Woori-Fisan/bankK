@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 import jakarta.servlet.FilterChain;
@@ -43,7 +44,8 @@ class IdempotencyFilterTest {
 
     @BeforeEach
     void setUp() {
-        given(redisTemplate.opsForValue()).willReturn(valueOps);
+        // 일부 테스트(헤더 누락 등)는 Redis에 닿지 않아 strict stubbing 오류가 발생하므로 lenient 처리
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOps);
         filter = new IdempotencyFilter(redisTemplate);
     }
 

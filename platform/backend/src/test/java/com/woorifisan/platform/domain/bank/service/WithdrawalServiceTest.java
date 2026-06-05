@@ -52,7 +52,7 @@ class WithdrawalServiceTest {
                 .thenReturn(expectedResponse);
 
         // when
-        TransferResponse actualResponse = withdrawalService.executeWithdraw(request, "test-key-id");
+        TransferResponse actualResponse = withdrawalService.executeWithdraw(request, "test-key-id", 1L);
 
         // then
         assertThat(actualResponse).isNotNull();
@@ -80,7 +80,7 @@ class WithdrawalServiceTest {
                 .thenThrow(new BusinessException(ErrorCode.BANK_API_ERROR));
 
         // when & then
-        assertThatThrownBy(() -> withdrawalService.executeWithdraw(request, "test-key-id"))
+        assertThatThrownBy(() -> withdrawalService.executeWithdraw(request, "test-key-id", 1L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.BANK_API_ERROR);
     }
@@ -99,7 +99,7 @@ class WithdrawalServiceTest {
                 .thenThrow(new BusinessException(ErrorCode.TRANSFER_WITHDRAW_AMOUNT_FAULT));
 
         // when & then
-        assertThatThrownBy(() -> withdrawalService.executeWithdraw(request, "test-key-id"))
+        assertThatThrownBy(() -> withdrawalService.executeWithdraw(request, "test-key-id", 1L))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.TRANSFER_WITHDRAW_AMOUNT_FAULT);
     }
