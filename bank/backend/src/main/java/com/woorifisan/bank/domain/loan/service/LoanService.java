@@ -219,12 +219,12 @@ public class LoanService {
                     : "unnamed";
             String fileName = UUID.randomUUID() + "_" + cleanFileName;
             Path target = loanDir.resolve(fileName);
-            
+
             try {
                 // E2EE 복호화: MultipartFile에서 바이트 배열을 읽어 복호화 수행
                 byte[] encryptedBytes = file.getBytes();
                 byte[] decryptedBytes = securityService.decryptFile(encryptedBytes, cek);
-                
+
                 // 복호화된 원본 데이터를 파일로 저장
                 Files.write(target, decryptedBytes);
                 savedPaths.add(target);
