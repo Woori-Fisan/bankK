@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Calendar as CalendarIcon, RotateCcw } from 'lucide-react';
+import { Calendar as CalendarIcon, RotateCcw, Search } from 'lucide-react';
+import Card from '../common/Card';
+import { Button } from '../common/Button';
 
 interface TransactionFilterProps {
     onSearch: (filters: FilterState) => void;
@@ -11,7 +13,6 @@ export interface FilterState {
 }
 
 const TransactionFilter: React.FC<TransactionFilterProps> = ({ onSearch }) => {
-    // 기본값: 한 달 전 ~ 오늘
     const getDefaultFilters = () => {
         const today = new Date().toISOString().split('T')[0];
         const lastMonth = new Date();
@@ -25,7 +26,7 @@ const TransactionFilter: React.FC<TransactionFilterProps> = ({ onSearch }) => {
 
     const handleFilterChange = (key: keyof FilterState, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
-        setDateError(''); // 값 변경 시 에러 초기화
+        setDateError('');
     };
 
     const handleSearchClick = () => {
@@ -41,59 +42,57 @@ const TransactionFilter: React.FC<TransactionFilterProps> = ({ onSearch }) => {
         const defaultFilters = getDefaultFilters();
         setFilters(defaultFilters);
         setDateError('');
-        onSearch(defaultFilters); // 초기화된 날짜로 즉시 새로운 검색 요청 수행
+        onSearch(defaultFilters);
     };
 
     return (
-        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-6 flex items-center justify-between gap-4 relative z-20">
-            {/* Date Range */}
+        <Card padding="sm" className="mb-6 flex items-center justify-between gap-4 relative z-20">
             <div className='flex flex-col gap-1'>
                 <div className='flex gap-2'>
-                    <CalendarIcon className="w-10 h-10 text-gray-400 flex-shrink-0" />
-                    <div className="flex items-center gap-3 border border-gray-200 rounded-lg px-4 py-2 bg-gray-50 max-w-[420px]">
-                        {/* 시작일 */}
+                    <CalendarIcon className="w-10 h-10 text-slate-400 flex-shrink-0" />
+                    <div className="flex items-center gap-3 border-2 border-slate-50 rounded-xl px-4 py-2 bg-slate-50 max-w-[420px] focus-within:bg-white focus-within:border-emerald-500 transition-all">
                         <div className="flex items-center gap-2 flex-1">
                             <input 
                                 type="date" 
                                 value={filters.startDate}
                                 onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                                className="bg-transparent border-none focus:ring-0 text-sm text-gray-700 cursor-pointer outline-none w-full" 
+                                className="bg-transparent border-none focus:ring-0 text-sm text-slate-700 cursor-pointer outline-none w-full font-medium" 
                             />
                         </div>
-                        
-                        <span className="text-gray-300 font-bold">~</span>
-                        
-                        {/* 종료일 */}
+                        <span className="text-slate-300 font-bold">~</span>
                         <div className="flex items-center gap-2 flex-1">
-                            
                             <input 
                                 type="date" 
                                 value={filters.endDate}
                                 onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                                className="bg-transparent border-none focus:ring-0 text-sm text-gray-700 cursor-pointer outline-none w-full" 
+                                className="bg-transparent border-none focus:ring-0 text-sm text-slate-700 cursor-pointer outline-none w-full font-medium" 
                             />
                         </div>
                     </div>
                 </div>
                 {dateError && <p className="text-xs text-rose-500 font-bold ml-12">{dateError}</p>}
             </div>
-            {/* Buttons */}
-            <div className="flex items-center gap-2">
-                <button 
+            <div className="flex items-center gap-3">
+                <Button 
+                    variant="ghost"
+                    size="sm"
                     onClick={handleReset}
-                    className="flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-gray-700 px-3 py-2 transition-colors"
+                    className="text-slate-500 hover:text-slate-700"
                 >
-                    <RotateCcw className="w-4 h-4" />
+                    <RotateCcw className="w-4 h-4 mr-1" />
                     초기화
-                </button>
-                <button 
+                </Button>
+                <Button 
+                    variant="emerald"
+                    size="md"
                     onClick={handleSearchClick}
-                    className="bg-emerald-800 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-emerald-900 active:scale-95 transition-all shadow-sm"
+                    className="px-8"
                 >
+                    <Search className="w-4 h-4 mr-2" />
                     조회
-                </button>
+                </Button>
             </div>
-        </div>
+        </Card>
     );
 };
 

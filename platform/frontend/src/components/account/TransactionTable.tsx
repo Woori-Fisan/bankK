@@ -1,8 +1,9 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import TransactionRow, { type Transaction } from './TransactionRow';
+import Card from '../common/Card';
+import { Button } from '../common/Button';
 
-// Transaction 인터페이스는 TransactionRow.tsx에서 export된 것을 사용합니다.
 export type { Transaction };
 
 interface TransactionTableProps {
@@ -37,10 +38,10 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
     };
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-xl shadow-gray-200/40 overflow-hidden flex flex-col h-[750px]">
+        <Card padding="none" className="overflow-hidden flex flex-col h-[750px]">
             <div className="flex-1 overflow-auto">
                 <table className="w-full text-sm text-left border-collapse table-fixed">
-                    <thead className="bg-gray-50/50 border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider sticky top-0 z-20 backdrop-blur-md">
+                    <thead className="bg-slate-50/50 border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider sticky top-0 z-20 backdrop-blur-md">
                         <tr>
                             <th className="px-6 py-5 text-[11px] w-[18%]">거래일시</th>
                             <th className="px-6 py-5 text-[11px] w-[12%]">구분</th>
@@ -51,7 +52,7 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                             <th className="px-6 py-5 text-center text-[11px] w-[100px]">상태</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50 text-gray-700">
+                    <tbody className="divide-y divide-slate-50 text-slate-700">
                         {transactions.length > 0 ? (
                             transactions.map((tx) => (
                                 <TransactionRow key={tx.id} tx={tx} />
@@ -59,7 +60,7 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                         ) : (
                             <tr>
                                 <td colSpan={7} className="px-6 py-32 text-center">
-                                    <div className="flex flex-col items-center gap-3 text-gray-300">
+                                    <div className="flex flex-col items-center gap-3 text-slate-300">
                                         <Info className="w-12 h-12 stroke-[1]" />
                                         <p className="text-lg font-medium">조회된 거래 내역이 없습니다.</p>
                                     </div>
@@ -70,49 +71,50 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
                 </table>
             </div>
 
-            {/* Pagination */}
-            <div className="px-8 py-6 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-                <div className="flex items-center gap-3 text-sm text-gray-500">
-                    <span className="font-medium">총 <span className="text-gray-900 font-black ml-1">{totalEntries.toLocaleString()}</span> 거래</span>
-                    <div className="w-1 h-1 bg-gray-300 rounded-full" />
+            <div className="px-8 py-6 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-3 text-sm text-slate-500">
+                    <span className="font-medium">총 <span className="text-slate-900 font-black ml-1">{totalEntries.toLocaleString()}</span> 거래</span>
+                    <div className="w-1 h-1 bg-slate-300 rounded-full" />
                     <span>페이지 {totalPages || 1} 중 {currentPage} 번째</span>
                 </div>
                 
                 <div className="flex items-center gap-2">
-                    <button 
+                    <Button 
+                        variant="outline"
+                        size="icon"
                         onClick={() => onPageChange(currentPage - 1)}
                         disabled={currentPage === 1 || totalPages === 0}
-                        className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-xl bg-white hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                        className="bg-white border-slate-200"
                     >
                         <ChevronLeft className="w-5 h-5" />
-                    </button>
+                    </Button>
                     
                     <div className="flex items-center gap-1 mx-2">
                         {getPageNumbers().map((page) => (
-                            <button 
+                            <Button 
                                 key={page}
+                                variant={page === currentPage ? 'emerald' : 'outline'}
+                                size="icon"
                                 onClick={() => onPageChange(page)}
-                                className={`w-10 h-10 rounded-xl text-sm font-black transition-all shadow-sm ${
-                                    page === currentPage 
-                                        ? 'bg-emerald-800 text-white shadow-emerald-800/20' 
-                                        : 'bg-white border border-gray-100 text-gray-500 hover:bg-emerald-50 hover:border-emerald-100 hover:text-emerald-700'
-                                }`}
+                                className={page === currentPage ? '' : 'bg-white border-slate-100 text-slate-500'}
                             >
                                 {page}
-                            </button>
+                            </Button>
                         ))}
                     </div>
 
-                    <button 
+                    <Button 
+                        variant="outline"
+                        size="icon"
                         onClick={() => onPageChange(currentPage + 1)}
                         disabled={currentPage === totalPages || totalPages === 0}
-                        className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-xl bg-white hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                        className="bg-white border-slate-200"
                     >
                         <ChevronRight className="w-5 h-5" />
-                    </button>
+                    </Button>
                 </div>
             </div>
-        </div>
+        </Card>
     );
 };
 

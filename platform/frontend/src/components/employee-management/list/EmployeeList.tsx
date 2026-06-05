@@ -43,17 +43,17 @@ const EmployeeList: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full min-h-[600px]">
             {employees.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">등록된 직원이 없습니다.</div>
+                <div className="flex-1 flex items-center justify-center text-slate-400">등록된 직원이 없습니다.</div>
             ) : (
-                <div className="overflow-y-auto pr-2 space-y-4 max-h-[500px]">
+                <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
                     {employees.map(employee => (
                         <EmployeeListItem key={employee.loginId} employee={employee} />
                     ))}
                 </div>
             )}
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="mt-6 pt-6 border-t border-slate-100 shrink-0">
                 <EmployeePagination />
             </div>
         </div>

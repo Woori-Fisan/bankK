@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { registerEmployee } from '../../../api/employee';
 import type { RegisterEmployeeRequest } from '../../../types/employee';
+import Input from '../../common/Input';
+import { Button } from '../../common/Button';
+import { User, ShieldCheck, Lock, Hash } from 'lucide-react';
 
 interface Props {
     onSuccess: () => void;
@@ -27,7 +30,7 @@ const EmployeeRegistrationForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
         const employeeData: RegisterEmployeeRequest = {
             loginId,
             password,
-            role: 'USER', // 항상 USER로 강제
+            role: 'USER',
             agencyId: parseInt(agencyId, 10),
             employeeNum,
         };
@@ -49,89 +52,73 @@ const EmployeeRegistrationForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
 
     return (
         <div className="space-y-6">
-            <div>
-                <label htmlFor="loginId" className="block text-sm font-medium text-gray-700">
-                    Login ID
-                </label>
-                <input
-                    type="text"
-                    id="loginId"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                    label="Login ID"
+                    icon={User}
+                    placeholder="사용자 아이디 입력"
                     value={loginId}
                     onChange={(e) => setLoginId(e.target.value)}
                     required
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                 />
-            </div>
-            <div>
-                <label htmlFor="employeeNum" className="block text-sm font-medium text-gray-700">
-                    사번
-                </label>
-                <input
-                    type="text"
-                    id="employeeNum"
+                <Input
+                    label="사번 (Employee Num)"
+                    icon={Hash}
+                    placeholder="사원 번호 입력"
                     value={employeeNum}
                     onChange={(e) => setEmployeeNum(e.target.value)}
                     required
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                 />
             </div>
-            <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    초기 비밀번호
-                </label>
-                <input
-                    type="password"
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-                />
-            </div>
-            <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                    권한
-                </label>
-                <input
-                    type="text"
-                    id="role"
-                    value="USER"
+
+            <Input
+                type="password"
+                label="초기 비밀번호"
+                icon={Lock}
+                placeholder="최초 접속용 비밀번호"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                    label="권한"
+                    icon={ShieldCheck}
+                    value="USER (일반 직원)"
                     readOnly
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-100 text-gray-500 sm:text-sm cursor-not-allowed"
+                    disabled
                 />
-            </div>
-            <div>
-                <label htmlFor="agencyId" className="block text-sm font-medium text-gray-700">
-                    소속 대행업체 ID
-                </label>
-                <input
+                <Input
                     type="number"
-                    id="agencyId"
+                    label="소속 대행업체 ID"
+                    icon={ShieldCheck}
+                    placeholder="대행기관 ID 번호"
                     value={agencyId}
                     onChange={(e) => setAgencyId(e.target.value)}
                     required
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                 />
             </div>
 
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-rose-500 text-sm font-bold ml-1">{error}</p>}
 
-            <div className="flex justify-end gap-3">
-                <button
-                    type="button"
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
+                <Button
+                    variant="outline"
                     onClick={onCancel}
-                    className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                    disabled={isLoading}
+                    className="px-6"
                 >
                     취소
-                </button>
-                <button
-                    type="button"
+                </Button>
+                <Button
+                    variant="emerald"
                     onClick={handleSubmit}
                     disabled={isLoading}
-                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-10"
                 >
-                    {isLoading ? '등록 중...' : '직원 등록'}
-                </button>
+                    {isLoading ? '등록 중...' : '직원 계정 생성'}
+                </Button>
             </div>
         </div>
     );

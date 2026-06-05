@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LogOut } from 'lucide-react';
 import { useAuthCrypto } from '../../hooks/useAuthCrypto';
 import { useAuth } from '../../hooks/useAuth';
+import { formatDate } from '../../utils/formatter';
 
 interface HeaderProps {
     currentTime: string;
@@ -55,7 +56,7 @@ const Header: React.FC<HeaderProps> = () => {
                                 {userId ? userId.charAt(0).toUpperCase() : 'U'}
                             </span>
                         </div>
-                        <span className="text-sm font-medium text-gray-900">{userId || '사용자 명'}</span>
+                        <span className="text-sm font-medium text-gray-900">{userId || '사용자'}님</span>
                     </div>
                     
                     {/* 로그아웃 버튼 추가 */}
@@ -71,7 +72,7 @@ const Header: React.FC<HeaderProps> = () => {
                 
                 <div className="text-right border-l border-gray-200 pl-6">
                     <div className="text-xs text-gray-500">
-                        접속 시간 <span className="text-gray-700">{loginTime || '알 수 없음'}</span>
+                        접속 시간 <span className="text-gray-700">{loginTime ? formatDate(loginTime, true, 'dot') : '알 수 없음'}</span>
                     </div>
                     <div className="text-xs text-gray-500">
                         인증 만료 <span className="text-red-600 font-medium">{timeLeft}</span>
@@ -83,3 +84,4 @@ const Header: React.FC<HeaderProps> = () => {
 };
 
 export default Header;
+
