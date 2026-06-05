@@ -78,10 +78,9 @@ class BankExternalClientTest {
 
         when(bankNetworkConfig.getBankProperty(bankCode)).thenReturn(bankProperty);
 
-        BankBalanceInquiryRequest request = BankBalanceInquiryRequest.of("encryptedKey", "signature", "123-456", "900101");
+        BankBalanceInquiryRequest request = BankBalanceInquiryRequest.of("encryptedPayload", "test-key-id");
         BalanceInquiryResponse expectedData = BalanceInquiryResponse.builder()
                 .status("NORMAL")
-                .balance(new BigDecimal("1000000"))
                 .build();
         ApiResponse<BalanceInquiryResponse> apiResponse = ApiResponse.success(expectedData);
 
@@ -94,7 +93,6 @@ class BankExternalClientTest {
         // then
         assertThat(actualResponse).isNotNull();
         assertThat(actualResponse.getStatus()).isEqualTo("NORMAL");
-        assertThat(actualResponse.getBalance()).isEqualTo(new BigDecimal("1000000"));
     }
 
     @Test
@@ -102,7 +100,7 @@ class BankExternalClientTest {
     void fetchBalance_Fail_BankNotFound() {
         // given
         when(bankNetworkConfig.getBankProperty("999")).thenReturn(null);
-        BankBalanceInquiryRequest request = BankBalanceInquiryRequest.of("key", "sig", "acc", "900101");
+        BankBalanceInquiryRequest request = BankBalanceInquiryRequest.of("encryptedPayload", "test-key-id");
 
         // when & then
         assertThatThrownBy(() -> bankExternalClient.fetchBalance("999", request))
@@ -120,7 +118,7 @@ class BankExternalClientTest {
 
         when(bankNetworkConfig.getBankProperty(bankCode)).thenReturn(bankProperty);
 
-        BankBalanceInquiryRequest request = BankBalanceInquiryRequest.of("key", "sig", "acc", "900101");
+        BankBalanceInquiryRequest request = BankBalanceInquiryRequest.of("encryptedPayload", "test-key-id");
 
         // WebClient 통신 중 예외 발생 시나리오
         when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
@@ -142,7 +140,7 @@ class BankExternalClientTest {
 
         when(bankNetworkConfig.getBankProperty(bankCode)).thenReturn(bankProperty);
 
-        BankBalanceInquiryRequest request = BankBalanceInquiryRequest.of("key", "sig", "acc", "900101");
+        BankBalanceInquiryRequest request = BankBalanceInquiryRequest.of("encryptedPayload", "test-key-id");
 
         when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(any(ParameterizedTypeReference.class))).thenReturn(Mono.empty());
@@ -163,7 +161,7 @@ class BankExternalClientTest {
 
         when(bankNetworkConfig.getBankProperty(bankCode)).thenReturn(bankProperty);
 
-        BankWithdrawalRequest request = BankWithdrawalRequest.of("key", "sig", "123-456", "password", "900101", new BigDecimal("10000"));
+        BankWithdrawalRequest request = BankWithdrawalRequest.of("encryptedPayload", "test-key-id", new BigDecimal("10000"));
         TransferResponse expectedData = TransferResponse.builder()
                 .transactionId("tx-123")
                 .balanceAfter(new BigDecimal("90000"))
@@ -191,7 +189,7 @@ class BankExternalClientTest {
 
         when(bankNetworkConfig.getBankProperty(bankCode)).thenReturn(bankProperty);
 
-        BankWithdrawalRequest request = BankWithdrawalRequest.of("key", "sig", "123-456", "password", "900101", new BigDecimal("10000"));
+        BankWithdrawalRequest request = BankWithdrawalRequest.of("encryptedPayload", "test-key-id", new BigDecimal("10000"));
         ApiResponse<TransferResponse> apiResponse = ApiResponse.success(null);
 
         when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
@@ -214,7 +212,8 @@ class BankExternalClientTest {
         when(bankNetworkConfig.getBankProperty(bankCode)).thenReturn(bankProperty);
 
         BankHistoryInquiryRequest request = BankHistoryInquiryRequest.builder()
-                .accountNo("123-456")
+                .reqPayload("encryptedPayload")
+                .bankKeyId("test-key-id")
                 .startDate("2026-05-01")
                 .endDate("2026-05-31")
                 .page(0)
@@ -223,7 +222,6 @@ class BankExternalClientTest {
 
         HistoryInquiryResponse expectedData = HistoryInquiryResponse.builder()
                 .totalCount(0)
-                .history(java.util.Collections.emptyList())
                 .build();
         ApiResponse<HistoryInquiryResponse> apiResponse = ApiResponse.success(expectedData);
 
