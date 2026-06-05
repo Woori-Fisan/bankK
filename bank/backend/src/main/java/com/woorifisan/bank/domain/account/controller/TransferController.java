@@ -1,6 +1,7 @@
 package com.woorifisan.bank.domain.account.controller;
 
 import com.woorifisan.bank.domain.account.dto.request.DepositRequest;
+import com.woorifisan.bank.domain.account.dto.request.InternalDepositRequest;
 import com.woorifisan.bank.domain.account.dto.request.RecipientRequest;
 import com.woorifisan.bank.domain.account.dto.request.TransferRequest;
 import com.woorifisan.bank.domain.account.dto.response.RecipientResponse;
@@ -23,6 +24,30 @@ import org.springframework.web.bind.annotation.*;
 public class TransferController {
 
     private final TransferService transferService;
+
+    /**
+     * 통합 이체 실행 (BaaS용)
+     * @param request 이체 요청 정보
+     * @return 이체 결과
+     */
+    @Operation(summary = "통합 이체 실행 (BaaS용)", description = "출금부터 입금(당행/타행)까지 한 번에 처리하는 통합 이체 API입니다.")
+    @PostMapping("/execute")
+    public ApiResponse<TransferResponse> executeTransfer(@RequestBody @Valid TransferRequest request) {
+        TransferResponse response = transferService.executeTransfer(request);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 내부 입금 실행 (은행 간 통신용)
+     * @param request 내부 입금 요청 정보
+     * @return 입금 결과
+     */
+    @Operation(summary = "내부 입금 실행 (은행 간 통신용)", description = "타행에서 보낸 입금 요청을 처리합니다. 암호화 없이 직접 데이터를 수신합니다.")
+    @PostMapping("/internal/deposit")
+    public ApiResponse<TransferResponse> internalDeposit(@RequestBody @Valid InternalDepositRequest request) {
+        TransferResponse response = transferService.internalDeposit(request);
+        return ApiResponse.success(response);
+    }
 
     /**
      * 출금 이체 실행 (타행 이체용)

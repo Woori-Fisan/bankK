@@ -7,6 +7,7 @@ import { fetchEventSource } from '@microsoft/fetch-event-source';
 import type { LoanData } from '../../pages/LoanApplication';
 import { useReviewDocuments, useSubmitLoanEvaluation, useBankList, extractApiError } from '../../hooks/useLoan';
 import type { ReviewDocument, EvaluationStatusResponse } from '../../api/loanApi';
+import { fetchLoanResult } from '../../api/loanApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { isValidAccountNumber } from '../../utils/validator';
 import { prepareSecureRequest, decryptBankResponse, encryptFileWithKey } from '../../utils/bankCrypto';
@@ -42,6 +43,7 @@ const SectionHeader: React.FC<{ step: number; icon: React.ReactNode; title: stri
 const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSseMessage, onSseError }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const sseControllerRef = useRef<AbortController | null>(null);
+    const aesKeyRef = useRef<CryptoKey | null>(null);
     const rrnBackRef = useRef<HTMLInputElement>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [rrnFront, setRrnFront] = useState('');
@@ -240,14 +242,46 @@ ${body}
         }
 
         const { payload, headers, aesKey } = secureRequest;
+        aesKeyRef.current = aesKey;
+
+        // SSE 실패 시 Redis polling으로 결과를 복구하는 fallback (3초 간격, 최대 5회)
+        const pollForResult = async (key: string, cryptoKey: CryptoKey) => {
+            for (let i = 0; i < 5; i++) {
+                await new Promise((r) => setTimeout(r, 3000));
+                try {
+                    const result = await fetchLoanResult(key);
+                    if (result === null) continue;
+                    if (result.resPayload) {
+                        const decrypted = await decryptBankResponse(result.resPayload, cryptoKey);
+                        if (decrypted.availableProducts) {
+                            result.availableProducts = decrypted.availableProducts.map((p: any) => ({
+                                loanProductCode: String(p.productId),
+                                loanProductName: p.productName,
+                                minAmount: p.minLimit,
+                                maxAmount: p.maxLimit,
+                                interestRate: p.minRate,
+                                loanPeriodMonths: 36,
+                            }));
+                        }
+                        result.approvedLimit = decrypted.approvedLimit;
+                        result.rejectionMessage = decrypted.rejectReason;
+                    }
+                    onSseMessage(result);
+                    return;
+                } catch (_) { /* 개별 polling 실패는 무시하고 재시도 */ }
+            }
+            onSseError(new Error('심사 결과를 받지 못했습니다. 잠시 후 다시 확인하거나 처음부터 다시 신청해주세요.'));
+        };
 
         fetchEventSource(`/api/v1/loan/subscribe?requestKey=${encodeURIComponent(requestKey)}`, {
             headers: { Authorization: `Bearer ${accessToken}` },
             signal: controller.signal,
             async onmessage(event) {
+                if (event.event === 'heartbeat') return;
                 if (event.event === 'timeout') {
-                    onSseError(new Error('심사 결과를 받지 못했습니다. 처음부터 다시 신청해주세요.'));
                     controller.abort();
+                    if (aesKeyRef.current) pollForResult(requestKey, aesKeyRef.current);
+                    else onSseError(new Error('심사 결과를 받지 못했습니다. 처음부터 다시 신청해주세요.'));
                     return;
                 }
                 if (event.event !== 'result') return;
@@ -280,8 +314,9 @@ ${body}
                 }
             },
             onerror(err) {
-                onSseError(new Error('심사 결과 조회 중 연결 오류가 발생했습니다.'));
                 controller.abort();
+                if (aesKeyRef.current) pollForResult(requestKey, aesKeyRef.current);
+                else onSseError(new Error('심사 결과 조회 중 연결 오류가 발생했습니다.'));
                 throw err;
             },
         });
