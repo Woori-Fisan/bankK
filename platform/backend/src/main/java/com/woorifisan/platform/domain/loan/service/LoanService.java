@@ -158,13 +158,15 @@ public class LoanService {
                 .build();
 
         // 4. Bank API 호출 (multipart pass-through)
+        // 중복 방지는 IdempotencyFilter(X-Idempotency-Key 키 선점)와
+        // Bank 코어의 existsPendingByCustomerId 체크가 담당
         Map<String, Object> data = bankLoanClient.submitEvaluation(bankData, files);
         String loanNo = Objects.toString(data.get("loanNo"), null);
         String status = Objects.toString(data.get("status"), "SUBMITTED");
         String resPayload = Objects.toString(data.get("resPayload"), null);
 
         log.info("[심사신청] 접수 완료 - loanNo: {}, requestKey: {}", loanNo, request.getRequestKey());
-        
+
         return LoanEvaluateResponse.builder()
                 .loanNo(loanNo)
                 .status(status)

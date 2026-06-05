@@ -22,12 +22,17 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 /**
  * 멱등성 키 기반 중복 요청 방지 필터.
  *
- * 클라이언트가 X-Idempotency-Key 헤더를 포함해 요청하면:
- * - 이미 처리된 요청(Redis에 캐시) → 저장된 응답을 그대로 반환, 거래 재처리 없음
- * - 처음 요청 → 처리 후 200 OK 응답을 Redis에 캐시 (TTL 60초)
+ * X-Idempotency-Key 헤더 필수. 없으면 400 반환.
+ *
+ * 3단계 상태 머신으로 race condition을 방지한다:
+ *   1) setIfAbsent(key, "PROCESSING") 원자적 선점
+ *      - 선점 성공 → 처리 진행
+ *      - 선점 실패 + 값이 "PROCESSING" → 409 (처리 중)
+ *      - 선점 실패 + 값이 JSON body   → 200 재반환 (완료된 응답)
+ *   2) 처리 성공(200 OK) → Redis 값을 실제 응답 body로 교체
+ *   3) 처리 실패        → Redis 키 삭제 (클라이언트가 새 키로 재시도 가능)
  *
  * 적용 대상: 이체 / 출금 / 대출실행 (POST, 상태 변경 엔드포인트)
- * X-Idempotency-Key 헤더가 없는 요청은 그대로 통과시킨다.
  */
 @Slf4j
 @Component
@@ -35,15 +40,17 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 @RequiredArgsConstructor
 public class IdempotencyFilter extends OncePerRequestFilter {
 
-    private static final String IDEMPOTENCY_KEY_HEADER = "X-Idempotency-Key";
+    public static final String IDEMPOTENCY_KEY_HEADER = "X-Idempotency-Key";
     private static final String REPLAYED_HEADER = "X-Idempotency-Replayed";
     private static final String KEY_PREFIX = "idempotency:";
+    private static final String PROCESSING = "PROCESSING";
     private static final long TTL_SECONDS = 60L;
 
     // 멱등성 보장이 필요한 상태 변경 엔드포인트
     private static final Set<String> IDEMPOTENT_PATHS = Set.of(
             "/api/v1/bank/transfer",
             "/api/v1/bank/withdrawals",
+            "/api/v1/loan/evaluation",
             "/api/v1/loan/contract/execution"
     );
 
@@ -51,7 +58,6 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        // POST 메서드이면서 멱등성 대상 경로인 경우에만 필터 동작
         boolean isPost = HttpMethod.POST.name().equals(request.getMethod());
         boolean isTargetPath = IDEMPOTENT_PATHS.contains(request.getRequestURI());
         return !isPost || !isTargetPath;
@@ -63,37 +69,66 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 
         String idempotencyKey = request.getHeader(IDEMPOTENCY_KEY_HEADER);
 
-        // 멱등성 키 없으면 그냥 통과 (조회 등 헤더 없이 호출하는 경우 대비)
+        // 금융 거래 POST에서 멱등성 키는 필수
         if (!StringUtils.hasText(idempotencyKey)) {
-            filterChain.doFilter(request, response);
+            writeError(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "IDEM_003", "X-Idempotency-Key 헤더가 필요합니다.");
             return;
         }
 
         String redisKey = KEY_PREFIX + idempotencyKey;
-        String cached = redisTemplate.opsForValue().get(redisKey);
 
-        if (cached != null) {
-            // 이미 처리된 요청 — 캐시 응답 반환 (거래 재처리 없음)
-            log.info("[멱등성] 중복 요청 감지 - key: {}, 캐시 응답 반환", idempotencyKey);
+        // 1단계: 원자적으로 PROCESSING 상태 선점 시도
+        Boolean acquired = redisTemplate.opsForValue()
+                .setIfAbsent(redisKey, PROCESSING, TTL_SECONDS, TimeUnit.SECONDS);
+
+        if (!Boolean.TRUE.equals(acquired)) {
+            // 선점 실패 — 이미 처리 중이거나 완료된 요청
+            String existing = redisTemplate.opsForValue().get(redisKey);
+
+            if (PROCESSING.equals(existing) || existing == null) {
+                // 처리 중인 요청 (또는 TTL 만료 직후 경합) → 409
+                log.info("[멱등성] 처리 중 중복 요청 - key: {}", idempotencyKey);
+                writeError(response, HttpServletResponse.SC_CONFLICT,
+                        "IDEM_002", "동일 키의 요청이 처리 중입니다.");
+                return;
+            }
+
+            // 완료된 요청 — 캐시된 응답 재반환
+            log.info("[멱등성] 완료된 요청 재사용 - key: {}", idempotencyKey);
             response.setStatus(HttpServletResponse.SC_OK);
             response.setContentType("application/json;charset=UTF-8");
             response.setHeader(REPLAYED_HEADER, "true");
-            response.getWriter().write(cached);
+            response.getWriter().write(existing);
             return;
         }
 
-        // 처음 요청 — 응답 본문을 캡처하기 위해 래퍼로 감쌈
+        // 2단계: 처리권 획득 — 응답 본문을 캡처하기 위해 래퍼로 감쌈
         ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
-        filterChain.doFilter(request, responseWrapper);
-
-        // 200 OK 응답만 캐시 (오류 응답은 저장하지 않음 → 클라이언트가 재시도 가능해야 함)
-        if (responseWrapper.getStatus() == HttpServletResponse.SC_OK) {
-            String body = new String(responseWrapper.getContentAsByteArray(), StandardCharsets.UTF_8);
-            redisTemplate.opsForValue().set(redisKey, body, TTL_SECONDS, TimeUnit.SECONDS);
-            log.debug("[멱등성] 응답 캐시 저장 - key: {}", idempotencyKey);
+        try {
+            filterChain.doFilter(request, responseWrapper);
+        } finally {
+            if (responseWrapper.getStatus() == HttpServletResponse.SC_OK) {
+                // 3단계 (성공): PROCESSING → 실제 응답 body로 교체
+                String body = new String(responseWrapper.getContentAsByteArray(), StandardCharsets.UTF_8);
+                redisTemplate.opsForValue().set(redisKey, body, TTL_SECONDS, TimeUnit.SECONDS);
+                log.debug("[멱등성] 응답 캐시 저장 - key: {}", idempotencyKey);
+            } else {
+                // 3단계 (실패): 선점 해제 — 클라이언트가 동일 키로 재시도 가능
+                redisTemplate.delete(redisKey);
+                log.info("[멱등성] 처리 실패, 키 해제 - key: {}, status: {}",
+                        idempotencyKey, responseWrapper.getStatus());
+            }
+            responseWrapper.copyBodyToResponse();
         }
+    }
 
-        // 실제 응답 본문을 클라이언트에게 전송 (래퍼가 버퍼에 가지고 있던 내용)
-        responseWrapper.copyBodyToResponse();
+    private void writeError(HttpServletResponse response, int status, String code, String message)
+            throws IOException {
+        response.setStatus(status);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write(
+                String.format("{\"success\":false,\"data\":null,\"error\":{\"code\":\"%s\",\"message\":\"%s\"}}",
+                        code, message));
     }
 }

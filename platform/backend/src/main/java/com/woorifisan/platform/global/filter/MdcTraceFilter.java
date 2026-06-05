@@ -1,5 +1,6 @@
 package com.woorifisan.platform.global.filter;
 
+import com.woorifisan.platform.global.idempotency.filter.IdempotencyFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,7 +24,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class MdcTraceFilter extends OncePerRequestFilter {
 
-    private static final String IDEMPOTENCY_KEY_HEADER = "X-Idempotency-Key";
     private static final String TRACE_ID_HEADER = "X-Request-ID";
     private static final String MDC_TRACE_ID = "traceId";
 
@@ -33,7 +33,7 @@ public class MdcTraceFilter extends OncePerRequestFilter {
 
         try {
             // 1. X-Idempotency-Key 우선 → X-Request-ID → 신규 UUID
-            String idempotencyKey = request.getHeader(IDEMPOTENCY_KEY_HEADER);
+            String idempotencyKey = request.getHeader(IdempotencyFilter.IDEMPOTENCY_KEY_HEADER);
             String traceId = StringUtils.hasText(idempotencyKey)
                     ? idempotencyKey
                     : Optional.ofNullable(request.getHeader(TRACE_ID_HEADER))

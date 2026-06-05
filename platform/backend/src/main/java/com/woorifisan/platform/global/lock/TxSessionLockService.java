@@ -22,7 +22,8 @@ import org.springframework.stereotype.Service;
 public class TxSessionLockService {
 
     private static final String LOCK_KEY_PREFIX = "tx:lock:";
-    private static final long LOCK_TTL_SECONDS = 30L;
+    // WebClient responseTimeout(25s) + 여유 20s. IdempotencyFilter TTL(60s)보다 짧게 유지
+    private static final long LOCK_TTL_SECONDS = 45L;
 
     private final RedisTemplate<String, String> redisTemplate;
 
