@@ -65,26 +65,20 @@ class TransferServiceTest {
         request.setWithdrawReqPayload("withdraw-jwe");
         request.setDepositReqPayload("deposit-jwe");
 
-        BankTransferResponse mockWithdrawResponse = BankTransferResponse.builder()
+        BankTransferResponse mockTransferResponse = BankTransferResponse.builder()
                 .transactionId(UUID.randomUUID().toString())
                 .transactionDate("2026-05-27 10:00:00")
                 .balanceAfter(new BigDecimal("500000"))
                 .resPayload("withdraw-res-jwe")
                 .build();
 
-        BankTransferResponse mockDepositResponse = BankTransferResponse.builder()
-                .transactionId(UUID.randomUUID().toString())
-                .transactionDate("2026-05-27 10:00:01")
-                .build();
-
-        given(bankExternalClient.fetchTransferWithdraw(eq("020"), any())).willReturn(mockWithdrawResponse);
-        given(bankExternalClient.fetchDeposit(eq("004"), any())).willReturn(mockDepositResponse);
+        given(bankExternalClient.fetchTransferExecute(eq("020"), any())).willReturn(mockTransferResponse);
 
         // when
         TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key", "d-key");
 
         // then
-        assertThat(response.getTransactionId()).isEqualTo(mockDepositResponse.getTransactionId());
+        assertThat(response.getTransactionId()).isEqualTo(mockTransferResponse.getTransactionId());
         assertThat(response.getTransactionDate()).isEqualTo("2026-05-27");
         assertThat(response.getBalanceAfter()).isEqualByComparingTo(new BigDecimal("500000"));
         assertThat(response.getResPayload()).isEqualTo("withdraw-res-jwe");

@@ -1,11 +1,11 @@
 package com.woorifisan.bank.domain.account.controller;
 
-import com.woorifisan.bank.domain.account.dto.request.DepositRequest;
 import com.woorifisan.bank.domain.account.dto.request.InternalDepositRequest;
 import com.woorifisan.bank.domain.account.dto.request.RecipientRequest;
 import com.woorifisan.bank.domain.account.dto.request.TransferRequest;
 import com.woorifisan.bank.domain.account.dto.response.RecipientResponse;
 import com.woorifisan.bank.domain.account.dto.response.TransferResponse;
+import com.woorifisan.bank.domain.account.dto.response.TransferStatusResponse;
 import com.woorifisan.bank.domain.account.service.TransferService;
 import com.woorifisan.bank.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,41 +49,7 @@ public class TransferController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * 출금 이체 실행 (타행 이체용)
-     * @param request 출금 이체 요청 정보
-     * @return 출금 결과
-     */
-    @Operation(summary = "출금 이체 실행 (타행 이체용)", description = "타행 이체를 위해 당행 계좌에서 금액을 출금합니다.")
-    @PostMapping("/withdraw")
-    public ApiResponse<TransferResponse> withdrawTransfer(@RequestBody @Valid TransferRequest request) {
-        TransferResponse response = transferService.withdrawTransfer(request);
-        return ApiResponse.success(response);
-    }
 
-    /**
-     * 입금 이체 실행 (타행 이체용)
-     * @param request 입금 이체 요청 정보
-     * @return 입금 결과
-     */
-    @Operation(summary = "입금 이체 실행 (타행 이체용)", description = "타행에서 넘어온 금액을 당행 계좌에 입금합니다.")
-    @PostMapping("/deposit")
-    public ApiResponse<TransferResponse> depositTransfer(@RequestBody @Valid DepositRequest request) {
-        TransferResponse response = transferService.depositTransfer(request);
-        return ApiResponse.success(response);
-    }
-
-    /**
-     * 이체 환불 실행 (입금 실패 시 복구용)
-     * @param request 출금 시 사용했던 이체 요청 정보
-     * @return 환불 결과
-     */
-    @Operation(summary = "이체 환불 실행 (입금 실패 시 복구용)", description = "입금 단계 실패 시 출금되었던 금액을 원래 계좌로 환불합니다.")
-    @PostMapping("/refund")
-    public ApiResponse<TransferResponse> refundTransfer(@RequestBody @Valid TransferRequest request) {
-        TransferResponse response = transferService.refundTransfer(request);
-        return ApiResponse.success(response);
-    }
 
     /**
      * 수취인 확인
@@ -94,6 +60,18 @@ public class TransferController {
     @PostMapping("/recipient")
     public ApiResponse<RecipientResponse> verifyRecipient(@RequestBody @Valid RecipientRequest request) {
         RecipientResponse response = transferService.verifyRecipient(request);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 타행 거래 상태 조회 (이중 지급 방지용)
+     * @param txId 조회할 거래 트랜잭션 ID
+     * @return 거래 상태 정보
+     */
+    @Operation(summary = "타행 거래 상태 조회 (이중 지급 방지용)", description = "출금 은행에서 생성된 트랜잭션 ID를 기반으로 해당 거래의 입금 처리 상태를 조회합니다.")
+    @GetMapping("/status/{txId}")
+    public ApiResponse<TransferStatusResponse> getTransferStatus(@PathVariable("txId") String txId) {
+        TransferStatusResponse response = transferService.getTransferStatus(txId);
         return ApiResponse.success(response);
     }
 }
