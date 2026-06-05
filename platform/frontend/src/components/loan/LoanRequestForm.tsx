@@ -136,7 +136,6 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
         // 2. 해당 약관을 즉시 '동의' 상태로 변경 (업데이트된 최신 상태를 직관적으로 로그 출력)
         setAgreedDocs(prev => {
             const nextDocs = prev.map(d => d.documentType === targetType ? { ...d, agreed: true } : d);
-            console.log("Updated agreedDocs:", nextDocs);
             return nextDocs;
         });
 
@@ -369,7 +368,6 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
                             setFieldErrors((p) => ({ ...p, rrn: undefined }));
                         }}
                         bankList={bankList}
-                        onBlur={() => {}}
                         fieldErrors={fieldErrors}
                     />
 
