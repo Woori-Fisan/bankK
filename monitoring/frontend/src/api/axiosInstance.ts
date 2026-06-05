@@ -48,7 +48,7 @@ axiosTokenInstance.interceptors.response.use(
       useAuthStore.getState().clearAuth();
     }
 
-    return Promise.reject(error);
+    throw error;
   },
 );
 
