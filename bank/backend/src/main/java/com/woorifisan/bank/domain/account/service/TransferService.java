@@ -30,6 +30,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import com.woorifisan.bank.domain.account.dto.response.TransferStatusResponse;
 import org.springframework.web.client.RestTemplate;
 
@@ -400,7 +402,7 @@ public class TransferService {
         BankNetworkConfig.BankProperty bankProperty = bankNetworkConfig.getBankProperty(targetBankCode);
         if (bankProperty == null) {
             log.error("타행 네트워크 설정 정보를 찾을 수 없습니다: {}", targetBankCode);
-            return false;
+            throw new BusinessException(ErrorCode.BANK_NOT_FOUND, "상대 은행 설정 정보를 찾을 수 없습니다.");
         }
 
         String url = bankProperty.getStatusQueryUrl(txId);
@@ -422,17 +424,36 @@ public class TransferService {
                     if ("SUCCESS".equals(status)) {
                         return true;
                     } else if ("FAILED".equals(status)) {
-                        // 명확히 실패한 거래로 판명되면 즉시 재시도를 중단하고 환불 처리로 이동
+                        // 명확히 실패한 거래로 판명되면 즉시 재시도를 중단하고 false 반환 (환불 프로세스 유도)
                         return false;
                     }
                     // status가 PENDING이거나 다른 임시 상태인 경우 계속 재시도
                 }
-            } catch (HttpClientErrorException.NotFound e) {
-                log.warn("타행에서 해당 거래ID를 찾을 수 없습니다 (404 NotFound) (시도 {}/{}) - 거래ID: {}", 
-                        attempt, maxAttempts, txId);
-            } catch (Exception e) {
-                log.error("타행 거래 상태 조회 API 통신 중 오류 발생 (시도 {}/{}) - 거래ID: {}, 에러: {}", 
+            } catch (HttpClientErrorException e) {
+                if (e.getStatusCode().value() == 404) {
+                    // 404의 경우 커밋 지연 등의 상황일 수 있으므로 재시도 진행
+                    log.warn("타행에서 해당 거래ID를 찾을 수 없습니다 (404 NotFound) (시도 {}/{}) - 거래ID: {}", 
+                            attempt, maxAttempts, txId);
+                } else {
+                    // 400, 401, 403 등 비일시적인 클라이언트 오류인 경우 즉시 예외 발생 (Fail-Fast)
+                    log.error("타행 거래 상태 조회 중 해결 불가능한 4xx 클라이언트 에러 발생 - 거래ID: {}, 상태코드: {}, 에러: {}", 
+                            txId, e.getStatusCode(), e.getMessage());
+                    throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, 
+                            "상대 은행과의 통신 실패(4xx 클라이언트 오류)로 거래 조회를 즉시 중단합니다. 상태코드: " + e.getStatusCode());
+                }
+            } catch (HttpServerErrorException e) {
+                // 5xx 서버 에러는 일시적인 시스템 에러일 수 있으므로 재시도 진행
+                log.warn("타행 서버 에러 발생 (5xx) (시도 {}/{}) - 거래ID: {}, 에러: {}", 
                         attempt, maxAttempts, txId, e.getMessage());
+            } catch (ResourceAccessException e) {
+                // 네트워크 타임아웃, 커넥션 장애 등은 일시적인 오류로 보고 재시도 진행
+                log.warn("타행 통신 네트워크 오류 발생 (시도 {}/{}) - 거래ID: {}, 에러: {}", 
+                        attempt, maxAttempts, txId, e.getMessage());
+            } catch (Exception e) {
+                // 기타 예외(비일시적 에러 등으로 간주) 발생 시 즉시 예외를 던져 재시도를 중단 (Fail-Fast)
+                log.error("타행 거래 상태 조회 중 예기치 않은 오류 발생 - 거래ID: {}, 에러: {}", txId, e.getMessage());
+                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, 
+                        "거래 상태 확인 중 예기치 않은 오류가 발생하여 조회를 즉시 중단합니다. 에러: " + e.getMessage());
             }
 
             // 마지막 시도가 아니면 대기 후 재시도
@@ -442,13 +463,15 @@ public class TransferService {
                 } catch (InterruptedException e) {
                     log.error("재시도 대기 중 인터럽트 발생 - 거래ID: {}", txId);
                     Thread.currentThread().interrupt();
-                    return false;
+                    throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "거래 상태 확인 중 작업이 중단되었습니다.");
                 }
             }
         }
         
-        log.error("타행 거래 상태 조회 최종 실패 - 최대 시도 횟수({}) 초과. 거래ID: {}", maxAttempts, txId);
-        return false;
+        // 10회 시도를 초과했거나 예외가 지속되어 상태를 확정할 수 없는 경우 (UNKNOWN)
+        log.error("타행 거래 상태 조회 최종 실패 - 거래 상태 확인 불가. UNKNOWN 상태로 보류합니다. 거래ID: {}", txId);
+        throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, 
+                "상대 은행의 거래 처리 상태를 확정할 수 없어(UNKNOWN) 이체를 보류 상태(PENDING)로 유지합니다. 관리자 확인이 필요합니다.");
     }
 
     private void verifyCustomerIdentification(Long customerId, String requestRrnPrefix) {

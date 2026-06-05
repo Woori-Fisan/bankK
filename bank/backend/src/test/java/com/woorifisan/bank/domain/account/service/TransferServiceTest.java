@@ -243,5 +243,179 @@ class TransferServiceTest {
         // 기존 원장 저장을 위해 insert가 이미 1회 호출되었으므로, insert가 추가(2회 이상) 호출되지 않았는지 검증
         verify(transactionLedgerMapper, times(1)).insert(any()); // 총 insert 횟수는 출금 시 1회여야 함
     }
+
+    @Test
+    @DisplayName("이중지급방지: 타행 이체 중 API 에러가 나고 상태 조회 API마저 최종 실패(UNKNOWN)하면 예외를 던져 환불을 차단하고 PENDING 상태를 유지한다")
+    void executeTransfer_doublePaymentPrevention_unknown() {
+        // given
+        TransferRequest request = TransferRequest.builder()
+                .withdrawalBankCode(OUR_BANK_CODE)
+                .depositBankCode(OTHER_BANK_CODE)
+                .amount(new BigDecimal("10000"))
+                .reqPayload("encrypted-jwe")
+                .bankKeyId("key-id")
+                .build();
+
+        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
+                .withdrawalAccountNo("111-111")
+                .withdrawalPassword("1234")
+                .customerRrnPrefix("9001011")
+                .depositAccountNo("999-999")
+                .build();
+
+        // 1. 공통 복호화 Mock
+        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
+                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, new SecretKeySpec(new byte[16], "AES")));
+        
+        // 2. 출금을 위한 계좌 및 고객 조회 Mock
+        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
+        given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
+        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
+        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("-10000"), sender.getVersion())).willReturn(1);
+        given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
+
+        // 3. 타행 정보 및 API URL 설정 Mock
+        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
+        bankProperty.setBaseUrl("http://mock-bank");
+        given(bankNetworkConfig.getBankProperty(OTHER_BANK_CODE)).willReturn(bankProperty);
+
+        // 4. 타행 입금 API 호출 시 ResourceAccessException 강제 발생
+        given(restTemplate.postForEntity(anyString(), any(), eq(Object.class)))
+                .willThrow(new ResourceAccessException("Read timed out"));
+
+        // 5. 타행 거래 상태 조회 API 호출 Mock (10회 시도 모두 NotFound 예외 발생 유도)
+        given(restTemplate.getForObject(anyString(), eq(Map.class)))
+                .willThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
+
+        // when & then
+        org.junit.jupiter.api.Assertions.assertThrows(com.woorifisan.bank.global.exception.BusinessException.class, () -> {
+            transferService.executeTransfer(request);
+        });
+
+        // 출금 원장은 처음 PENDING으로 저장(insert 1회)
+        verify(transactionLedgerMapper, times(1)).insert(any());
+        
+        // 상태를 알 수 없으므로 성공 마킹(SUCCESS)이나 실패 마킹(FAILED)이 진행되지 않고 PENDING으로 남아있어야 함
+        verify(transactionLedgerMapper, never()).updateStatus(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("이중지급방지: 타행 이체 중 API 에러가 나고 상태 조회 시 해결 불가능한 400 에러 등이 발생하면 즉시 예외를 던져 재시도를 중단(Fail-Fast)한다")
+    void executeTransfer_doublePaymentPrevention_failFast() {
+        // given
+        TransferRequest request = TransferRequest.builder()
+                .withdrawalBankCode(OUR_BANK_CODE)
+                .depositBankCode(OTHER_BANK_CODE)
+                .amount(new BigDecimal("10000"))
+                .reqPayload("encrypted-jwe")
+                .bankKeyId("key-id")
+                .build();
+
+        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
+                .withdrawalAccountNo("111-111")
+                .withdrawalPassword("1234")
+                .customerRrnPrefix("9001011")
+                .depositAccountNo("999-999")
+                .build();
+
+        // 1. 공통 복호화 Mock
+        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
+                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, new SecretKeySpec(new byte[16], "AES")));
+        
+        // 2. 출금을 위한 계좌 및 고객 조회 Mock
+        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
+        given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
+        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
+        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("-10000"), sender.getVersion())).willReturn(1);
+        given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
+
+        // 3. 타행 정보 및 API URL 설정 Mock
+        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
+        bankProperty.setBaseUrl("http://mock-bank");
+        given(bankNetworkConfig.getBankProperty(OTHER_BANK_CODE)).willReturn(bankProperty);
+
+        // 4. 타행 입금 API 호출 시 ResourceAccessException 강제 발생
+        given(restTemplate.postForEntity(anyString(), any(), eq(Object.class)))
+                .willThrow(new ResourceAccessException("Read timed out"));
+
+        // 5. 타행 거래 상태 조회 API 호출 Mock (1회차에 바로 400 BadRequest 발생시킴)
+        given(restTemplate.getForObject(anyString(), eq(Map.class)))
+                .willThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+        // when & then
+        org.junit.jupiter.api.Assertions.assertThrows(com.woorifisan.bank.global.exception.BusinessException.class, () -> {
+            transferService.executeTransfer(request);
+        });
+
+        // 400 에러 시 즉시 예외를 던져 루프를 탈출했으므로, 상태 조회 API 호출 횟수가 단 1회여야 함
+        verify(restTemplate, times(1)).getForObject(anyString(), eq(Map.class));
+
+        // 출금 원장은 처음 PENDING으로 저장(insert 1회)
+        verify(transactionLedgerMapper, times(1)).insert(any());
+        
+        // 상태를 알 수 없으므로 성공 마킹(SUCCESS)이나 실패 마킹(FAILED)이 진행되지 않고 PENDING으로 남아있어야 함
+        verify(transactionLedgerMapper, never()).updateStatus(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("이중지급방지: 타행 이체 중 API 에러가 나고 상태 조회 시 예기치 않은 일반 예외가 발생하면 즉시 예외를 던져 재시도를 중단(Fail-Fast)한다")
+    void executeTransfer_doublePaymentPrevention_generalExceptionFailFast() {
+        // given
+        TransferRequest request = TransferRequest.builder()
+                .withdrawalBankCode(OUR_BANK_CODE)
+                .depositBankCode(OTHER_BANK_CODE)
+                .amount(new BigDecimal("10000"))
+                .reqPayload("encrypted-jwe")
+                .bankKeyId("key-id")
+                .build();
+
+        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
+                .withdrawalAccountNo("111-111")
+                .withdrawalPassword("1234")
+                .customerRrnPrefix("9001011")
+                .depositAccountNo("999-999")
+                .build();
+
+        // 1. 공통 복호화 Mock
+        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
+                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, new SecretKeySpec(new byte[16], "AES")));
+        
+        // 2. 출금을 위한 계좌 및 고객 조회 Mock
+        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
+        given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
+        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
+        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("-10000"), sender.getVersion())).willReturn(1);
+        given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
+
+        // 3. 타행 정보 및 API URL 설정 Mock
+        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
+        bankProperty.setBaseUrl("http://mock-bank");
+        given(bankNetworkConfig.getBankProperty(OTHER_BANK_CODE)).willReturn(bankProperty);
+
+        // 4. 타행 입금 API 호출 시 ResourceAccessException 강제 발생
+        given(restTemplate.postForEntity(anyString(), any(), eq(Object.class)))
+                .willThrow(new ResourceAccessException("Read timed out"));
+
+        // 5. 타행 거래 상태 조회 API 호출 Mock (1회차에 바로 런타임 예외 발생시킴)
+        given(restTemplate.getForObject(anyString(), eq(Map.class)))
+                .willThrow(new RuntimeException("Unexpected DB Connection Failure"));
+
+        // when & then
+        org.junit.jupiter.api.Assertions.assertThrows(com.woorifisan.bank.global.exception.BusinessException.class, () -> {
+            transferService.executeTransfer(request);
+        });
+
+        // 일반 예외 발생 시 즉시 예외를 던져 루프를 탈출했으므로, 상태 조회 API 호출 횟수가 단 1회여야 함
+        verify(restTemplate, times(1)).getForObject(anyString(), eq(Map.class));
+
+        // 출금 원장은 처음 PENDING으로 저장(insert 1회)
+        verify(transactionLedgerMapper, times(1)).insert(any());
+        
+        // 상태를 알 수 없으므로 성공 마킹(SUCCESS)이나 실패 마킹(FAILED)이 진행되지 않고 PENDING으로 남아있어야 함
+        verify(transactionLedgerMapper, never()).updateStatus(anyString(), anyString());
+    }
 }
 
