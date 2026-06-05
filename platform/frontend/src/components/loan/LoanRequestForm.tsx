@@ -255,7 +255,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
             const result = await submitMutation.mutateAsync({
                 payload,
                 files: encryptedFiles,
-                headers,
+                headers: { ...headers, 'X-Idempotency-Key': requestKey },
             });
 
             onNext({ ...formData, rrn: `${rrnFront}-${rrnBack}` }, result.loanNo);
