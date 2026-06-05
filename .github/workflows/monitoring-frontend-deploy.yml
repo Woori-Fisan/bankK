@@ -9,13 +9,13 @@ on:
       - 'monitoring/frontend/**'
       - '.github/workflows/monitoring-frontend-deploy.yml'
 
-  pull_request:
-    branches:
-      - develop
+  # pull_request:
+  #   branches:
+  #     - develop
 
-    paths:
-      - 'monitoring/frontend/**'
-      - '.github/workflows/monitoring-frontend-deploy.yml'
+  #   paths:
+  #     - 'monitoring/frontend/**'
+  #     - '.github/workflows/monitoring-frontend-deploy.yml'
 
 concurrency:
   group: monitoring-frontend-deploy
