@@ -126,9 +126,19 @@ tasks.named('test') {
 	finalizedBy jacocoTestReport
 }
 
+bootRun {
+	jvmArgs '-Duser.timezone=Asia/Seoul'
+}
+
 jacocoTestReport {
 	reports {
 		xml.required = true
 		html.required = true
 	}
+}
+
+tasks.named('bootRun') {
+	// 시스템 프로퍼티로 설정
+	systemProperty "file.encoding", "UTF-8"
+	systemProperty "console.encoding", "UTF-8"
 }

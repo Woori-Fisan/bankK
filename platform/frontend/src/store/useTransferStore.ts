@@ -3,6 +3,7 @@ import type { TransferState } from '../types/transfer';
 
 const initialState = {
     step: 1,
+    fromName: '',
     fromBank: '',
     fromBankName: '',
     fromAccountNumber: '',

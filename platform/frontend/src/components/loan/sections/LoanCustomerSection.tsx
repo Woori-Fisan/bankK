@@ -1,0 +1,83 @@
+import React from 'react';
+import { User } from 'lucide-react';
+import Card from '../../common/Card';
+import Input from '../../common/Input';
+import RrnInput from '../../common/RrnInput';
+import AccountInputSection from '../../common/AccountInputSection';
+import type { LoanData } from '../../../pages/LoanApplication';
+import type { BankOption } from '../../../api/loanApi';
+
+interface LoanCustomerSectionProps {
+    formData: LoanData;
+    onFormDataChange: (data: LoanData) => void;
+    rrnFront: string;
+    rrnBack: string;
+    onRrnFrontChange: (val: string) => void;
+    onRrnBackChange: (val: string) => void;
+    bankList: BankOption[] | undefined;
+    fieldErrors: Partial<Record<keyof LoanData | 'rrn', string>>;
+}
+
+const LoanCustomerSection: React.FC<LoanCustomerSectionProps> = ({
+    formData,
+    onFormDataChange,
+    rrnFront,
+    rrnBack,
+    onRrnFrontChange,
+    onRrnBackChange,
+    bankList,
+    fieldErrors,
+}) => {
+    return (
+        <Card padding="lg" className="border-slate-100 shadow-sm">
+            <div className="space-y-10">
+                {/* 1. 고객 정보 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <Input
+                        label="1. 고객 성명"
+                        icon={User}
+                        placeholder="예) 홍길동"
+                        value={formData.userName}
+                        onChange={(e) => onFormDataChange({ ...formData, userName: e.target.value })}
+                        error={fieldErrors.userName}
+                    />
+                    <Input
+                        label="연락처"
+                        placeholder="010-1234-5678"
+                        value={formData.phone}
+                        onChange={(e) => onFormDataChange({ ...formData, phone: e.target.value })}
+                    />
+                </div>
+
+                {/* 2. 주민등록번호 */}
+                <div className="pt-8 border-t border-slate-50">
+                    <RrnInput
+                        rrnFront={rrnFront}
+                        rrnBack={rrnBack}
+                        onRrnFrontChange={onRrnFrontChange}
+                        onRrnBackChange={onRrnBackChange}
+                        error={fieldErrors.rrn}
+                        label="2. 주민등록번호"
+                    />
+                </div>
+
+                {/* 3. 대출금 입금 계좌 */}
+                <div className="pt-8 border-t border-slate-50">
+                    <AccountInputSection
+                        title="3. 대출금 입금 계좌"
+                        bankCode={formData.bankCode}
+                        accountNumber={formData.accountNo}
+                        banks={bankList || []}
+                        onBankChange={(name, code) => {
+                            onFormDataChange({ ...formData, bank: name, bankCode: code });
+                        }}
+                        onAccountChange={(val) => onFormDataChange({ ...formData, accountNo: val })}
+                        error={{ accountNumber: fieldErrors.accountNo }}
+                    />
+                </div>
+            </div>
+        </Card>
+    );
+};
+
+export default LoanCustomerSection;

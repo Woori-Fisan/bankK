@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useEmployeeStore } from '../../../store/useEmployeeStore';
 import { resetEmployeePassword } from '../../../api/employee';
+import Input from '../../common/Input';
+import { Button } from '../../common/Button';
+import { Lock } from 'lucide-react';
 
 interface Props {
     loginId: string;
@@ -39,41 +42,40 @@ const ResetPasswordForm: React.FC<Props> = ({ loginId, onSuccess, onCancel }) =>
     };
 
     return (
-        <div>
-            <p className="text-gray-700 mb-6">
-                직원 <span className="font-bold">{loginId}</span>의 비밀번호를 초기화하시겠습니까? 변경할 비밀번호를 입력해 주세요.
+        <div className="space-y-8">
+            <p className="text-slate-600 leading-relaxed">
+                직원 <span className="font-bold text-slate-900">{loginId}</span>의 비밀번호를 초기화하시겠습니까? <br/>
+                변경할 새로운 비밀번호를 입력해 주세요.
             </p>
 
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    초기 비밀번호
-                </label>
-                <input
-                    type="password"
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-                />
+            <Input
+                type="password"
+                label="새 비밀번호"
+                icon={Lock}
+                placeholder="새로운 비밀번호 입력"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                error={error || undefined}
+                required
+            />
 
-            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-
-            <div className="flex justify-end gap-3">
-                <button
-                    type="button"
+            <div className="flex justify-end gap-3 pt-2">
+                <Button
+                    variant="outline"
                     onClick={onCancel}
-                    className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all"
+                    disabled={isLoading}
+                    className="px-6"
                 >
                     취소
-                </button>
-                <button
-                    type="button"
+                </Button>
+                <Button
+                    variant="primary"
                     onClick={handleReset}
                     disabled={isLoading}
-                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="px-8"
                 >
-                    {isLoading ? '초기화 중...' : '초기화'}
-                </button>
+                    {isLoading ? '초기화 중...' : '비밀번호 초기화'}
+                </Button>
             </div>
         </div>
     );

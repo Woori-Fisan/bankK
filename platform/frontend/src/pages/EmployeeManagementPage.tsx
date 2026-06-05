@@ -4,6 +4,10 @@ import EmployeeDetailPanel from '../components/employee-management/detail/Employ
 import EmployeeRegistrationForm from '../components/employee-management/forms/EmployeeRegistrationForm';
 import Modal from '../components/common/Modal';
 import { useEmployeeStore } from '../store/useEmployeeStore';
+import PageHeader from '../components/common/PageHeader';
+import { Button } from '../components/common/Button';
+import Card from '../components/common/Card';
+import Section from '../components/common/Section';
 
 const EmployeeManagementPage: React.FC = () => {
     const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
@@ -11,46 +15,46 @@ const EmployeeManagementPage: React.FC = () => {
 
     const handleRegistrationSuccess = () => {
         setIsRegisterModalOpen(false);
-        setPage(0); // 첫 번째 페이지로 이동
-        triggerRefresh(); // 현재 페이지가 0이더라도 강제로 데이터를 다시 불러옴
+        setPage(0);
+        triggerRefresh();
         setSelectedEmployee(null);
     };
 
     return (
-        <div className="p-10 max-w-7xl mx-auto w-full">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">직원 관리</h1>
-            <p className="text-gray-600 mb-6">
-                직원 계정 생성, 조회, 수정 및 삭제 요청을 관리합니다.
-            </p>
+        <div className="flex-1 overflow-y-auto bg-gray-50/50">
+            <div className="max-w-7xl mx-auto px-10 py-12 w-full min-h-full flex flex-col">
+                <PageHeader 
+                title="직원 관리"
+                description="직원 계정 생성, 조회, 수정 및 삭제 요청을 관리합니다."
+                action={
+                    <Button
+                        onClick={() => setIsRegisterModalOpen(true)}
+                        variant="emerald"
+                    >
+                        + 새 직원 등록
+                    </Button>
+                }
+            />
 
-            <div className="flex justify-end mb-6">
-                <button
-                    onClick={() => setIsRegisterModalOpen(true)}
-                    className="py-2 px-4 bg-emerald-600 text-white rounded-md shadow-sm hover:bg-emerald-700 transition-colors font-medium"
-                >
-                    + 새 직원 등록
-                </button>
-            </div>
-
-            <div className="flex gap-6">
-                {/* Left Panel: Employee List */}
-                <div className="w-2/3 bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">직원 목록</h2>
+            <Section columns={3} gap={6}>
+                {/* Left Panel: Employee List (2/3 width) */}
+                <Card padding="lg" className="col-span-1 md:col-span-2 flex flex-col">
+                    <h2 className="text-xl font-bold text-slate-900 mb-6">직원 목록</h2>
                     <EmployeeList />
-                </div>
+                </Card>
 
-                {/* Right Panel: Employee Details / Actions */}
-                <div className="w-1/3 bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">직원 상세 정보</h2>
+                {/* Right Panel: Employee Details (1/3 width) */}
+                <Card padding="lg" className="col-span-1 flex flex-col">
+                    <h2 className="text-xl font-bold text-slate-900 mb-6">직원 상세 정보</h2>
                     <EmployeeDetailPanel />
-                </div>
-            </div>
+                </Card>
+            </Section>
 
             <Modal
                 isOpen={isRegisterModalOpen}
                 onClose={() => setIsRegisterModalOpen(false)}
                 title="새 직원 등록"
-                maxWidth="md"
+                maxWidth="3xl"
             >
                 <EmployeeRegistrationForm 
                     onSuccess={handleRegistrationSuccess} 
@@ -58,7 +62,8 @@ const EmployeeManagementPage: React.FC = () => {
                 />
             </Modal>
         </div>
-    );
+    </div>
+);
 };
 
 export default EmployeeManagementPage;
