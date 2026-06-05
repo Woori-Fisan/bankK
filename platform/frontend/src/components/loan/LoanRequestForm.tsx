@@ -29,37 +29,37 @@ interface LoanRequestFormProps {
 }
 
 const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSseMessage, onSseError }) => {
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null!);
     const sseControllerRef = useRef<AbortController | null>(null);
     const aesKeyRef = useRef<CryptoKey | null>(null);
     const [rrnFront, setRrnFront] = useState('');
     const [rrnBack, setRrnBack] = useState('');
     const [formData, setFormData] = useState<LoanData>({
         userName: '',
-        phone: '',
         bank: '',
         bankCode: '',
         accountNo: '',
     });
-    const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoanData | 'rrn' | 'submit', string>>>({});
+    const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoanData | 'rrn' | 'submit'| 'fileUpload', string>>>({});
 
     const [isUploading, setIsUploading] = useState(false);
     const [files, setFiles] = useState<{ id: number; name: string; file: File }[]>([]);
     const [agreedDocs, setAgreedDocs] = useState<AgreedDoc[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [activeDoc, setActiveDoc] = useState<AgreedDoc | null>(null);
+    const [activeDoc, setActiveDoc] = useState<ReviewDocument | null>(null);
     const [viewedDocs, setViewedDocs] = useState<Set<string>>(new Set());
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
     const { data: docsData, isLoading: isDocsLoading } = useReviewDocuments();
-    const { data: bankList, isLoading: isBankListLoading } = useBankList();
+    const { data: bankList } = useBankList();
     const submitMutation = useSubmitLoanEvaluation();
 
     useEffect(() => {
-        if (docsData?.documents) {
+        // 이미 데이터가 초기화된 경우(agreedDocs.length > 0) 재설정 방지
+        if (docsData?.documents && agreedDocs.length === 0) {
             setAgreedDocs(docsData.documents.map((d) => ({ ...d, agreed: false })));
         }
-    }, [docsData]);
+    }, [docsData, agreedDocs.length]);
 
     const handleTermToggle = (documentType: string) => {
         setAgreedDocs((prev) =>
@@ -67,33 +67,79 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
         );
     };
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+    const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files;
         if (!selected) return;
         const fileArray = Array.from(selected);
         e.target.value = '';
-        setFiles((prev) => [
-            ...prev,
-            ...fileArray.map((file, i) => ({ id: Date.now() + i, name: file.name, file })),
-        ]);
+
+        const valid: { id: number; name: string; file: File }[] = [];
+        const rejected: string[] = [];
+
+        for (let i = 0; i < fileArray.length; i++) {
+            const file = fileArray[i];
+            const name = file.name.normalize('NFC');
+
+            if (file.size > MAX_FILE_SIZE) {
+                rejected.push(`${name} — 파일 크기가 10MB를 초과합니다.`);
+                continue;
+            }
+
+            const header = new Uint8Array(await file.slice(0, 5).arrayBuffer());
+            if (!PDF_MAGIC.every((b, idx) => header[idx] === b)) {
+                rejected.push(`${name} — PDF 파일이 아닙니다.`);
+                continue;
+            }
+
+            valid.push({ id: Date.now() + i, name, file });
+        }
+
+        if (rejected.length > 0) {
+            setFieldErrors((prev) => ({ ...prev, fileUpload: rejected.join('\n') }));
+        } else {
+            setFieldErrors((prev) => { const next = { ...prev }; delete next.fileUpload; return next; });
+        }
+
+        if (valid.length > 0) {
+            setFiles((prev) => [...prev, ...valid]);
+        }
     };
 
     const handleFileDelete = (id: number) => {
         setFiles((prev) => prev.filter((f) => f.id !== id));
     };
 
-    const openModal = (doc: AgreedDoc) => {
+    const openModal = (doc: ReviewDocument) => {
         setActiveDoc(doc);
         setIsModalOpen(true);
-        setViewedDocs((prev) => new Set([...prev, doc.documentType]));
+        // 모달을 열 때가 아니라, 실제 '동의하고 확인'을 눌렀을 때 viewedDocs에 추가하도록 변경
     };
 
     const handleModalAgree = () => {
-        if (activeDoc) {
-            setAgreedDocs((prev) =>
-                prev.map((d) => (d.documentType === activeDoc.documentType ? { ...d, agreed: true } : d)),
-            );
+        if (!activeDoc) {
+            setIsModalOpen(false);
+            return;
         }
+
+        const targetType = activeDoc.documentType;
+
+        // 1. 읽음 목록에 즉시 추가 (함수형 업데이트로 최신 상태 보장)
+        setViewedDocs(prev => {
+            const next = new Set(prev);
+            next.add(targetType);
+            return next;
+        });
+
+        // 2. 해당 약관을 즉시 '동의' 상태로 변경 (업데이트된 최신 상태를 직관적으로 로그 출력)
+        setAgreedDocs(prev => {
+            const nextDocs = prev.map(d => d.documentType === targetType ? { ...d, agreed: true } : d);
+            console.log("Updated agreedDocs:", nextDocs);
+            return nextDocs;
+        });
+
         setIsModalOpen(false);
     };
 
@@ -115,7 +161,11 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
             const missingLabels = coveredDocs.filter((d) => !d.covered).map((d) => d.label);
             errors.submit = `누락된 서류: ${missingLabels.join(', ')}`;
         }
-        const mandatoryNotAgreed = agreedDocs.filter((d) => d.isMandatory && !d.agreed);
+        
+        const mandatoryNotAgreed = agreedDocs.filter((d) => 
+            d.isMandatory && !d.agreed
+        );
+        
         if (mandatoryNotAgreed.length > 0) {
             errors.submit = '필수 약관에 모두 동의해주세요.';
         }
@@ -149,7 +199,6 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
             {
                 requestKey,
                 bankCode: formData.bankCode!,
-                customerPhone: formData.phone ?? '',
                 depositBankCode: formData.bankCode!,
                 documents,
             },
@@ -255,7 +304,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
             const result = await submitMutation.mutateAsync({
                 payload,
                 files: encryptedFiles,
-                headers,
+                headers: headers as Record<string, string>,
             });
 
             onNext({ ...formData, rrn: `${rrnFront}-${rrnBack}` }, result.loanNo);
@@ -266,7 +315,8 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
         }
     };
 
-    const fileNames = files.map((f) => f.name.toLowerCase());
+    const fileNames = files.map((f) => f.name.normalize('NFC').toLowerCase());
+
     const coveredDocs = REQUIRED_DOCS.map((doc) => ({
         ...doc,
         covered: fileNames.some((name) => doc.keywords.some((kw) => name.includes(kw))),
@@ -319,6 +369,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
                             setFieldErrors((p) => ({ ...p, rrn: undefined }));
                         }}
                         bankList={bankList}
+                        onBlur={() => {}}
                         fieldErrors={fieldErrors}
                     />
 
@@ -327,6 +378,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
                         onFileSelect={handleFileSelect}
                         onFileDelete={handleFileDelete}
                         fileInputRef={fileInputRef}
+                        fileUploadError={fieldErrors.fileUpload}
                     />
 
                     <LoanTermsSection
@@ -396,8 +448,8 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
                         label: '입금 계좌', 
                         value: (
                             <div className="text-right">
-                                <p className="font-black text-slate-900">{formData.bank}</p>
-                                <p className="text-sm font-bold text-emerald-600 font-mono">{formData.accountNo}</p>
+                                <p className="text-sm font-bold text-emerald-600 font-mono">{formData.bank}</p>
+                                <p className="font-black text-slate-900">{formData.accountNo}</p>
                             </div>
                         )
                     }

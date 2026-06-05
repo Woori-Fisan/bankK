@@ -31,10 +31,6 @@ public class LoanEvaluateRequest extends SecureRequest {
     @NotBlank(message = "은행 코드는 필수입니다.")
     private String bankCode;
 
-    /** 고객 휴대폰 번호 (비민감 정보로 분류) */
-    @NotBlank(message = "연락처는 필수입니다.")
-    private String customerPhone;
-
     /** 대출금을 받을 계좌의 은행 코드 */
     @NotBlank(message = "입금 은행 코드는 필수입니다.")
     private String depositBankCode;

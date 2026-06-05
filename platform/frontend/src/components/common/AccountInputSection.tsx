@@ -10,7 +10,7 @@ interface AccountInputSectionProps {
     banks: BankOption[];
     onBankChange: (bankName: string, bankCode: string) => void;
     onAccountChange: (val: string) => void;
-    onBlur?: () => void;
+    onBlur?: (field: 'bank' | 'accountNo') => void;
     error?: {
         bankCode?: string;
         accountNumber?: string;
@@ -44,7 +44,7 @@ const AccountInputSection: React.FC<AccountInputSectionProps> = ({
                             const selectedBank = banks.find(b => b.bankCode === e.target.value);
                             if (selectedBank) onBankChange(selectedBank.bankName, selectedBank.bankCode);
                         }}
-                        onBlur={onBlur}
+                        onBlur={() => onBlur?.('bank')}
                         error={error?.bankCode}
                     >
                         <option value="">은행을 선택하세요</option>
@@ -62,7 +62,7 @@ const AccountInputSection: React.FC<AccountInputSectionProps> = ({
                         inputMode="numeric"
                         value={accountNumber}
                         onChange={(e) => onAccountChange(e.target.value.replace(/[^0-9]/g, ''))}
-                        onBlur={onBlur}
+                        onBlur={() => onBlur?.('accountNo')}
                         error={error?.accountNumber}
                         placeholder="'-' 없이 숫자만 입력"
                         helperText="* 계좌번호는 '-' 없이 숫자만 입력해 주세요."

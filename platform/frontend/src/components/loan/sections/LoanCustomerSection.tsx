@@ -14,8 +14,9 @@ interface LoanCustomerSectionProps {
     rrnBack: string;
     onRrnFrontChange: (val: string) => void;
     onRrnBackChange: (val: string) => void;
+    onBlur: (field: keyof LoanData | 'rrn' | 'bank') => void;
     bankList: BankOption[] | undefined;
-    fieldErrors: Partial<Record<keyof LoanData | 'rrn', string>>;
+    fieldErrors: Partial<Record<keyof LoanData | 'rrn' | 'bank', string>>;
 }
 
 const LoanCustomerSection: React.FC<LoanCustomerSectionProps> = ({
@@ -25,6 +26,7 @@ const LoanCustomerSection: React.FC<LoanCustomerSectionProps> = ({
     rrnBack,
     onRrnFrontChange,
     onRrnBackChange,
+    onBlur,
     bankList,
     fieldErrors,
 }) => {
@@ -39,13 +41,8 @@ const LoanCustomerSection: React.FC<LoanCustomerSectionProps> = ({
                         placeholder="예) 홍길동"
                         value={formData.userName}
                         onChange={(e) => onFormDataChange({ ...formData, userName: e.target.value })}
+                        onBlur={() => onBlur('userName')}
                         error={fieldErrors.userName}
-                    />
-                    <Input
-                        label="연락처"
-                        placeholder="010-1234-5678"
-                        value={formData.phone}
-                        onChange={(e) => onFormDataChange({ ...formData, phone: e.target.value })}
                     />
                 </div>
 
@@ -56,23 +53,25 @@ const LoanCustomerSection: React.FC<LoanCustomerSectionProps> = ({
                         rrnBack={rrnBack}
                         onRrnFrontChange={onRrnFrontChange}
                         onRrnBackChange={onRrnBackChange}
+                        onBlur={() => onBlur('rrn')}
                         error={fieldErrors.rrn}
-                        label="2. 주민등록번호"
+                        label="3. 주민등록번호"
                     />
                 </div>
 
                 {/* 3. 대출금 입금 계좌 */}
                 <div className="pt-8 border-t border-slate-50">
                     <AccountInputSection
-                        title="3. 대출금 입금 계좌"
-                        bankCode={formData.bankCode}
-                        accountNumber={formData.accountNo}
+                        title="4. 대출금 입금 계좌"
+                        bankCode={formData.bankCode || ''}
+                        accountNumber={formData.accountNo || ''}
                         banks={bankList || []}
                         onBankChange={(name, code) => {
                             onFormDataChange({ ...formData, bank: name, bankCode: code });
                         }}
                         onAccountChange={(val) => onFormDataChange({ ...formData, accountNo: val })}
-                        error={{ accountNumber: fieldErrors.accountNo }}
+                        onBlur={onBlur}
+                        error={{ bankCode: fieldErrors.bank, accountNumber: fieldErrors.accountNo }}
                     />
                 </div>
             </div>

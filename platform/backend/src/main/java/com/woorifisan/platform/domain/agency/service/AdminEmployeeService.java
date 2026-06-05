@@ -13,7 +13,6 @@ import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import com.woorifisan.platform.global.util.CryptoUtil;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,7 +24,6 @@ import java.util.List;
 /**
  * 대행업체 직원(Agency User) 관리 비즈니스 로직
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminEmployeeService {
@@ -79,13 +77,11 @@ public class AdminEmployeeService {
             throw new BusinessException(ErrorCode.DUPLICATE_EMPLOYEE_NUM);
         }
 
-
         String decryptedPassword;
         try {
             String formattedPlatformPrivateKey = platformPrivateKey.replace("\\n", "\n");
             decryptedPassword = CryptoUtil.decryptJwe(request.getPassword(), formattedPlatformPrivateKey);
         } catch (Exception e) {
-            log.error("JWE 비밀번호 복호화 실패 - 직원 등록 요청 실패 (Employee: {})", request.getLoginId(), e);
             throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
 
@@ -139,7 +135,6 @@ public class AdminEmployeeService {
             String formattedPlatformPrivateKey = platformPrivateKey.replace("\\n", "\n");
             decryptedPassword = CryptoUtil.decryptJwe(request.getPassword(), formattedPlatformPrivateKey);
         } catch (Exception e) {
-            log.error("JWE 비밀번호 복호화 실패 - 비밀번호 초기화 요청 실패 (Employee: {})", loginId, e);
             throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
 

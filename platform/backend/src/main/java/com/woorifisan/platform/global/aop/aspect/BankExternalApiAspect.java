@@ -41,9 +41,6 @@ public class BankExternalApiAspect {
     private static final Map<String, String> API_TYPE_TO_URL_KEY = Map.of(
             "fetchRecipient",        "recipient",
             "executeTransfer",       "transfer",
-            "fetchTransferWithdraw", "withdraw",
-            "fetchDeposit",          "deposit",
-            "fetchRefund",           "refund",
             "fetchBalance",          "balance",
             "withdraw",              "withdrawal",
             "fetchHistory",          "history"

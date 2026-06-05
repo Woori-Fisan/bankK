@@ -12,17 +12,12 @@ import com.woorifisan.platform.global.response.ErrorCode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 
 /**
  * 계좌 조회 서비스 (E2EE Zero-Knowledge Pass-through)
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AccountInquiryService {
@@ -37,8 +32,6 @@ public class AccountInquiryService {
      */
     @Transactional(readOnly = true)
     public BalanceInquiryResponse getBalance(BalanceInquiryRequest request, String bankKeyId) {
-        log.info("잔액 조회 요청 중계 - 은행코드: {}, 키ID: {}", request.getBankCode(), bankKeyId);
-
         // 1. 은행 코어에 전달할 요청 DTO 생성 (Zero-Knowledge Pass-through)
         BankBalanceInquiryRequest bankRequest = BankBalanceInquiryRequest.of(
                 request.getReqPayload(),
@@ -54,9 +47,6 @@ public class AccountInquiryService {
      */
     @Transactional(readOnly = true)
     public HistoryInquiryResponse getHistory(HistoryInquiryRequest request, String bankKeyId) {
-        log.info("거래내역 조회 요청 중계 - 은행코드: {}, 키ID: {}, 기간: {} ~ {}", 
-                 request.getBankCode(), bankKeyId, request.getStartDate(), request.getEndDate());
-
         // 1. 비민감 필드 검증 (날짜)
         validateInquiryPeriod(request.getStartDate(), request.getEndDate());
 
@@ -76,7 +66,6 @@ public class AccountInquiryService {
         try {
             startDate = LocalDate.parse(start, DATE_FORMATTER);
             endDate = LocalDate.parse(end, DATE_FORMATTER);
-
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "날짜 형식이 올바르지 않습니다. (yyyy-MM-dd)");
         }
@@ -86,6 +75,4 @@ public class AccountInquiryService {
             throw new BusinessException(ErrorCode.INQUIRY_INVALID_DATE_RANGE);
         }
     }
-
-
 }

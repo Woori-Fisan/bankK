@@ -1,6 +1,7 @@
 package com.woorifisan.platform.domain.bank.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -14,13 +15,12 @@ import com.woorifisan.platform.domain.bank.service.AccountInquiryService;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.exception.GlobalExceptionHandler;
 import com.woorifisan.platform.global.response.ErrorCode;
-import java.math.BigDecimal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,7 +36,7 @@ class AccountInquiryControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private AccountInquiryService accountInquiryService;
 
     @Test
@@ -44,27 +44,24 @@ class AccountInquiryControllerTest {
     void getBalance_api_success() throws Exception {
         // given
         BalanceInquiryRequest request = BalanceInquiryRequest.builder()
-                .accountNo("12345")
+                .reqPayload("encryptedPayload")
                 .bankCode("001")
-                .customerRrnPrefix("9501011")
-                .encryptedKey("key")
-                .jwsSignature("sig")
                 .build();
 
         BalanceInquiryResponse response = BalanceInquiryResponse.builder()
-                .balance(new BigDecimal("50000"))
                 .status("NORMAL")
                 .build();
 
-        given(accountInquiryService.getBalance(any())).willReturn(response);
+        given(accountInquiryService.getBalance(any(), anyString())).willReturn(response);
 
         // when & then
         mockMvc.perform(post("/api/v1/bank/inquiry/balance")
+                        .header("x-bank-key-id", "test-key-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.balance").value("50000"))
+                .andExpect(jsonPath("$.data.status").value("NORMAL"))
                 .andDo(print());
     }
 
@@ -73,17 +70,15 @@ class AccountInquiryControllerTest {
     void getBalance_api_fail() throws Exception {
         // given
         BalanceInquiryRequest request = BalanceInquiryRequest.builder()
-                .accountNo("0000")
+                .reqPayload("encryptedPayload")
                 .bankCode("001")
-                .customerRrnPrefix("9501011")
-                .encryptedKey("key")
-                .jwsSignature("sig")
                 .build();
 
-        given(accountInquiryService.getBalance(any())).willThrow(new BusinessException(ErrorCode.TRANSFER_DEPOSIT_ACCOUNT_FAULT));
+        given(accountInquiryService.getBalance(any(), anyString())).willThrow(new BusinessException(ErrorCode.TRANSFER_DEPOSIT_ACCOUNT_FAULT));
 
         // when & then
         mockMvc.perform(post("/api/v1/bank/inquiry/balance")
+                        .header("x-bank-key-id", "test-key-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())

@@ -44,10 +44,11 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
     const executeMutation = useExecuteLoan();
 
     useEffect(() => {
-        if (data?.documents) {
+        // 이미 데이터가 초기화된 경우(agreedDocs.length > 0) 재설정 방지
+        if (data?.documents && agreedDocs.length === 0) {
             setAgreedDocs(data.documents.map((d) => ({ ...d, agreed: false })));
         }
-    }, [data]);
+    }, [data, agreedDocs.length]);
 
     const handleTermToggle = (documentType: string) => {
         setAgreedDocs((prev) =>
@@ -58,15 +59,29 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
     const openModal = (doc: AgreedContractDoc) => {
         setActiveDoc(doc);
         setIsModalOpen(true);
-        setViewedDocs(prev => new Set([...prev, doc.documentType]));
+        // 모달을 열 때가 아니라, 실제 '동의하고 확인'을 눌렀을 때 viewedDocs에 추가하도록 변경
     };
 
     const handleModalAgree = () => {
-        if (activeDoc) {
-            setAgreedDocs(prev =>
-                prev.map(d => d.documentType === activeDoc.documentType ? { ...d, agreed: true } : d)
-            );
+        if (!activeDoc) {
+            setIsModalOpen(false);
+            return;
         }
+
+        const targetType = activeDoc.documentType;
+
+        // 1. 읽음 목록에 즉시 추가 (함수형 업데이트로 최신 상태 보장)
+        setViewedDocs(prev => {
+            const next = new Set(prev);
+            next.add(targetType);
+            return next;
+        });
+
+        // 2. 해당 약관을 즉시 '동의' 상태로 변경
+        setAgreedDocs(prev =>
+            prev.map(d => d.documentType === targetType ? { ...d, agreed: true } : d)
+        );
+
         setIsModalOpen(false);
     };
 
@@ -100,7 +115,7 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
         try {
             const result = await executeMutation.mutateAsync({
                 payload,
-                headers,
+                headers: headers as Record<string, string>,
             });
 
             // 3. 응답 복호화 (메모리에 보관 중이던 aesKey 사용)
@@ -153,7 +168,11 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                         title="선택 상품 요약"
                         items={[
                             { label: '상품명', value: product.name },
-                            { label: '승인 한도', value: <span className="text-xl text-emerald-600">₩ {formatAmount(product.limit)}</span> },
+                            { label: '승인 한도', value: <span className="text-slate-500 line-through decoration-slate-300">₩ {formatAmount(product.limit)}</span> },
+                            { 
+                                label: '대출 신청 금액', 
+                                value: <span className="text-xl text-emerald-600 font-black">₩ {formatAmount(product.executeAmount || product.limit)}</span> 
+                            },
                             { label: '적용 금리', value: <>{product.rate}% <span className="text-xs font-bold text-slate-400 ml-1">(고정금리)</span></> },
                             { label: '대출 기간', value: `${product.period}개월` }
                         ]}
@@ -179,7 +198,10 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                 items={[
                     { label: '고객 성명', value: loanData.userName },
                     { label: '선택 상품', value: product.name },
-                    { label: '대출 실행 금액', value: <span className="text-2xl text-emerald-600">₩ {formatAmount(product.limit)}</span> },
+                    { 
+                        label: '대출 실행 금액', 
+                        value: <span className="text-2xl text-emerald-600 font-black">₩ {formatAmount(product.executeAmount || product.limit)}</span> 
+                    },
                     { label: '적용 금리', value: `${product.rate}% (고정)` },
                     { 
                         label: '대출금 입금 계좌', 

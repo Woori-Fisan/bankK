@@ -10,6 +10,8 @@ import org.apache.ibatis.annotations.Param;
 public interface TransactionLedgerMapper {
     Optional<TransactionLedger> findByTxId(String txId);
     void insert(TransactionLedger transactionLedger);
+    void updateStatus(@Param("txId") String txId, @Param("status") String status);
+
 
     /**
      * 특정 계좌의 기간별 거래 내역 목록 조회 (페이징 적용)
