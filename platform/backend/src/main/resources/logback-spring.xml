@@ -27,11 +27,13 @@
 
         <file>${LOG_FILE}</file>
 
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>
-                ${LOG_PATH}/application.%d{yyyy-MM-dd}.log
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+        <fileNamePattern>
+                ${LOG_PATH}/application.%d{yyyy-MM-dd}.%i.log
             </fileNamePattern>
-            <maxHistory>30</maxHistory>
+            <maxHistory>14</maxHistory>
+            <maxFileSize>700MB</maxFileSize>    <!-- 파일 하나 최대 크기 -->
+            <totalSizeCap>10GB</totalSizeCap>  <!-- 전체 로그 디스크 한도 -->
         </rollingPolicy>
 
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
