@@ -17,6 +17,7 @@ import com.woorifisan.platform.domain.loan.dto.response.LoanExecuteResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanRequiredDocumentsResponse;
 import com.woorifisan.platform.domain.loan.dto.response.TermsDocumentDto;
 import com.woorifisan.platform.global.exception.BusinessException;
+import com.woorifisan.platform.global.lock.TxSessionLockService;
 import com.woorifisan.platform.global.response.ErrorCode;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -59,6 +60,7 @@ public class LoanService {
     private final BankMapper bankMapper;
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, String> redisTemplate;
+    private final TxSessionLockService sessionLockService;
 
     // SSE 구독
     public SseEmitter subscribe(String requestKey) {
@@ -273,35 +275,42 @@ public class LoanService {
         log.info("[대출실행] 요청 - staffId: {}, loanNo: {}, amount: {}",
                 staffId, request.getLoanNo(), request.getExecuteAmount());
 
-        // Platform DTO → Bank 전용 DTO 변환 (Pass-through)
-        BankLoanExecuteRequest bankRequest = BankLoanExecuteRequest.builder()
-                .reqPayload(request.getReqPayload())
-                .bankKeyId(request.getBankKeyId())
-                .loanNo(request.getLoanNo())
-                .productId(request.getProductId())
-                .loanAmount(request.getExecuteAmount())
-                .repaymentPeriod(request.getRepaymentPeriod())
-                .repaymentType(request.getRepaymentType())
-                .build();
+        sessionLockService.acquireLock(staffId);
+        try {
+            // Platform DTO → Bank 전용 DTO 변환 (Pass-through)
+            BankLoanExecuteRequest bankRequest = BankLoanExecuteRequest.builder()
+                    .reqPayload(request.getReqPayload())
+                    .bankKeyId(request.getBankKeyId())
+                    .loanNo(request.getLoanNo())
+                    .productId(request.getProductId())
+                    .loanAmount(request.getExecuteAmount())
+                    .repaymentPeriod(request.getRepaymentPeriod())
+                    .repaymentType(request.getRepaymentType())
+                    .build();
 
-        Map<String, Object> data = bankLoanClient.executeLoan(bankRequest);
-        log.info("[대출실행] 완료 - loanNo: {}", data.get("loanNo"));
+            sessionLockService.upgradeToProcessing(staffId);
 
-        // Bank 응답 → Platform 응답 DTO 변환 (Pass-through)
-        return LoanExecuteResponse.builder()
-                .resPayload(Objects.toString(data.get("resPayload"), null))
-                .loanNo(Objects.toString(data.get("loanNo"), null))
-                .executeAmount(toBigDecimal(data.get("loanAmount")))
-                .interestRate(toBigDecimal(data.get("interestRate")))
-                .repaymentPeriod(data.get("repaymentPeriod") != null
-                        ? Integer.parseInt(data.get("repaymentPeriod").toString()) : 0)
-                .monthlyPayment(toBigDecimal(data.get("monthlyPayment")))
-                .repaymentType(Objects.toString(data.get("repaymentType"), null))
-                .startDate(Objects.toString(data.get("startDate"), null))
-                .maturityDate(Objects.toString(data.get("endDate"), null))
-                .linkedAccountId(data.get("linkedAccountId") != null 
-                        ? Long.parseLong(data.get("linkedAccountId").toString()) : null)
-                .build();
+            Map<String, Object> data = bankLoanClient.executeLoan(bankRequest);
+            log.info("[대출실행] 완료 - loanNo: {}", data.get("loanNo"));
+
+            // Bank 응답 → Platform 응답 DTO 변환 (Pass-through)
+            return LoanExecuteResponse.builder()
+                    .resPayload(Objects.toString(data.get("resPayload"), null))
+                    .loanNo(Objects.toString(data.get("loanNo"), null))
+                    .executeAmount(toBigDecimal(data.get("loanAmount")))
+                    .interestRate(toBigDecimal(data.get("interestRate")))
+                    .repaymentPeriod(data.get("repaymentPeriod") != null
+                            ? Integer.parseInt(data.get("repaymentPeriod").toString()) : 0)
+                    .monthlyPayment(toBigDecimal(data.get("monthlyPayment")))
+                    .repaymentType(Objects.toString(data.get("repaymentType"), null))
+                    .startDate(Objects.toString(data.get("startDate"), null))
+                    .maturityDate(Objects.toString(data.get("endDate"), null))
+                    .linkedAccountId(data.get("linkedAccountId") != null
+                            ? Long.parseLong(data.get("linkedAccountId").toString()) : null)
+                    .build();
+        } finally {
+            sessionLockService.releaseLock(staffId);
+        }
     }
 
     // Helpers

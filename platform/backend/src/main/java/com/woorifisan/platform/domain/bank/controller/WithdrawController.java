@@ -32,7 +32,7 @@ public class WithdrawController {
             @RequestHeader("x-jws-signature") String jwsSignature,
             @RequestHeader("x-bank-key-id") String bankKeyId,
             @Valid @RequestBody WithdrawalRequest request) {
-        TransferResponse response = withdrawalService.executeWithdraw(request, bankKeyId);
+        TransferResponse response = withdrawalService.executeWithdraw(request, bankKeyId, staffId);
         return ApiResponse.success(response);
     }
 }

@@ -16,13 +16,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * 분산 추적을 위한 Trace ID 생성 및 MDC 관리 필터.
- * X-Request-ID 헤더가 있으면 재사용, 없으면 신규 생성.
- * 로그에 [traceId=...] 형식으로 포함되도록 지원함.
+ * 우선순위: X-Idempotency-Key > X-Request-ID > 신규 UUID
+ * 멱등성 키가 있으면 그것을 traceId로 사용해 클라이언트~은행코어 로그를 같은 ID로 추적한다.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class MdcTraceFilter extends OncePerRequestFilter {
 
+    private static final String IDEMPOTENCY_KEY_HEADER = "X-Idempotency-Key";
     private static final String TRACE_ID_HEADER = "X-Request-ID";
     private static final String MDC_TRACE_ID = "traceId";
 
@@ -31,21 +32,23 @@ public class MdcTraceFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         try {
-            // 1. 헤더에서 Trace ID 추출 시도
-            String traceId = Optional
-                    .ofNullable(request.getHeader(TRACE_ID_HEADER))
-                    .filter(StringUtils::hasText) // 2. 없으면 새로 생성
-                    .orElse(UUID.randomUUID().toString().replace("-", ""));
+            // 1. X-Idempotency-Key 우선 → X-Request-ID → 신규 UUID
+            String idempotencyKey = request.getHeader(IDEMPOTENCY_KEY_HEADER);
+            String traceId = StringUtils.hasText(idempotencyKey)
+                    ? idempotencyKey
+                    : Optional.ofNullable(request.getHeader(TRACE_ID_HEADER))
+                              .filter(StringUtils::hasText)
+                              .orElse(UUID.randomUUID().toString().replace("-", ""));
 
-            // 3. MDC에 적재 (logback-spring.xml에서 %X{traceId}로 참조)
+            // 2. MDC에 적재 (logback-spring.xml에서 %X{traceId}로 참조)
             MDC.put(MDC_TRACE_ID, traceId);
 
-            // 4. 클라이언트에게도 응답 헤더로 전달하여 트래킹 지원
+            // 3. 클라이언트 추적을 위해 응답 헤더로 echo
             response.setHeader(TRACE_ID_HEADER, traceId);
 
             filterChain.doFilter(request, response);
         } finally {
-            // 5. 요청 종료 후 반드시 비우기 (ThreadLocal 오염 방지)
+            // 4. 요청 종료 후 반드시 비우기 (ThreadLocal 오염 방지)
             MDC.clear();
         }
     }
