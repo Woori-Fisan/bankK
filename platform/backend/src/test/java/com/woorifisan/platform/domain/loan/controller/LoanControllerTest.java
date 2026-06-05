@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,7 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -50,7 +49,7 @@ class LoanControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private LoanService loanService;
 
     // ───────────────────────────────────────────
@@ -93,11 +92,8 @@ class LoanControllerTest {
         LoanEvaluateRequest evalRequest = LoanEvaluateRequest.builder()
                 .requestKey("uuid-test-1234")
                 .bankCode("020")
-                .customerName("홍길동")
-                .customerRrnPrefix("9001011")
                 .customerPhone("01012345678")
                 .depositBankCode("020")
-                .depositAccountNo("enc-account-no")
                 .requestedAmount(new BigDecimal("30000000"))
                 .requestedPeriod(36)
                 .documents(List.of(
@@ -121,7 +117,8 @@ class LoanControllerTest {
         // when & then
         mockMvc.perform(multipart("/api/v1/loan/evaluation")
                         .file(dataPart)
-                        .file(filePart))
+                        .file(filePart)
+                        .header("x-bank-key-id", "test-key-id"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.loanNo").value("LOAN-2026-001"))
@@ -235,24 +232,20 @@ class LoanControllerTest {
     void 대출_실행_성공() throws Exception {
         // given
         LoanExecuteRequest request = LoanExecuteRequest.builder()
-                .evaluationId("EVAL-001")
-                .loanProductCode("100")
-                .depositAccountNo("enc-account")
-                .accountPassword("enc-password")
+                .loanNo("LOAN-2026-001")
+                .productId(1L)
                 .executeAmount(new BigDecimal("30000000"))
                 .repaymentPeriod(36)
+                .repaymentType("원리금균등")
                 .build();
 
         LoanExecuteResponse response = LoanExecuteResponse.builder()
-                .loanId("LOAN-2026-001")
-                .borrowerName("홍길동")
-                .depositTransactionId("TXN-ABC123DEFG")
-                .loanBalance(new BigDecimal("30000000"))
+                .loanNo("LOAN-2026-001")
                 .executeAmount(new BigDecimal("30000000"))
                 .interestRate(new BigDecimal("4.5"))
                 .repaymentPeriod(36)
                 .monthlyPayment(new BigDecimal("897000"))
-                .repaymentStartDate("2026-07-15")
+                .startDate("2026-07-15")
                 .maturityDate("2029-06-15")
                 .build();
 
@@ -261,12 +254,11 @@ class LoanControllerTest {
         // when & then
         mockMvc.perform(post("/api/v1/loan/contract/execution")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-bank-key-id", "test-key-id")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.loanId").value("LOAN-2026-001"))
-                .andExpect(jsonPath("$.data.borrowerName").value("홍길동"))
-                .andExpect(jsonPath("$.data.depositTransactionId").value("TXN-ABC123DEFG"))
+                .andExpect(jsonPath("$.data.loanNo").value("LOAN-2026-001"))
                 .andDo(print());
     }
 
@@ -279,6 +271,7 @@ class LoanControllerTest {
         // when & then
         mockMvc.perform(post("/api/v1/loan/contract/execution")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-bank-key-id", "test-key-id")
                         .content(emptyJson))
                 .andExpect(status().isBadRequest())
                 .andDo(print());
@@ -289,12 +282,11 @@ class LoanControllerTest {
     void 대출_실행_실패_은행API_오류() throws Exception {
         // given
         LoanExecuteRequest request = LoanExecuteRequest.builder()
-                .evaluationId("EVAL-001")
-                .loanProductCode("100")
-                .depositAccountNo("enc-account")
-                .accountPassword("enc-password")
+                .loanNo("LOAN-2026-001")
+                .productId(1L)
                 .executeAmount(new BigDecimal("30000000"))
                 .repaymentPeriod(36)
+                .repaymentType("원리금균등")
                 .build();
 
         given(loanService.executeLoan(any(), any()))
@@ -303,6 +295,7 @@ class LoanControllerTest {
         // when & then
         mockMvc.perform(post("/api/v1/loan/contract/execution")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("x-bank-key-id", "test-key-id")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.success").value(false))
