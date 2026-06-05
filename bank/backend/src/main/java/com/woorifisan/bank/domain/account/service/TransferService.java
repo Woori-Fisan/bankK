@@ -18,17 +18,11 @@ import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.security.service.SecurityService;
 import com.woorifisan.bank.global.response.ErrorCode;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
@@ -36,7 +30,8 @@ import com.woorifisan.bank.domain.account.dto.response.TransferStatusResponse;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * 이체 서비스
+ * 통합 이체 비즈니스 흐름 제어 코디네이터 서비스 (비트랜잭션 또는 readOnly 트랜잭션 사용)
+ * - Self-invocation 자가 호출 구조를 해소하고 SRP를 준수하도록 리팩토링되었습니다.
  */
 @Slf4j
 @Service
@@ -47,14 +42,12 @@ public class TransferService {
     private final AccountMapper accountMapper;
     private final CustomerMapper customerMapper;
     private final TransactionLedgerMapper transactionLedgerMapper;
-    private final PasswordEncoder passwordEncoder;
     private final SecurityService securityService;
     private final BankNetworkConfig bankNetworkConfig;
     private final RestTemplate restTemplate;
-
-    @Autowired
-    @Lazy
-    private TransferService self;
+    
+    // 개별 트랜잭션 처리를 담당하는 서브 서비스 주입
+    private final TransferTxService transferTxService;
 
     private static final String CURRENT_BANK_CODE = "020"; // 우리은행 코드 임시 정의
 
@@ -103,134 +96,47 @@ public class TransferService {
     }
 
     /**
-     * 출금 이체 실행 (E2EE 적용)
+     * 출금 이체 실행 (개별 트랜잭션 위임)
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public TransferResponse withdrawTransfer(TransferRequest request) {
-        log.info("출금 이체 요청 수신 - 출금은행: {}, 입금은행: {}, 금액: {}", 
-                request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
-
-        // 1. 복호화 및 CEK 추출
-        SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
-                securityService.decryptWithKey(request, DecryptedWithdrawData.class);
-        
-        DecryptedWithdrawData decryptedData = decryptionResult.getData();
-
-        // 2. 계좌 조회 및 검증
-        Account sender = accountMapper.findByAccountNoPlain(decryptedData.getWithdrawalAccountNo())
-                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-        
-        verifyCustomerIdentification(sender.getCustomerId(), decryptedData.getCustomerRrnPrefix());
-        
-        if (!passwordEncoder.matches(decryptedData.getWithdrawalPassword(), sender.getPassword())) {
-            throw new BusinessException(ErrorCode.BANK_PW_ERROR);
-        }
-
-        if (sender.getBalance().compareTo(request.getAmount()) < 0) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
-
-        // 3. 잔액 업데이트 (비관적 락 적용을 위해 다시 조회)
-        sender = accountMapper.findByIdForUpdate(sender.getId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-        
-        if (sender.getBalance().compareTo(request.getAmount()) < 0) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
-
-        BigDecimal newBalance = sender.getBalance().subtract(request.getAmount());
-        int updatedCount = accountMapper.updateBalance(sender.getId(), request.getAmount().negate(), sender.getVersion());
-        if (updatedCount == 0) {
-            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
-        }
-
-        // 4. 원장 기록 (최초 상태는 PENDING)
-        String txId = UUID.randomUUID().toString();
-        transactionLedgerMapper.insert(TransactionLedger.of(
-                txId, 
-                sender.getId(), 
-                "TRANSFER", 
-                request.getAmount().negate(), 
-                newBalance, 
-                request.getDepositBankCode(), 
-                decryptedData.getDepositAccountNo(), 
-                "이체출금(" + request.getDepositBankCode() + "/" + decryptedData.getDepositAccountNo() + ")", 
-                "PENDING"
-        ));
-
-        // 5. 결과 암호화
-        TransferResponse.SensitiveData sensitiveData = TransferResponse.SensitiveData.builder()
-                .balanceAfter(newBalance)
-                .build();
-        
-        String resPayload = securityService.encryptResponse(sensitiveData, decryptionResult.getCek());
-
-        return TransferResponse.of(txId, getCurrentTimestamp(), newBalance, resPayload);
+        return transferTxService.withdrawTransfer(request);
     }
-
-
 
     /**
-     * 이체 환불 실행 (E2EE 적용)
-     * - 출금 시 사용했던 페이로드를 재사용하여 원래 출금 계좌로 자금을 복구합니다.
+     * 이체 환불 실행 (개별 트랜잭션 위임)
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public TransferResponse refundTransfer(TransferRequest request) {
-        return refundTransfer(request, null);
+        return transferTxService.refundTransfer(request);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public TransferResponse refundTransfer(TransferRequest request, String originalTxId) {
-        log.info("이체 환불 요청 수신 - 원래 입금하려던 은행: {}, 금액: {}, 원 거래ID: {}", 
-                request.getDepositBankCode(), request.getAmount(), originalTxId);
-
-        // 1. 복호화 (출금 시 사용된 WithdrawReqPayload를 복호화)
-        SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
-                securityService.decryptWithKey(request, DecryptedWithdrawData.class);
-        
-        DecryptedWithdrawData originalWithdrawData = decryptionResult.getData();
-
-        // 2. 원래 출금 계좌(환불받을 계좌) 조회
-        Account account = accountMapper.findByAccountNoPlain(originalWithdrawData.getWithdrawalAccountNo())
-                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-        
-        account = accountMapper.findByIdForUpdate(account.getId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-
-        // 3. 잔액 복구 (입금)
-        BigDecimal newBalance = account.getBalance().add(request.getAmount());
-        int updatedCount = accountMapper.updateBalance(account.getId(), request.getAmount(), account.getVersion());
-        if (updatedCount == 0) {
-            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
-        }
-
-        // 4. 원장 기록 및 원래 원장 상태 업데이트
-        if (originalTxId != null) {
-            transactionLedgerMapper.updateStatus(originalTxId, "FAILED");
-        }
-
-        String txId = UUID.randomUUID().toString();
-        transactionLedgerMapper.insert(TransactionLedger.of(
-                txId, 
-                account.getId(), 
-                "DEPOSIT", 
-                request.getAmount(), 
-                newBalance, 
-                request.getDepositBankCode(), 
-                originalWithdrawData.getDepositAccountNo(), 
-                "이체환불(입금실패로 인한 복구)", 
-                "SUCCESS"
-        ));
-
-        return TransferResponse.of(txId, getCurrentTimestamp(), newBalance);
+        return transferTxService.refundTransfer(request, originalTxId);
     }
 
+    /**
+     * 내부 입금 처리 (개별 트랜잭션 위임)
+     */
+    public TransferResponse internalDeposit(InternalDepositRequest request) {
+        return transferTxService.internalDeposit(request);
+    }
+
+    /**
+     * 거래 원장의 상태 업데이트 (개별 트랜잭션 위임)
+     */
+    public void updateLedgerStatus(String txId, String status) {
+        transferTxService.updateLedgerStatus(txId, status);
+    }
+
+    /**
+     * 통합 이체 실행 흐름 제어 (코디네이터)
+     * - DB 커넥션 점유 시간을 최소화하기 위해 외부 API 호출은 비트랜잭션 구간에서 수행합니다.
+     */
     public TransferResponse executeTransfer(TransferRequest request) {
         log.info("통합 이체 실행 요청 수신 - 출금은행: {}, 입금은행: {}, 금액: {}", 
                 request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
 
         // 1. 출금 처리 (독립 트랜잭션 - PENDING 상태로 시작)
-        TransferResponse withdrawalResponse = self.withdrawTransfer(request);
+        TransferResponse withdrawalResponse = transferTxService.withdrawTransfer(request);
         String txId = withdrawalResponse.getTransactionId();
         log.info("통합 이체 Step 1: 출금 성공 (PENDING 상태) - 거래ID: {}", txId);
 
@@ -244,8 +150,8 @@ public class TransferService {
             log.info("통합 이체 Step 2: 당행 이체 진행");
             
             try {
-                // 당행 입금은 REQUIRES_NEW 트랜잭션으로 처리
-                self.internalDeposit(InternalDepositRequest.builder()
+                // 당행 입금은 독립 트랜잭션으로 처리
+                transferTxService.internalDeposit(InternalDepositRequest.builder()
                         .depositAccountNo(decryptedData.getDepositAccountNo())
                         .amount(request.getAmount())
                         .withdrawalBankCode(request.getWithdrawalBankCode())
@@ -254,12 +160,12 @@ public class TransferService {
                         .build());
                 
                 // 출금 원장의 상태를 SUCCESS로 업데이트
-                self.updateLedgerStatus(txId, "SUCCESS");
+                transferTxService.updateLedgerStatus(txId, "SUCCESS");
                 
                 return withdrawalResponse;
             } catch (Exception e) {
                 log.error("당행 입금 처리 중 오류 발생, 환불 처리를 시작합니다: {}", e.getMessage());
-                self.refundTransfer(request, txId);
+                transferTxService.refundTransfer(request, txId);
                 throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH, "당행 입금 처리 중 오류가 발생하여 환불되었습니다.");
             }
         } else {
@@ -277,7 +183,7 @@ public class TransferService {
                         .build());
                 
                 // 입금 성공 시 출금 원장 상태를 SUCCESS로 업데이트
-                self.updateLedgerStatus(txId, "SUCCESS");
+                transferTxService.updateLedgerStatus(txId, "SUCCESS");
                 
                 return withdrawalResponse;
             } catch (Exception e) {
@@ -288,12 +194,12 @@ public class TransferService {
                 
                 if (isAlreadyProcessed) {
                     log.info("타행 거래 상태 조회 결과: 입금 성공 확인. 당행 거래를 성공으로 마킹합니다.");
-                    self.updateLedgerStatus(txId, "SUCCESS");
+                    transferTxService.updateLedgerStatus(txId, "SUCCESS");
                     return withdrawalResponse;
                 } else {
                     log.error("타행 거래 상태 조회 결과: 미처리 확인. 환불 처리를 시작합니다.");
                     // 보상 트랜잭션: 환불
-                    self.refundTransfer(request, txId);
+                    transferTxService.refundTransfer(request, txId);
                     throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH, "타행 입금 처리 중 오류가 발생하여 환불되었습니다.");
                 }
             }
@@ -301,51 +207,18 @@ public class TransferService {
     }
 
     /**
-     * 내부 입금 처리 (은행 간 통신용)
+     * 거래 상태 조회
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public TransferResponse internalDeposit(InternalDepositRequest request) {
-        log.info("내부 입금 요청 수신 - 출금은행: {}, 금액: {}, 트랜잭션ID: {}", 
-                request.getWithdrawalBankCode(), request.getAmount(), request.getTxId());
-
-        return depositInternal(request.getDepositAccountNo(), request.getAmount(), 
-                request.getWithdrawalBankCode(), request.getWithdrawalAccountNo(), request.getTxId());
-    }
-
-    /**
-     * 공통 입금 로직 (당행 내부용)
-     */
-    private TransferResponse depositInternal(String depositAccountNo, BigDecimal amount, 
-                                            String withdrawBankCode, String withdrawAccountNo, String txId) {
-        // 1. 계좌 조회
-        Account receiver = accountMapper.findByAccountNoPlain(depositAccountNo)
-                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+    public TransferStatusResponse getTransferStatus(String txId) {
+        log.info("거래 상태 조회 요청 - 거래ID: {}", txId);
+        TransactionLedger ledger = transactionLedgerMapper.findByTxId(txId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND, "해당 거래 내역이 존재하지 않습니다."));
         
-        receiver = accountMapper.findByIdForUpdate(receiver.getId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
-
-        // 2. 잔액 업데이트
-        BigDecimal newBalance = receiver.getBalance().add(amount);
-        int updatedCount = accountMapper.updateBalance(receiver.getId(), amount, receiver.getVersion());
-        if (updatedCount == 0) {
-            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
-        }
-
-        // 3. 원장 기록 (txId가 제공되면 해당 ID를 사용)
-        String effectiveTxId = (txId != null && !txId.trim().isEmpty()) ? txId : UUID.randomUUID().toString();
-        transactionLedgerMapper.insert(TransactionLedger.of(
-                effectiveTxId, 
-                receiver.getId(), 
-                "TRANSFER",
-                amount, 
-                newBalance, 
-                withdrawBankCode, 
-                withdrawAccountNo, 
-                "이체입금(통합/" + withdrawBankCode + "/" + withdrawAccountNo + ")", 
-                "SUCCESS"
-        ));
-
-        return TransferResponse.of(effectiveTxId, getCurrentTimestamp(), newBalance);
+        return TransferStatusResponse.builder()
+                .txId(ledger.getTxId())
+                .status(ledger.getStatus())
+                .message("거래가 조회되었습니다.")
+                .build();
     }
 
     /**
@@ -369,30 +242,6 @@ public class TransferService {
             log.error("타행 입금 API 통신 중 오류 발생: {}", e.getMessage());
             throw new BusinessException(ErrorCode.BANK_NOT_FOUND, "타행 통신 중 오류가 발생했습니다.");
         }
-    }
-
-    /**
-     * 거래 원장의 상태 업데이트 (독립 트랜잭션)
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateLedgerStatus(String txId, String status) {
-        log.info("원장 상태 업데이트 요청 - 거래ID: {}, 상태: {}", txId, status);
-        transactionLedgerMapper.updateStatus(txId, status);
-    }
-
-    /**
-     * 거래 상태 조회 (이중 지급 방지용)
-     */
-    public TransferStatusResponse getTransferStatus(String txId) {
-        log.info("거래 상태 조회 요청 - 거래ID: {}", txId);
-        TransactionLedger ledger = transactionLedgerMapper.findByTxId(txId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND, "해당 거래 내역이 존재하지 않습니다."));
-        
-        return TransferStatusResponse.builder()
-                .txId(ledger.getTxId())
-                .status(ledger.getStatus())
-                .message("거래가 조회되었습니다.")
-                .build();
     }
 
     /**
@@ -472,17 +321,5 @@ public class TransferService {
         log.error("타행 거래 상태 조회 최종 실패 - 거래 상태 확인 불가. UNKNOWN 상태로 보류합니다. 거래ID: {}", txId);
         throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, 
                 "상대 은행의 거래 처리 상태를 확정할 수 없어(UNKNOWN) 이체를 보류 상태(PENDING)로 유지합니다. 관리자 확인이 필요합니다.");
-    }
-
-    private void verifyCustomerIdentification(Long customerId, String requestRrnPrefix) {
-        Customer customer = customerMapper.findById(customerId).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        String rrnPrefix = customer.getRrnPrefix();
-        if (!rrnPrefix.startsWith(requestRrnPrefix)) {
-            throw new BusinessException(ErrorCode.IDENTIFICATION_ERROR);
-        }
-    }
-
-    private String getCurrentTimestamp() {
-        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 }

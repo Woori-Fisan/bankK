@@ -6,6 +6,9 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.anyString;
 
 import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedWithdrawData;
 import com.woorifisan.bank.domain.account.dto.request.TransferRequest;
@@ -26,8 +29,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.HttpClientErrorException;
@@ -35,9 +36,6 @@ import org.springframework.http.HttpStatus;
 import com.woorifisan.bank.global.config.BankNetworkConfig;
 import java.util.Map;
 import java.util.HashMap;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.ArgumentMatchers.anyString;
 
 @ExtendWith(MockitoExtension.class)
 class TransferServiceTest {
@@ -55,9 +53,6 @@ class TransferServiceTest {
     private TransactionLedgerMapper transactionLedgerMapper;
 
     @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
     private SecurityService securityService;
 
     @Mock
@@ -66,8 +61,10 @@ class TransferServiceTest {
     @Mock
     private BankNetworkConfig bankNetworkConfig;
 
+    @Mock
+    private TransferTxService transferTxService; // 신규 서브 트랜잭션 서비스 Mock 추가
+
     private Account sender;
-    private Account receiver;
     private Customer senderCustomer;
 
     private static final String OUR_BANK_CODE = "020";
@@ -75,22 +72,12 @@ class TransferServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(transferService, "self", transferService);
         sender = Account.builder()
                 .id(1L)
                 .customerId(10L)
                 .accountNo("111-111")
                 .balance(new BigDecimal("100000"))
                 .password("hashedPassword")
-                .status("NORMAL")
-                .version(1)
-                .build();
-
-        receiver = Account.builder()
-                .id(2L)
-                .customerId(20L)
-                .accountNo("222-222")
-                .balance(new BigDecimal("50000"))
                 .status("NORMAL")
                 .version(1)
                 .build();
@@ -103,79 +90,35 @@ class TransferServiceTest {
     }
 
     @Test
-    @DisplayName("출금 이체(타행출금 포함)가 성공한다")
-    void withdrawTransfer_success() {
+    @DisplayName("위임: 출금 이체 호출 시 TransferTxService에 위임한다")
+    void withdrawTransfer_delegation() {
         // given
-        TransferRequest request = TransferRequest.builder()
-                .withdrawalBankCode(OUR_BANK_CODE)
-                .depositBankCode(OTHER_BANK_CODE)
-                .amount(new BigDecimal("10000"))
-                .reqPayload("encrypted-jwe")
-                .bankKeyId("key-id")
-                .build();
-
-        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
-                .withdrawalAccountNo("111-111")
-                .withdrawalPassword("1234")
-                .customerRrnPrefix("9001011")
-                .depositAccountNo("999-999")
-                .build();
-
-        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
-                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, new SecretKeySpec(new byte[16], "AES")));
-        
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
-        given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
-        given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
-        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000").negate(), sender.getVersion())).willReturn(1);
-        given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
+        TransferRequest request = TransferRequest.builder().build();
+        TransferResponse mockResponse = TransferResponse.builder().build();
+        given(transferTxService.withdrawTransfer(request)).willReturn(mockResponse);
 
         // when
         TransferResponse response = transferService.withdrawTransfer(request);
 
         // then
-        assertNotNull(response);
-        assertEquals(new BigDecimal("90000"), response.getBalanceAfter());
-        assertEquals("encrypted-res", response.getResPayload());
-        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate(), sender.getVersion());
-        verify(transactionLedgerMapper).insert(any());
+        verify(transferTxService).withdrawTransfer(request);
+        assertEquals(mockResponse, response);
     }
 
-
-
     @Test
-    @DisplayName("이체 환불이 성공한다")
-    void refundTransfer_success() {
+    @DisplayName("위임: 이체 환불 호출 시 TransferTxService에 위임한다")
+    void refundTransfer_delegation() {
         // given
-        TransferRequest request = TransferRequest.builder()
-                .withdrawalBankCode(OUR_BANK_CODE)
-                .depositBankCode(OTHER_BANK_CODE)
-                .amount(new BigDecimal("10000"))
-                .reqPayload("original-withdraw-jwe")
-                .bankKeyId("key-id")
-                .build();
-
-        DecryptedWithdrawData originalData = DecryptedWithdrawData.builder()
-                .withdrawalAccountNo("111-111")
-                .depositAccountNo("999-999")
-                .build();
-
-        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
-                .willReturn(new SecurityService.DecryptionResult<>(originalData, new SecretKeySpec(new byte[16], "AES")));
-
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
-        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000"), sender.getVersion())).willReturn(1);
+        TransferRequest request = TransferRequest.builder().build();
+        TransferResponse mockResponse = TransferResponse.builder().build();
+        given(transferTxService.refundTransfer(request)).willReturn(mockResponse);
 
         // when
         TransferResponse response = transferService.refundTransfer(request);
 
         // then
-        assertNotNull(response);
-        assertEquals(new BigDecimal("110000"), response.getBalanceAfter());
-        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000"), sender.getVersion());
-        verify(transactionLedgerMapper).insert(any());
+        verify(transferTxService).refundTransfer(request);
+        assertEquals(mockResponse, response);
     }
 
     @Test
@@ -201,13 +144,9 @@ class TransferServiceTest {
         given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decryptedData, new SecretKeySpec(new byte[16], "AES")));
         
-        // 2. 출금을 위한 계좌 및 고객 조회 Mock
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
-        given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
-        given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
-        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("-10000"), sender.getVersion())).willReturn(1);
-        given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
+        // 2. TransferTxService 출금 Mocking
+        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
+        given(transferTxService.withdrawTransfer(request)).willReturn(mockWithdrawalResponse);
 
         // 3. 타행 정보 및 API URL 설정 Mock
         BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
@@ -233,15 +172,13 @@ class TransferServiceTest {
 
         // then
         assertNotNull(response);
-        assertEquals(new BigDecimal("90000"), response.getBalanceAfter());
+        assertEquals("mock-tx-id", response.getTransactionId());
         
-        // 출금 원장은 처음 PENDING으로 저장되었다가, 최종 SUCCESS로 성공 마킹이 되어야 함
-        verify(transactionLedgerMapper).insert(any()); // 1회 insert (출금 시 PENDING 원장 기록)
-        verify(transactionLedgerMapper).updateStatus(anyString(), eq("SUCCESS")); // 1회 update (상태 조회 성공 후 SUCCESS 마킹)
+        // 출금 원장은 처음 PENDING으로 저장(withdrawTransfer 내부)되었다가, 최종 SUCCESS로 성공 마킹이 되어야 함
+        verify(transferTxService).updateLedgerStatus("mock-tx-id", "SUCCESS");
         
-        // 이중 지급을 차단하기 위해 환불(deposit/insert) 호출이 단 한 번도 실행되지 않았음을 검증
-        // 기존 원장 저장을 위해 insert가 이미 1회 호출되었으므로, insert가 추가(2회 이상) 호출되지 않았는지 검증
-        verify(transactionLedgerMapper, times(1)).insert(any()); // 총 insert 횟수는 출금 시 1회여야 함
+        // 이중 지급을 차단하기 위해 환불이 호출되지 않았음을 검증
+        verify(transferTxService, never()).refundTransfer(any(), anyString());
     }
 
     @Test
@@ -267,13 +204,9 @@ class TransferServiceTest {
         given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decryptedData, new SecretKeySpec(new byte[16], "AES")));
         
-        // 2. 출금을 위한 계좌 및 고객 조회 Mock
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
-        given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
-        given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
-        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("-10000"), sender.getVersion())).willReturn(1);
-        given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
+        // 2. TransferTxService 출금 Mocking
+        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
+        given(transferTxService.withdrawTransfer(request)).willReturn(mockWithdrawalResponse);
 
         // 3. 타행 정보 및 API URL 설정 Mock
         BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
@@ -293,11 +226,9 @@ class TransferServiceTest {
             transferService.executeTransfer(request);
         });
 
-        // 출금 원장은 처음 PENDING으로 저장(insert 1회)
-        verify(transactionLedgerMapper, times(1)).insert(any());
-        
         // 상태를 알 수 없으므로 성공 마킹(SUCCESS)이나 실패 마킹(FAILED)이 진행되지 않고 PENDING으로 남아있어야 함
-        verify(transactionLedgerMapper, never()).updateStatus(anyString(), anyString());
+        verify(transferTxService, never()).updateLedgerStatus(anyString(), anyString());
+        verify(transferTxService, never()).refundTransfer(any(), anyString());
     }
 
     @Test
@@ -323,13 +254,9 @@ class TransferServiceTest {
         given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decryptedData, new SecretKeySpec(new byte[16], "AES")));
         
-        // 2. 출금을 위한 계좌 및 고객 조회 Mock
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
-        given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
-        given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
-        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("-10000"), sender.getVersion())).willReturn(1);
-        given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
+        // 2. TransferTxService 출금 Mocking
+        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
+        given(transferTxService.withdrawTransfer(request)).willReturn(mockWithdrawalResponse);
 
         // 3. 타행 정보 및 API URL 설정 Mock
         BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
@@ -352,11 +279,9 @@ class TransferServiceTest {
         // 400 에러 시 즉시 예외를 던져 루프를 탈출했으므로, 상태 조회 API 호출 횟수가 단 1회여야 함
         verify(restTemplate, times(1)).getForObject(anyString(), eq(Map.class));
 
-        // 출금 원장은 처음 PENDING으로 저장(insert 1회)
-        verify(transactionLedgerMapper, times(1)).insert(any());
-        
         // 상태를 알 수 없으므로 성공 마킹(SUCCESS)이나 실패 마킹(FAILED)이 진행되지 않고 PENDING으로 남아있어야 함
-        verify(transactionLedgerMapper, never()).updateStatus(anyString(), anyString());
+        verify(transferTxService, never()).updateLedgerStatus(anyString(), anyString());
+        verify(transferTxService, never()).refundTransfer(any(), anyString());
     }
 
     @Test
@@ -382,13 +307,9 @@ class TransferServiceTest {
         given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decryptedData, new SecretKeySpec(new byte[16], "AES")));
         
-        // 2. 출금을 위한 계좌 및 고객 조회 Mock
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
-        given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
-        given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
-        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("-10000"), sender.getVersion())).willReturn(1);
-        given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
+        // 2. TransferTxService 출금 Mocking
+        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
+        given(transferTxService.withdrawTransfer(request)).willReturn(mockWithdrawalResponse);
 
         // 3. 타행 정보 및 API URL 설정 Mock
         BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
@@ -411,11 +332,8 @@ class TransferServiceTest {
         // 일반 예외 발생 시 즉시 예외를 던져 루프를 탈출했으므로, 상태 조회 API 호출 횟수가 단 1회여야 함
         verify(restTemplate, times(1)).getForObject(anyString(), eq(Map.class));
 
-        // 출금 원장은 처음 PENDING으로 저장(insert 1회)
-        verify(transactionLedgerMapper, times(1)).insert(any());
-        
         // 상태를 알 수 없으므로 성공 마킹(SUCCESS)이나 실패 마킹(FAILED)이 진행되지 않고 PENDING으로 남아있어야 함
-        verify(transactionLedgerMapper, never()).updateStatus(anyString(), anyString());
+        verify(transferTxService, never()).updateLedgerStatus(anyString(), anyString());
+        verify(transferTxService, never()).refundTransfer(any(), anyString());
     }
 }
-
