@@ -358,6 +358,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
                         onFileSelect={handleFileSelect}
                         onFileDelete={handleFileDelete}
                         fileInputRef={fileInputRef}
+                        fileUploadError={fieldErrors.fileUpload}
                     />
 
                     <LoanTermsSection
