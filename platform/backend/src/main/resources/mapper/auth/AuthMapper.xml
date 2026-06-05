@@ -21,10 +21,12 @@
         WHERE login_id = #{loginId}
     </select>
 
-    <!-- 로그인 실패 횟수 증가 -->
+    <!-- 로그인 실패 횟수 원자적 증가 + 임계값 도달 시 즉시 잠금
+         increment와 잠금 판단을 단일 UPDATE로 처리하여 병렬 요청 레이스 컨디션 방지 -->
     <update id="increaseFailedLoginCount">
         UPDATE platform_user
         SET failed_login_count = failed_login_count + 1,
+            is_locked          = CASE WHEN failed_login_count + 1 >= #{maxCount} THEN TRUE ELSE is_locked END,
             updated_at         = NOW()
         WHERE id = #{id}
     </update>

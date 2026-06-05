@@ -10,18 +10,14 @@ import com.woorifisan.platform.domain.auth.model.PlatformUser;
 import com.woorifisan.platform.global.config.JwtProvider;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
+import com.woorifisan.platform.global.util.CryptoUtil;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.woorifisan.platform.global.util.CryptoUtil;
-
-import java.util.concurrent.TimeUnit;
-
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -57,9 +53,8 @@ public class AuthService {
         // 1. 단말기 JWS 서명 검증 및 페이로드 추출
         String formattedTerminalPublicKey = terminalPublicKey.replace("\\n", "\n");
         String payloadJson = CryptoUtil.verifyJwsAndGetPayload(jwsSignature, formattedTerminalPublicKey);
-        
+
         if (payloadJson == null) {
-            log.warn("JWS 서명 검증 실패 - 로그인 요청 차단 (Employee: {})", request.getEmployeeId());
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
@@ -67,14 +62,13 @@ public class AuthService {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode payloadNode = objectMapper.readTree(payloadJson);
-            
+
             String payloadEmployeeId = payloadNode.path("employeeId").asText();
             String payloadPassword = payloadNode.path("password").asText(); // 이 값은 암호화된 비밀번호
             long timestamp = payloadNode.path("timestamp").asLong();
 
             // A. 데이터 위변조 확인 (요청 데이터와 서명된 데이터가 일치하는지)
             if (!request.getEmployeeId().equals(payloadEmployeeId) || !request.getPassword().equals(payloadPassword)) {
-                log.warn("JWS 페이로드 데이터 불일치 (위변조 의심) - Employee: {}", request.getEmployeeId());
                 throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
             }
 
@@ -82,12 +76,9 @@ public class AuthService {
             long currentTime = System.currentTimeMillis();
             long allowedTimeWindow = 5 * 60 * 1000; // 5분 허용
             if (currentTime - timestamp > allowedTimeWindow || timestamp > currentTime + 60000) { // 미래 시간은 1분 허용
-                log.warn("JWS Timestamp 만료 (Replay Attack 의심) - Employee: {}", request.getEmployeeId());
                 throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
             }
-
         } catch (Exception e) {
-            log.error("JWS 페이로드 검증 중 오류 발생", e);
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
@@ -97,7 +88,6 @@ public class AuthService {
             String formattedPlatformPrivateKey = platformPrivateKey.replace("\\n", "\n");
             decryptedPassword = CryptoUtil.decryptJwe(request.getPassword(), formattedPlatformPrivateKey);
         } catch (Exception e) {
-            log.error("JWE 비밀번호 복호화 실패 - 로그인 요청 차단 (Employee: {})", request.getEmployeeId(), e);
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
@@ -138,8 +128,6 @@ public class AuthService {
                 TimeUnit.SECONDS
         );
 
-        log.info("로그인 성공 - staffId: {}, role: {}", user.getId(), user.getRole());
-
         return AuthTokenDto.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -155,7 +143,6 @@ public class AuthService {
 
         // Redis에서 즉시 삭제 (이미 없어도 안전하게 처리하여 멱등성 보장)
         redisTemplate.delete(key);
-        log.info("로그아웃 성공 - staffId: {}", staffId);
     }
 
     // Access Token 재발급 (RTR)
@@ -181,7 +168,6 @@ public class AuthService {
         if (!storedRefreshToken.equals(refreshToken)) {
             // 전체 세션 강제 로그아웃
             redisTemplate.delete(getRedisKey(staffId));
-            log.warn("Refresh Token 재사용 감지 - staffId: {} 전체 세션 강제 로그아웃", staffId);
             throw new BusinessException(ErrorCode.TOKEN_REUSE_DETECTED);
         }
 
@@ -208,16 +194,14 @@ public class AuthService {
 
     // 로그인 실패 처리
     private void handleLoginFailure(PlatformUser user) {
-        int failedCount = user.getFailedLoginCount() + 1;
-        authMapper.increaseFailedLoginCount(user.getId());
+        // increment + 잠금 판단을 단일 원자적 UPDATE로 수행 (병렬 요청 레이스 컨디션 방지)
+        authMapper.increaseFailedLoginCount(user.getId(), MAX_FAILED_LOGIN_COUNT);
 
-        if (failedCount >= MAX_FAILED_LOGIN_COUNT) {
-            authMapper.updateIsLocked(user.getId(), true);
-            log.warn("계정 잠금 처리 - staffId: {}, 실패 횟수: {}", user.getId(), failedCount);
+        // DB에서 갱신된 잠금 상태를 재조회하여 판단 (인메모리 stale 값 사용 금지)
+        PlatformUser updated = authMapper.findByLoginId(user.getLoginId());
+        if (updated != null && updated.isLocked()) {
             throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
         }
-
-        log.warn("로그인 실패 - staffId: {}, 실패 횟수: {}/{}", user.getId(), failedCount, MAX_FAILED_LOGIN_COUNT);
     }
 
     // Redis Key 생성
