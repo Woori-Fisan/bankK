@@ -15,8 +15,6 @@ import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryReques
 import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
-import java.math.BigDecimal;
-import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,7 +44,7 @@ class AccountInquiryServiceTest {
                 .build();
 
         // when & then
-        assertThatThrownBy(() -> accountInquiryService.getHistory(request))
+        assertThatThrownBy(() -> accountInquiryService.getHistory(request, "test-key-id"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INQUIRY_INVALID_DATE_RANGE);
     }
@@ -61,7 +59,7 @@ class AccountInquiryServiceTest {
                 .build();
 
         // when & then
-        assertThatThrownBy(() -> accountInquiryService.getHistory(request))
+        assertThatThrownBy(() -> accountInquiryService.getHistory(request, "test-key-id"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
     }
@@ -81,14 +79,13 @@ class AccountInquiryServiceTest {
 
         HistoryInquiryResponse mockResponse = HistoryInquiryResponse.builder()
                 .totalCount(1)
-                .history(List.of())
                 .build();
 
         given(bankExternalClient.fetchHistory(eq(bankCode), any(BankHistoryInquiryRequest.class)))
                 .willReturn(mockResponse);
 
         // when
-        HistoryInquiryResponse result = accountInquiryService.getHistory(request);
+        HistoryInquiryResponse result = accountInquiryService.getHistory(request, "test-key-id");
 
         // then
         assertThat(result).isNotNull();
@@ -105,11 +102,9 @@ class AccountInquiryServiceTest {
         String bankCode = "020";
         BalanceInquiryRequest request = BalanceInquiryRequest.builder()
                 .bankCode(bankCode)
-                .accountNo("123-456")
                 .build();
 
         BalanceInquiryResponse mockResponse = BalanceInquiryResponse.builder()
-                .balance(new BigDecimal("5000"))
                 .status("NORMAL")
                 .build();
 
@@ -117,11 +112,10 @@ class AccountInquiryServiceTest {
                 .willReturn(mockResponse);
 
         // when
-        BalanceInquiryResponse response = accountInquiryService.getBalance(request);
+        BalanceInquiryResponse response = accountInquiryService.getBalance(request, "test-key-id");
 
         // then
         assertThat(response).isNotNull();
-        assertThat(response.getBalance()).isEqualTo(new BigDecimal("5000"));
         assertThat(response.getStatus()).isEqualTo("NORMAL");
     }
 }

@@ -2,9 +2,9 @@ package com.woorifisan.bank.domain.account.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -18,6 +18,7 @@ import com.woorifisan.bank.domain.account.mapper.TransactionLedgerMapper;
 import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.global.config.BankNetworkConfig;
 import com.woorifisan.bank.global.security.service.SecurityService;
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -63,6 +64,12 @@ class TransferServiceTest {
 
     @Mock
     private TransferTxService transferTxService; // 신규 서브 트랜잭션 서비스 Mock 추가
+
+    @Mock
+    private BankNetworkConfig bankNetworkConfig;
+
+    @Mock
+    private RestTemplate restTemplate;
 
     private Account sender;
     private Customer senderCustomer;

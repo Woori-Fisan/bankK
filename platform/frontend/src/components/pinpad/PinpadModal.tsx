@@ -55,14 +55,6 @@ const PinpadModal: React.FC<PinpadModalProps> = ({
 
                 {/* Content */}
                 <div className="p-8">
-                    <div className="text-center mb-6">
-                        <p className="text-sm text-slate-500 mb-2">보안 키패드가 활성화되었습니다.</p>
-                        <div className="flex items-center justify-center gap-1 text-[10px] text-emerald-600 font-bold uppercase tracking-wider">
-                            <ShieldCheck className="w-3 h-3" />
-                            E2EE Encrypted
-                        </div>
-                    </div>
-
                     <PinpadDisplay length={pin.length} maxLength={MAX_LENGTH} />
                     
                     <PinpadKeypad 
