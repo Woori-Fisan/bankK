@@ -36,6 +36,7 @@ public class CryptoUtil {
     private static final String AES_ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Value("${DB_ENCRYPTION_KEY}")
     private String dbEncryptionKey;
@@ -80,7 +81,7 @@ public class CryptoUtil {
             SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
 
             byte[] iv = new byte[GCM_IV_LENGTH];
-            new SecureRandom().nextBytes(iv);
+            SECURE_RANDOM.nextBytes(iv);
 
             Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
             GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
@@ -107,7 +108,7 @@ public class CryptoUtil {
     public String encryptWithCek(String plainText, SecretKey cek) {
         try {
             byte[] iv = new byte[GCM_IV_LENGTH];
-            new SecureRandom().nextBytes(iv);
+            SECURE_RANDOM.nextBytes(iv);
 
             Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
             GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);

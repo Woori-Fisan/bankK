@@ -27,6 +27,7 @@ const LoanTermsSection: React.FC<LoanTermsSectionProps> = ({
     title = "약관 동의",
     stepNumber = "3"
 }) => {
+
     return (
         <Card padding="lg" className="border-slate-100 shadow-sm">
             <div className="flex items-center gap-2 px-1 mb-8 pb-5 border-b border-gray-100">

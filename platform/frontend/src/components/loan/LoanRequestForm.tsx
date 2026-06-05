@@ -41,7 +41,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
         bankCode: '',
         accountNo: '',
     });
-    const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoanData | 'rrn' | 'submit', string>>>({});
+    const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoanData | 'rrn' | 'submit'| 'fileUpload', string>>>({});
 
     const [isUploading, setIsUploading] = useState(false);
     const [files, setFiles] = useState<{ id: number; name: string; file: File }[]>([]);
@@ -67,15 +67,45 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
         );
     };
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+    const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files;
         if (!selected) return;
         const fileArray = Array.from(selected);
         e.target.value = '';
-        setFiles((prev) => [
-            ...prev,
-            ...fileArray.map((file, i) => ({ id: Date.now() + i, name: file.name, file })),
-        ]);
+
+        const valid: { id: number; name: string; file: File }[] = [];
+        const rejected: string[] = [];
+
+        for (let i = 0; i < fileArray.length; i++) {
+            const file = fileArray[i];
+            const name = file.name.normalize('NFC');
+
+            if (file.size > MAX_FILE_SIZE) {
+                rejected.push(`${name} — 파일 크기가 10MB를 초과합니다.`);
+                continue;
+            }
+
+            const header = new Uint8Array(await file.slice(0, 5).arrayBuffer());
+            if (!PDF_MAGIC.every((b, idx) => header[idx] === b)) {
+                rejected.push(`${name} — PDF 파일이 아닙니다.`);
+                continue;
+            }
+
+            valid.push({ id: Date.now() + i, name, file });
+        }
+
+        if (rejected.length > 0) {
+            setFieldErrors((prev) => ({ ...prev, fileUpload: rejected.join('\n') }));
+        } else {
+            setFieldErrors((prev) => { const next = { ...prev }; delete next.fileUpload; return next; });
+        }
+
+        if (valid.length > 0) {
+            setFiles((prev) => [...prev, ...valid]);
+        }
     };
 
     const handleFileDelete = (id: number) => {
@@ -266,7 +296,8 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
         }
     };
 
-    const fileNames = files.map((f) => f.name.toLowerCase());
+    const fileNames = files.map((f) => f.name.normalize('NFC').toLowerCase());
+
     const coveredDocs = REQUIRED_DOCS.map((doc) => ({
         ...doc,
         covered: fileNames.some((name) => doc.keywords.some((kw) => name.includes(kw))),
@@ -327,6 +358,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
                         onFileSelect={handleFileSelect}
                         onFileDelete={handleFileDelete}
                         fileInputRef={fileInputRef}
+                        fileUploadError={fieldErrors.fileUpload}
                     />
 
                     <LoanTermsSection

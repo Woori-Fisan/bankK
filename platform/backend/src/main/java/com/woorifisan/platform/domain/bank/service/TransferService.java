@@ -8,9 +8,6 @@ import com.woorifisan.platform.domain.bank.external.client.BankExternalClient;
 import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferWithdrawRequest;
-import com.woorifisan.platform.domain.bank.external.dto.BankDepositRequest;
-import com.woorifisan.platform.global.exception.BusinessException;
-import com.woorifisan.platform.global.response.ErrorCode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import lombok.RequiredArgsConstructor;
@@ -39,8 +36,6 @@ public class TransferService {
      */
     @Transactional(readOnly = true)
     public TransferRecipientResponse getRecipient(TransferRecipientRequest request, String bankKeyId) {
-        log.info("수취인 조회 요청 중계 - 은행코드: {}, 키ID: {}", request.getDepositBankCode(), bankKeyId);
-
         // [AOP로 위임] 단말기 JWS 서명 검증 및 무결성 체크는 TerminalSignatureAspect에서 수행됨
 
         // 1. 은행 코어에 전달할 요청 DTO 생성 (Zero-Knowledge Pass-through)
@@ -67,9 +62,6 @@ public class TransferService {
      */
     @Transactional
     public TransferResponse executeTransfer(TransferRequest request, String jwsSignature, String withdrawKeyId, String depositKeyId) {
-        log.info("이체 실행 요청 수신 (통합) - 출금은행: {}, 입금은행: {}, 금액: {}", 
-                request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
-
         // 은행 측에서 통합 이체 로직을 처리하므로, 플랫폼은 출금 은행으로 단일 요청을 보냅니다.
         // E2EE 암호문은 출금 은행의 공개키로 암호화된 것을 사용합니다.
 
@@ -87,8 +79,6 @@ public class TransferService {
                 request.getWithdrawalBankCode(),
                 executeRequest
         );
-
-        log.info("통합 이체 성공 - 거래ID: {}", response.getTransactionId());
 
         // 3. 최종 응답 반환
         return TransferResponse.builder()
