@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -35,12 +36,21 @@ public class LogService {
         // 입력 날짜 검증
         validateInquiryPeriod(request.getStartDate(), request.getEndDate());
 
-        long totalCount = logMapper.countLogList(request);
-        long totalPage = (long) Math.ceil((double) totalCount / request.getSize());
-        log.info("[Service 로직] 전체 레코드 개수: {}, 총 페이지 수: {}", totalCount, totalPage);
+        long totalCount;
+        long totalPage;
+        List<LogListDTO> logs;
 
-        List<LogListDTO> logs = logMapper.findLogList(request);
-        log.info("[Service 완료] 목록 조회 결과 건수: {}", logs.size());
+        try{
+            totalCount = logMapper.countLogList(request);
+            totalPage = (long) Math.ceil((double) totalCount / request.getSize());
+            log.info("[Service 로직] 전체 레코드 개수: {}, 총 페이지 수: {}", totalCount, totalPage);
+
+            logs = logMapper.findLogList(request);
+            log.info("[Service 완료] 목록 조회 결과 건수: {}", logs.size());
+        }catch (Exception e){
+            log.error("[DB 에러] 로그 목록 조회 실패", e);
+            throw new BusinessException("로그 데이터를 가져오는 중 오류가 발생했습니다.", ErrorCode.LOG_FETCH_ERROR);
+        }
 
         return LogResponse.builder()
                 .pageNum(request.getPage())
@@ -53,7 +63,14 @@ public class LogService {
     public LogDetailDTO getLogDetail(Long id) {
         log.info("[Service 시작] 거래 로그 단건 조회 로직 수행 - ID: {}", id);
 
-        LogDetailDTO logDetail = logMapper.findById(id);
+        LogDetailDTO logDetail;
+
+        try{
+            logDetail = logMapper.findById(id);
+        } catch (Exception e) {
+            log.error("[DB 에러] 로그 단건 조회 실패 - ID: {}", id, e);
+            throw new BusinessException("로그를 조회하는 과정에서 문제가 발생하였습니다.", ErrorCode.LOG_FETCH_ERROR);
+        }
 
         if (logDetail == null) {
             log.warn("[Service 경고] 해당 ID의 로그를 찾을 수 없음 - ID: {}", id);
