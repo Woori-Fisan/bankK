@@ -12,13 +12,12 @@ import com.woorifisan.platform.global.response.ErrorCode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 계좌 조회 서비스
+ * 계좌 조회 서비스 (E2EE Zero-Knowledge Pass-through)
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AccountInquiryService {
@@ -29,30 +28,32 @@ public class AccountInquiryService {
     private final BankExternalClient bankExternalClient;
 
     /**
-     * 잔액 조회 실행
+     * 잔액 조회 실행 (중계)
      */
-    public BalanceInquiryResponse getBalance(BalanceInquiryRequest request) {
-
+    @Transactional(readOnly = true)
+    public BalanceInquiryResponse getBalance(BalanceInquiryRequest request, String bankKeyId) {
+        // 1. 은행 코어에 전달할 요청 DTO 생성 (Zero-Knowledge Pass-through)
         BankBalanceInquiryRequest bankRequest = BankBalanceInquiryRequest.of(
-                request.getEncryptedKey(),
-                request.getJwsSignature(),
-                request.getAccountNo(),
-                request.getCustomerRrnPrefix()
+                request.getReqPayload(),
+                bankKeyId
         );
 
+        // 2. 외부 클라이언트를 통해 은행 코어 API 호출 및 결과 직접 반환
         return bankExternalClient.fetchBalance(request.getBankCode(), bankRequest);
     }
 
     /**
-     * 거래내역 조회 실행 (오케스트레이션)
+     * 거래내역 조회 실행 (중계)
      */
-    public HistoryInquiryResponse getHistory(HistoryInquiryRequest request) {
-
-        // 1. 날짜 검증
+    @Transactional(readOnly = true)
+    public HistoryInquiryResponse getHistory(HistoryInquiryRequest request, String bankKeyId) {
+        // 1. 비민감 필드 검증 (날짜)
         validateInquiryPeriod(request.getStartDate(), request.getEndDate());
 
-        // 2. 은행 서버로부터 데이터 취득 (통신 로직)
-        BankHistoryInquiryRequest bankRequest = BankHistoryInquiryRequest.from(request);
+        // 2. 은행 서버로 전달할 요청 DTO 생성
+        BankHistoryInquiryRequest bankRequest = BankHistoryInquiryRequest.of(request, bankKeyId);
+        
+        // 3. 외부 클라이언트 호출 및 결과 반환
         return bankExternalClient.fetchHistory(request.getBankCode(), bankRequest);
     }
 
@@ -65,7 +66,6 @@ public class AccountInquiryService {
         try {
             startDate = LocalDate.parse(start, DATE_FORMATTER);
             endDate = LocalDate.parse(end, DATE_FORMATTER);
-
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "날짜 형식이 올바르지 않습니다. (yyyy-MM-dd)");
         }
@@ -75,6 +75,4 @@ public class AccountInquiryService {
             throw new BusinessException(ErrorCode.INQUIRY_INVALID_DATE_RANGE);
         }
     }
-
-
 }

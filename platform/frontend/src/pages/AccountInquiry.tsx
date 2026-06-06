@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ChevronLeft } from 'lucide-react';
 import BalanceSummary from '../components/account/BalanceSummary';
 import TransactionFilter from '../components/account/TransactionFilter';
 import type { FilterState } from '../components/account/TransactionFilter';
@@ -7,6 +7,8 @@ import TransactionTable from '../components/account/TransactionTable';
 import type { Transaction } from '../components/account/TransactionTable';
 import AccountInputStep from '../components/account/AccountInputStep';
 import { fetchBalance, fetchTransactionHistory } from '../api/inquiry';
+import PageHeader from '../components/common/PageHeader';
+import { Button } from '../components/common/Button';
 
 const AccountInquiry: React.FC = () => {
     // 1. 단계 관리 상태 (1: 정보 입력, 2: 조회 결과)
@@ -28,6 +30,7 @@ const AccountInquiry: React.FC = () => {
         startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0]
     });
+
     // 공통 거래 내역 호출 함수 (초기 로딩, 검색, 페이지 이동 시 재사용)
     const loadTransactions = async (info: any, filters: FilterState, page: number) => {
         try {
@@ -39,7 +42,7 @@ const AccountInquiry: React.FC = () => {
                 size: pageSize // 일관된 사이즈 사용
             });
 
-            if (historyRes.success && historyRes.data.history) {
+            if (historyRes.success && historyRes.data?.history) {
                 const mappedTransactions: Transaction[] = historyRes.data.history.map((h: any) => ({
                     id: h.txId,
                     date: h.txDate,
@@ -52,9 +55,10 @@ const AccountInquiry: React.FC = () => {
                 }));
                 setTransactions(mappedTransactions);
 
-                // 백엔드의 HistoryInquiryResponse.builder()에 정의된 데이터 사용
                 setTotalItems(historyRes.data.totalCount || 0);
                 setTotalPages(historyRes.data.totalPages || 0);
+            } else if (!historyRes.success) {
+                throw new Error(historyRes.error?.message || '거래 내역을 불러오지 못했습니다.');
             }
         } catch (err) {
             console.error('Transaction Load Error:', err);
@@ -80,9 +84,10 @@ const AccountInquiry: React.FC = () => {
         try {
             // 잔액 조회
             const balanceRes = await fetchBalance(data);
-            if (balanceRes.success) {
-                setBalanceData(balanceRes.data);
+            if (!balanceRes.success) {
+                throw new Error(balanceRes.error?.message || '잔액 정보를 불러오지 못했습니다.');
             }
+            setBalanceData(balanceRes.data);
             
             // 거래 내역 조회 (초기 로딩 - 초기화된 필터값 사용)
             await loadTransactions(data, defaultFilters, 1);
@@ -91,15 +96,7 @@ const AccountInquiry: React.FC = () => {
             setStep(2);
         } catch (err: any) {
             console.error('Account Inquiry Error:', err);
-            
-            // 백엔드 에러 응답 구조: { success: false, error: { code, message } } 대응
-            const errorMessage = 
-                err.response?.data?.error?.message || 
-                err.response?.data?.message || 
-                err.message || 
-                '계좌 정보를 불러오는 중 오류가 발생했습니다.';
-                
-            setApiError(errorMessage); // 화면 상단 배너용 에러 상태 업데이트
+            setApiError(err.message || '계좌 정보를 불러오는 중 오류가 발생했습니다.');
         } finally {
             setIsLoading(false);
         }
@@ -115,11 +112,7 @@ const AccountInquiry: React.FC = () => {
             await loadTransactions(accountInfo, filters, 1);
         } catch (err: any) {
             console.error('Search Error:', err);
-            const errorMessage = 
-                err.response?.data?.error?.message || 
-                err.response?.data?.message || 
-                '거래 내역 검색 중 오류가 발생했습니다.';
-            setApiError(errorMessage);
+            setApiError(err.message || '거래 내역 검색 중 오류가 발생했습니다.');
         }
         setIsLoading(false);
     };
@@ -134,11 +127,7 @@ const AccountInquiry: React.FC = () => {
             await loadTransactions(accountInfo, currentFilters, page);
         } catch (err: any) {
             console.error('Page Change Error:', err);
-            const errorMessage = 
-                err.response?.data?.error?.message || 
-                err.response?.data?.message || 
-                '페이지 이동 중 오류가 발생했습니다.';
-            setApiError(errorMessage);
+            setApiError(err.message || '페이지 이동 중 오류가 발생했습니다.');
         }
         setIsLoading(false);
     };
@@ -159,21 +148,21 @@ const AccountInquiry: React.FC = () => {
 
     // Step 2: 결과 화면
     return (
-        <div className={`p-8 max-w-7xl mx-auto min-h-full flex flex-col bg-gray-50 transition-opacity ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-            <header className="mb-8 flex justify-between items-end">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">거래 내역 및 잔액 조회</h1>
-                    <p className="text-slate-500 text-sm mt-1">
-                        [{accountInfo?.accountNo}] 계좌의 거래 내역입니다.
-                    </p>
-                </div>
-                <button 
-                    onClick={handleReset}
-                    className="text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
-                >
-                    다른 계좌 조회하기
-                </button>
-            </header>
+        <div className="flex-1 overflow-y-auto bg-gray-50/50">
+            <div className={`px-10 py-12 max-w-7xl mx-auto min-h-full flex flex-col transition-opacity ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                <PageHeader
+                    title="거래 내역 및 잔액 조회"
+                action={
+                    <Button 
+                        variant="outline"
+                        onClick={handleReset}
+                        className="gap-2"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                        다른 계좌 조회
+                    </Button>
+                }
+            />
 
             {/* Step 2 에러 배너 추가 */}
             {apiError && (
@@ -196,7 +185,8 @@ const AccountInquiry: React.FC = () => {
                 />
             </section>
         </div>
-    );
+    </div>
+);
 };
 
 export default AccountInquiry;

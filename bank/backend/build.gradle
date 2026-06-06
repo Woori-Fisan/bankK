@@ -98,7 +98,9 @@ dependencies {
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-mysql'
 
-	// Tests
+	implementation 'com.nimbusds:nimbus-jose-jwt:9.40'
+
+	// Testing
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'         // 스프링 부트 통합 테스트
 	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.5' // MyBatis 단위 테스트
 	testImplementation 'org.springframework.batch:spring-batch-test'               // 배치 작업 테스트
@@ -124,9 +126,19 @@ tasks.named('test') {
 	finalizedBy jacocoTestReport
 }
 
+bootRun {
+	jvmArgs '-Duser.timezone=Asia/Seoul'
+}
+
 jacocoTestReport {
 	reports {
 		xml.required = true
 		html.required = true
 	}
+}
+
+tasks.named('bootRun') {
+	// 시스템 프로퍼티로 설정
+	systemProperty "file.encoding", "UTF-8"
+	systemProperty "console.encoding", "UTF-8"
 }

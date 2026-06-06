@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Receipt, Info, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import type { LoanProduct, LoanData } from '../../pages/LoanApplication';
-import { useContractDocuments, extractApiError } from '../../hooks/useLoan';
-import type { ContractDocument } from '../../api/loanApi';
+import { useContractDocuments, extractApiError, useExecuteLoan } from '../../hooks/useLoan';
+import type { ContractDocument, ExecutionResponse } from '../../api/loanApi';
 import { formatAmount } from '../../utils/formatter';
+
+// Sub-components
+import LoanTermsSection from './sections/LoanTermsSection';
+import LoanSideSummary from './sections/LoanSideSummary';
+import LoanTermsModal from './modals/LoanTermsModal';
+import LoanConfirmModal from './modals/LoanConfirmModal';
+import PinpadModal from '../pinpad/PinpadModal';
+import { decryptBankResponse, prepareSecureRequest } from '../../utils/bankCrypto';
 
 interface AgreedContractDoc extends ContractDocument {
     agreed: boolean;
@@ -13,7 +21,7 @@ interface LoanContractFormProps {
     product: LoanProduct;
     loanData: LoanData;
     evaluationId: string;
-    onNext: () => void;
+    onNext: (result: ExecutionResponse) => void;
     onBack: () => void;
 }
 
@@ -30,11 +38,17 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
     const [activeDoc, setActiveDoc] = useState<AgreedContractDoc | null>(null);
     const [viewedDocs, setViewedDocs] = useState<Set<string>>(new Set());
 
+    const [isPinpadOpen, setIsPinpadOpen] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [isExecutionConfirmOpen, setIsExecutionConfirmOpen] = useState(false);
+    const executeMutation = useExecuteLoan();
+
     useEffect(() => {
-        if (data?.documents) {
+        // 이미 데이터가 초기화된 경우(agreedDocs.length > 0) 재설정 방지
+        if (data?.documents && agreedDocs.length === 0) {
             setAgreedDocs(data.documents.map((d) => ({ ...d, agreed: false })));
         }
-    }, [data]);
+    }, [data, agreedDocs.length]);
 
     const handleTermToggle = (documentType: string) => {
         setAgreedDocs((prev) =>
@@ -43,247 +57,178 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
     };
 
     const openModal = (doc: AgreedContractDoc) => {
-        setViewedDocs(prev => new Set([...prev, doc.documentType]));
         setActiveDoc(doc);
         setIsModalOpen(true);
+        // 모달을 열 때가 아니라, 실제 '동의하고 확인'을 눌렀을 때 viewedDocs에 추가하도록 변경
     };
 
     const handleModalAgree = () => {
-        if (activeDoc) {
-            setAgreedDocs(prev =>
-                prev.map(d => d.documentType === activeDoc.documentType ? { ...d, agreed: true } : d)
-            );
+        if (!activeDoc) {
+            setIsModalOpen(false);
+            return;
         }
+
+        const targetType = activeDoc.documentType;
+
+        // 1. 읽음 목록에 즉시 추가 (함수형 업데이트로 최신 상태 보장)
+        setViewedDocs(prev => {
+            const next = new Set(prev);
+            next.add(targetType);
+            return next;
+        });
+
+        // 2. 해당 약관을 즉시 '동의' 상태로 변경
+        setAgreedDocs(prev =>
+            prev.map(d => d.documentType === targetType ? { ...d, agreed: true } : d)
+        );
+
         setIsModalOpen(false);
     };
 
+    const handlePinComplete = async (pin: string) => {
+        setIsPinpadOpen(false);
+        setSubmitError(null);
+
+        // 1. 보안 요청 준비 (암호화 + 서명 + 키ID 통합 처리)
+        const secureRequest = await prepareSecureRequest(
+            {
+                accountPassword: pin,
+                depositAccountNo: loanData.accountNo!,
+            },
+            {
+                loanNo: evaluationId,
+                productId: product.id,
+                executeAmount: product.executeAmount ?? product.limit,
+                repaymentPeriod: product.period ?? 12,
+                repaymentType: '원리금균등',
+            },
+            loanData.bankCode!,
+        );
+
+        if (!secureRequest) {
+            setSubmitError('보안 요청 준비 중 오류가 발생했습니다.');
+            return;
+        }
+
+        const { payload, headers, aesKey } = secureRequest;
+
+        try {
+            const result = await executeMutation.mutateAsync({
+                payload,
+                headers: headers as Record<string, string>,
+            });
+
+            // 3. 응답 복호화 (메모리에 보관 중이던 aesKey 사용)
+            if (result.resPayload) {
+                const decrypted = await decryptBankResponse(result.resPayload, aesKey);
+                // 복호화된 데이터(예: 고객 성명 등)를 결과 객체에 병합
+                Object.assign(result, decrypted);
+            }
+
+            onNext(result);
+        } catch (err) {
+            setSubmitError(extractApiError(err));
+        }
+    };
+
     const mandatoryDocs = agreedDocs.filter((d) => d.isMandatory);
-    const optionalDocs = agreedDocs.filter((d) => !d.isMandatory);
     const isNextDisabled = mandatoryDocs.some((d) => !d.agreed);
-    const agreedCount = agreedDocs.filter((d) => d.agreed).length;
+    const isExecuting = executeMutation.isPending;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
+            {submitError && (
+                <div className="mb-6 flex items-center gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100 max-w-4xl mx-auto animate-in fade-in slide-in-from-top-2">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    <span className="text-sm font-bold">{submitError}</span>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-8 space-y-6">
-                    {isLoading && (
-                        <div className="flex items-center justify-center py-12 bg-white border border-gray-200 rounded-2xl">
-                            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-                            <span className="ml-3 text-sm text-gray-500">계약 서류를 불러오는 중...</span>
-                        </div>
-                    )}
-
                     {error && (
                         <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
                             <p className="text-sm text-red-600">{extractApiError(error)}</p>
                         </div>
                     )}
 
-                    {!isLoading && !error && (
-                        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                            <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <FileText className="w-5 h-5 text-gray-400" />
-                                    <h3 className="text-sm font-bold text-gray-900">계약 서류 목록</h3>
-                                </div>
-                                <span className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full">
-                                    {agreedCount}/{agreedDocs.length} 확인
-                                </span>
-                            </div>
-                            <div className="p-5 space-y-3">
-                                {mandatoryDocs.length > 0 && (
-                                    <>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                                            필수 동의
-                                        </p>
-                                        {mandatoryDocs.map((doc) => (
-                                            <div
-                                                key={doc.documentType}
-                                                className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 hover:border-blue-200 transition-colors"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    id={`contract-${doc.documentType}`}
-                                                    checked={doc.agreed}
-                                                    onChange={() => handleTermToggle(doc.documentType)}
-                                                    disabled={!viewedDocs.has(doc.documentType)}
-                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
-                                                />
-                                                <label
-                                                    htmlFor={`contract-${doc.documentType}`}
-                                                    className={`flex-1 text-xs font-medium text-gray-900 ${viewedDocs.has(doc.documentType) ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
-                                                >
-                                                    {doc.documentName}
-                                                </label>
-                                                <span className="px-1.5 py-0.5 bg-red-50 text-red-600 text-[9px] font-bold rounded">
-                                                    필수
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openModal(doc)}
-                                                    className="px-3 py-1 bg-white border border-gray-200 text-blue-600 text-[10px] font-bold rounded-lg hover:bg-blue-50 transition-colors"
-                                                >
-                                                    내용 보기
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-
-                                {optionalDocs.length > 0 && (
-                                    <>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-6 mb-2">
-                                            선택 동의
-                                        </p>
-                                        {optionalDocs.map((doc) => (
-                                            <div
-                                                key={doc.documentType}
-                                                className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 hover:border-blue-200 transition-colors"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    id={`contract-${doc.documentType}`}
-                                                    checked={doc.agreed}
-                                                    onChange={() => handleTermToggle(doc.documentType)}
-                                                    disabled={!viewedDocs.has(doc.documentType)}
-                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
-                                                />
-                                                <label
-                                                    htmlFor={`contract-${doc.documentType}`}
-                                                    className={`flex-1 text-xs font-medium text-gray-900 ${viewedDocs.has(doc.documentType) ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
-                                                >
-                                                    {doc.documentName}
-                                                </label>
-                                                <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-bold rounded">
-                                                    선택
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openModal(doc)}
-                                                    className="px-3 py-1 bg-white border border-gray-200 text-blue-600 text-[10px] font-bold rounded-lg hover:bg-blue-50 transition-colors"
-                                                >
-                                                    내용 보기
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 flex gap-3">
-                        <Info className="w-5 h-5 text-emerald-500 shrink-0" />
-                        <p className="text-[11px] text-emerald-700 leading-relaxed">
-                            <strong>내용 보기</strong>를 클릭해 약관을 열람한 후 동의 체크가 활성화됩니다.
-                            필수 항목을 모두 확인하고 동의해야 다음 단계로 진행할 수 있습니다.
-                        </p>
-                    </div>
+                    <LoanTermsSection
+                        agreedDocs={agreedDocs as any}
+                        onTermToggle={handleTermToggle}
+                        onOpenModal={openModal as any}
+                        viewedDocs={viewedDocs}
+                        isLoading={isLoading}
+                        title="계약 서류 확인"
+                        stepNumber="1"
+                    />
                 </div>
 
                 <div className="lg:col-span-4">
-                    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm sticky top-6">
-                        <div className="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100">
-                            <Receipt className="w-5 h-5 text-gray-400" />
-                            <h3 className="text-sm font-bold text-gray-900">선택 상품 요약</h3>
-                        </div>
-                        <div className="space-y-4">
-                            <div className="space-y-1">
-                                <p className="text-[10px] text-gray-400 font-bold uppercase">상품명</p>
-                                <p className="text-xs font-bold text-gray-900">{product.name}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase">승인 한도</p>
-                                    <p className="text-xs font-bold text-gray-900">
-                                        ₩ {formatAmount(product.limit)}
-                                    </p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase">적용 금리</p>
-                                    <p className="text-xs font-bold text-gray-900">{product.rate}% (고정)</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase">대출 기간</p>
-                                    <p className="text-xs font-bold text-gray-900">{product.period}개월</p>
-                                </div>
-                            </div>
-                            <div className="pt-4 border-t border-gray-100">
-                                <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">입금 계좌</p>
-                                <p className="text-xs font-bold text-gray-900">
-                                    {loanData.bank} {loanData.accountNo}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <LoanSideSummary
+                        title="선택 상품 요약"
+                        items={[
+                            { label: '상품명', value: product.name },
+                            { label: '승인 한도', value: <span className="text-slate-500 line-through decoration-slate-300">₩ {formatAmount(product.limit)}</span> },
+                            { 
+                                label: '대출 신청 금액', 
+                                value: <span className="text-xl text-emerald-600 font-black">₩ {formatAmount(product.executeAmount || product.limit)}</span> 
+                            },
+                            { label: '적용 금리', value: <>{product.rate}% <span className="text-xs font-bold text-slate-400 ml-1">(고정금리)</span></> },
+                            { label: '대출 기간', value: `${product.period}개월` }
+                        ]}
+                        buttonText="대출 진행"
+                        onButtonClick={() => setIsExecutionConfirmOpen(true)}
+                        onBackClick={onBack}
+                        isButtonDisabled={isNextDisabled || isLoading}
+                        isPending={isExecuting}
+                    />
                 </div>
             </div>
 
-            <div className="flex justify-between pt-6 border-t border-gray-200">
-                <button
-                    type="button"
-                    onClick={onBack}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-50"
-                >
-                    <ChevronLeft className="w-4 h-4" />
-                    이전으로
-                </button>
-                <button
-                    type="button"
-                    onClick={onNext}
-                    disabled={isNextDisabled || isLoading}
-                    className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg ${
-                        isNextDisabled || isLoading
-                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
-                            : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200'
-                    }`}
-                >
-                    대출 실행하기
-                    <ChevronRight className="w-4 h-4" />
-                </button>
-            </div>
-
-            {isModalOpen && activeDoc && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden">
-                        <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-slate-400" />
-                                <h3 className="text-sm font-bold">{activeDoc.documentName}</h3>
+            <LoanConfirmModal
+                isOpen={isExecutionConfirmOpen}
+                onClose={() => setIsExecutionConfirmOpen(false)}
+                onConfirm={() => {
+                    setIsExecutionConfirmOpen(false);
+                    setSubmitError(null);
+                    setIsPinpadOpen(true);
+                }}
+                title="최종 대출 실행 확인"
+                description="계약 서류 동의를 마치고 대출을 실행하시겠습니까?"
+                items={[
+                    { label: '고객 성명', value: loanData.userName },
+                    { label: '선택 상품', value: product.name },
+                    { 
+                        label: '대출 실행 금액', 
+                        value: <span className="text-2xl text-emerald-600 font-black">₩ {formatAmount(product.executeAmount || product.limit)}</span> 
+                    },
+                    { label: '적용 금리', value: `${product.rate}% (고정)` },
+                    { 
+                        label: '대출금 입금 계좌', 
+                        value: (
+                            <div className="text-right">
+                                <p className="text-sm font-bold text-emerald-600">{loanData.bank}</p>
+                                <p className="text-lg font-black text-slate-900">{loanData.accountNo}</p>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setIsModalOpen(false)}
-                                className="text-slate-400 hover:text-white transition-colors"
-                            >
-                                <X className="w-6 h-6" />
-                            </button>
-                        </div>
-                        <iframe
-                            srcDoc={activeDoc.documentContent ?? '<p style="padding:16px;font-family:sans-serif;color:#555">내용을 불러올 수 없습니다.</p>'}
-                            className="w-full h-[400px] border-0 bg-white"
-                            sandbox="allow-scripts"
-                            title={activeDoc.documentName}
-                        />
-                        <div className="p-5 border-t border-gray-100 flex justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setIsModalOpen(false)}
-                                className="px-5 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-xs"
-                            >
-                                닫기
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleModalAgree}
-                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800"
-                            >
-                                동의하고 닫기
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                        )
+                    }
+                ]}
+                bottomInfo="'확인 완료' 버튼을 누르면 대출이 즉시 실행되며, 지정하신 계좌로 대출금이 입금됩니다. 실행 후에는 취소가 불가하오니 신중히 확인해 주세요."
+            />
+
+            <LoanTermsModal
+                isOpen={isModalOpen}
+                activeDoc={activeDoc}
+                onClose={() => setIsModalOpen(false)}
+                onAgree={handleModalAgree}
+            />
+
+            <PinpadModal
+                isOpen={isPinpadOpen}
+                onClose={() => setIsPinpadOpen(false)}
+                onComplete={handlePinComplete}
+                title="계좌 비밀번호 입력"
+            />
         </div>
     );
 };

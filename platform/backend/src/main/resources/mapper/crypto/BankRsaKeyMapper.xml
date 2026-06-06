@@ -15,4 +15,10 @@
         WHERE bank_code = #{bankCode}
     </update>
 
+    <select id="findKeyInfoByBankCode" parameterType="string" resultType="com.woorifisan.platform.crypto.dto.response.BankRsaKeyResponse">
+        SELECT key_id as keyId, 
+               public_key as publicKey
+        FROM bank
+        WHERE bank_code = #{bankCode}
+    </select>
 </mapper>

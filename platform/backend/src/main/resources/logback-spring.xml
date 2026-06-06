@@ -1,93 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-    <!-- ── 프로퍼티 ──────────────────────────────────── -->
-    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="./logs"/>
-    <property name="LOG_FILE" value="${LOG_PATH}/application.log"/>
+    <!-- 로그 저장 경로 -->
+    <springProperty scope="context"
+                    name="LOG_PATH"
+                    source="logging.file.path"
+                    defaultValue="${LOGGING_PATH:./logs}"/>
 
-    <!-- ── 콘솔 (개발용) ─────────────────────────────── -->
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <property name="LOG_FILE"
+              value="${LOG_PATH}/application.log"/>
+
+    <!-- 콘솔 로그 -->
+    <appender name="CONSOLE"
+              class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [traceId=%X{traceId}, staffId=%X{staffId}] - %msg%n</pattern>
+            <pattern>
+                %d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} [%thread] %-5level %logger{36}
+                [traceId=%X{traceId}, staffId=%X{staffId}] - %msg%n
+            </pattern>
         </encoder>
     </appender>
 
-    <!-- ── JSON 파일 ──────────── -->
-    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- JSON 파일 로그 -->
+    <appender name="JSON_FILE"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
         <file>${LOG_FILE}</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!-- 날짜별 롤링, 30일 보관 -->
-            <fileNamePattern>${LOG_PATH}/application.%d{yyyy-MM-dd}.log</fileNamePattern>
-            <maxHistory>30</maxHistory>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+        <fileNamePattern>
+                ${LOG_PATH}/application.%d{yyyy-MM-dd}.%i.log
+            </fileNamePattern>
+            <maxHistory>14</maxHistory>
+            <maxFileSize>700MB</maxFileSize>    <!-- 파일 하나 최대 크기 -->
+            <totalSizeCap>10GB</totalSizeCap>  <!-- 전체 로그 디스크 한도 -->
         </rollingPolicy>
-        <!-- JSON 형식으로 출력 -->
+
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <timeZone>Asia/Seoul</timeZone>
             <includeContext>false</includeContext>
+
             <fieldNames>
                 <version>[ignore]</version>
                 <levelValue>[ignore]</levelValue>
+                <logger>[ignore]</logger>
+                <thread>[ignore]</thread>
             </fieldNames>
-            <!-- 서비스 식별용 필드 -->
-            <customFields>{"service":"agency-platform"}</customFields>
-            
-            <!-- MDC 설정을 통해 구조화된 데이터 지원 -->
+
             <includeMdc>true</includeMdc>
             <excludeMdcKeyName>password</excludeMdcKeyName>
             <excludeMdcKeyName>token</excludeMdcKeyName>
         </encoder>
     </appender>
 
-    <!-- ── 비동기 래퍼 (메인 스레드 블로킹 방지) ─────── -->
-    <!-- DOMAIN_MONITOR.md: 모든 로깅은 완전 비동기로 처리 -->
-    <!-- 현재는 사용하지 않지만 남겨둠 -->
-    <appender name="ASYNC_JSON_FILE" class="ch.qos.logback.classic.AsyncAppender">
+    <!-- 비동기 파일 로그 -->
+    <appender name="ASYNC_FILE_LOG"
+              class="ch.qos.logback.classic.AsyncAppender">
+
         <appender-ref ref="JSON_FILE"/>
-        <!-- 큐가 80% 차면 TRACE/DEBUG/INFO 드롭, ERROR는 유지 -->
-        <discardingThreshold>20</discardingThreshold>
+
         <queueSize>512</queueSize>
-        <!-- 종료 시 큐 비울 때까지 최대 대기 시간 -->
+        <discardingThreshold>20</discardingThreshold>
         <maxFlushTime>1000</maxFlushTime>
     </appender>
 
-    <!-- ── DB 로그 Appender (system_logs 테이블) ─────── -->
-    <!-- Aspect 로그(ControllerLoggingAspect · BankExternalApiAspect)를 DB에 삽입 -->
-    <!-- Spring 미준비 시 자동 스킵, 준비 후 Bean 캐싱하여 사용 -->
-    <appender name="DB_LOG"
-              class="com.woorifisan.platform.global.logging.appender.SystemLogAppender"/>
-
-    <!-- 비동기 래퍼: DB INSERT가 요청 스레드를 블로킹하지 않도록 -->
-    <appender name="ASYNC_DB_LOG" class="ch.qos.logback.classic.AsyncAppender">
-        <appender-ref ref="DB_LOG"/>
-        <queueSize>1024</queueSize>
-        <!-- 0 = 레벨과 무관하게 로그 드롭 금지 (로그 유실 방지) -->
-        <discardingThreshold>0</discardingThreshold>
-        <maxFlushTime>2000</maxFlushTime>
-        <neverBlock>true</neverBlock>   <!-- DB 장애 시 로그 드롭, 서비스 보호 -->
-    </appender>
-
-    <!-- ── 프로파일별 설정 ────────────────────────────── -->
-    <!-- 로컬 개발: 콘솔 + DB -->
+    <!-- local -->
     <springProfile name="local">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="ASYNC_DB_LOG"/>
+            <appender-ref ref="ASYNC_FILE_LOG"/>
         </root>
-        <logger name="com.woorifisan.platform" level="DEBUG"/>
+
+        <logger name="com.woorifisan.platform"
+                level="DEBUG"/>
     </springProfile>
 
-    <!-- 개발 서버: 콘솔 + DB -->
+    <!-- dev -->
     <springProfile name="dev">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="ASYNC_DB_LOG"/>
+            <appender-ref ref="ASYNC_FILE_LOG"/>
         </root>
-        <logger name="com.woorifisan.platform" level="DEBUG"/>
+
+        <logger name="com.woorifisan.platform"
+                level="DEBUG"/>
     </springProfile>
 
-    <!-- 운영: DB 만 -->
+    <!-- prod -->
     <springProfile name="prod">
         <root level="INFO">
-            <appender-ref ref="ASYNC_DB_LOG"/>
+            <appender-ref ref="ASYNC_FILE_LOG"/>
         </root>
     </springProfile>
 

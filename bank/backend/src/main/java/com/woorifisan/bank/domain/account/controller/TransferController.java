@@ -1,20 +1,18 @@
 package com.woorifisan.bank.domain.account.controller;
 
-import com.woorifisan.bank.domain.account.dto.request.DepositRequest;
+import com.woorifisan.bank.domain.account.dto.request.InternalDepositRequest;
 import com.woorifisan.bank.domain.account.dto.request.RecipientRequest;
 import com.woorifisan.bank.domain.account.dto.request.TransferRequest;
 import com.woorifisan.bank.domain.account.dto.response.RecipientResponse;
 import com.woorifisan.bank.domain.account.dto.response.TransferResponse;
+import com.woorifisan.bank.domain.account.dto.response.TransferStatusResponse;
 import com.woorifisan.bank.domain.account.service.TransferService;
 import com.woorifisan.bank.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * BaaS 이체 컨트롤러
@@ -28,40 +26,30 @@ public class TransferController {
     private final TransferService transferService;
 
     /**
-     * 이체 실행
-     * @param request 이체 실행 요청 정보
+     * 통합 이체 실행 (BaaS용)
+     * @param request 이체 요청 정보
      * @return 이체 결과
      */
-    @Operation(summary = "이체 실행", description = "타 은행 또는 당행 계좌로 이체를 실행합니다.")
-    @PostMapping
+    @Operation(summary = "통합 이체 실행 (BaaS용)", description = "출금부터 입금(당행/타행)까지 한 번에 처리하는 통합 이체 API입니다.")
+    @PostMapping("/execute")
     public ApiResponse<TransferResponse> executeTransfer(@RequestBody @Valid TransferRequest request) {
         TransferResponse response = transferService.executeTransfer(request);
         return ApiResponse.success(response);
     }
 
     /**
-     * 출금 이체 실행 (타행 이체용)
-     * @param request 출금 이체 요청 정보
-     * @return 출금 결과
+     * 내부 입금 실행 (은행 간 통신용)
+     * @param request 내부 입금 요청 정보
+     * @return 입금 결과
      */
-    @Operation(summary = "출금 이체 실행 (타행 이체용)", description = "타행 이체를 위해 당행 계좌에서 금액을 출금합니다.")
-    @PostMapping("/withdraw")
-    public ApiResponse<TransferResponse> withdrawTransfer(@RequestBody @Valid TransferRequest request) {
-        TransferResponse response = transferService.withdrawTransfer(request);
+    @Operation(summary = "내부 입금 실행 (은행 간 통신용)", description = "타행에서 보낸 입금 요청을 처리합니다. 암호화 없이 직접 데이터를 수신합니다.")
+    @PostMapping("/internal/deposit")
+    public ApiResponse<TransferResponse> internalDeposit(@RequestBody @Valid InternalDepositRequest request) {
+        TransferResponse response = transferService.internalDeposit(request);
         return ApiResponse.success(response);
     }
 
-    /**
-     * 입금 이체 실행 (타행 이체용)
-     * @param request 입금 이체 요청 정보
-     * @return 입금 결과
-     */
-    @Operation(summary = "입금 이체 실행 (타행 이체용)", description = "타행에서 넘어온 금액을 당행 계좌에 입금합니다.")
-    @PostMapping("/deposit")
-    public ApiResponse<TransferResponse> depositTransfer(@RequestBody @Valid DepositRequest request) {
-        TransferResponse response = transferService.depositTransfer(request);
-        return ApiResponse.success(response);
-    }
+
 
     /**
      * 수취인 확인
@@ -72,6 +60,18 @@ public class TransferController {
     @PostMapping("/recipient")
     public ApiResponse<RecipientResponse> verifyRecipient(@RequestBody @Valid RecipientRequest request) {
         RecipientResponse response = transferService.verifyRecipient(request);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 타행 거래 상태 조회 (이중 지급 방지용)
+     * @param txId 조회할 거래 트랜잭션 ID
+     * @return 거래 상태 정보
+     */
+    @Operation(summary = "타행 거래 상태 조회 (이중 지급 방지용)", description = "출금 은행에서 생성된 트랜잭션 ID를 기반으로 해당 거래의 입금 처리 상태를 조회합니다.")
+    @GetMapping("/status/{txId}")
+    public ApiResponse<TransferStatusResponse> getTransferStatus(@PathVariable("txId") String txId) {
+        TransferStatusResponse response = transferService.getTransferStatus(txId);
         return ApiResponse.success(response);
     }
 }

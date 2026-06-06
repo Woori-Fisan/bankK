@@ -1,14 +1,13 @@
 package com.woorifisan.platform.domain.bank.external.client;
 
+import com.woorifisan.platform.crypto.dto.response.BankRsaKeyResponse;
 import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
+import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryRequest;
-import com.woorifisan.platform.domain.bank.external.dto.BankDepositRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
-import com.woorifisan.platform.domain.bank.external.dto.BankRecipientResponse;
-import com.woorifisan.platform.domain.bank.external.dto.BankTransferRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferWithdrawRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankWithdrawalRequest;
@@ -39,52 +38,46 @@ public class BankExternalClient {
     private final BankNetworkConfig bankNetworkConfig;
 
     /**
+     * 특정 은행의 RSA 공개키를 조회합니다.
+     */
+    public BankRsaKeyResponse fetchPublicKey(String bankCode) {
+        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
+        if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+
+        String url = bankProperty.getUrl("public-key");
+        log.info("외부 은행 API 호출 [RSA공개키조회] - URL: {}, 은행코드: {}", url, bankCode);
+
+        return getRequest(url, new ParameterizedTypeReference<ApiResponse<BankRsaKeyResponse>>() {}, bankCode);
+    }
+
+    /**
      * 특정 은행의 수취인 조회 API를 호출합니다.
      */
-    public BankRecipientResponse fetchRecipient(String bankCode, BankRecipientRequest request) {
+    public TransferRecipientResponse fetchRecipient(String bankCode, BankRecipientRequest request) {
         BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
         if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
 
         String url = bankProperty.getUrl("recipient");
 
-        return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankRecipientResponse>>() {}, bankCode);
+        return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<TransferRecipientResponse>>() {}, bankCode);
     }
 
+
+
     /**
-     * 특정 은행의 이체 API를 호출합니다. (당행 이체용)
+     * 특정 은행의 통합 이체 API를 호출합니다.
      */
-    public BankTransferResponse executeTransfer(String bankCode, BankTransferRequest request) {
+    public BankTransferResponse fetchTransferExecute(String bankCode, BankTransferWithdrawRequest request) {
         BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
         if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
 
-        String url = bankProperty.getUrl("transfer");
+        String url = bankProperty.getUrl("execute");
+        log.info("외부 은행 API 호출 [통합이체] - URL: {}, 은행코드: {}", url, bankCode);
 
         return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {}, bankCode);
     }
 
-    /**
-     * 특정 은행의 타행 이체용 출금 API를 호출합니다.
-     */
-    public BankTransferResponse fetchTransferWithdraw(String bankCode, BankTransferWithdrawRequest request) {
-        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
-        if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
 
-        String url = bankProperty.getUrl("withdraw");
-
-        return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {}, bankCode);
-    }
-
-    /**
-     * 특정 은행의 입금 API를 호출합니다.
-     */
-    public BankTransferResponse fetchDeposit(String bankCode, BankDepositRequest request) {
-        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
-        if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
-
-        String url = bankProperty.getUrl("deposit");
-
-        return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {}, bankCode);
-    }
 
     /**
      * 특정 은행의 잔액 조회 API를 호출합니다.
@@ -109,7 +102,7 @@ public class BankExternalClient {
         BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
         if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
 
-        String url = bankProperty.getUrl("withdraw");
+        String url = bankProperty.getUrl("withdrawal");
 
         return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<TransferResponse>>() {}, bankCode);
     }
@@ -124,6 +117,39 @@ public class BankExternalClient {
         String url = bankProperty.getUrl("history");
 
         return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<HistoryInquiryResponse>>() {}, bankCode);
+    }
+    
+    /**
+     * 공통 GET 요청 처리 메서드
+     */
+    private <T> T getRequest(String url, ParameterizedTypeReference<ApiResponse<T>> responseType, String bankCode) {
+        try {
+            ApiResponse<T> response = webClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, clientResponse ->
+                            clientResponse.bodyToMono(responseType)
+                                    .flatMap(errorBody -> {
+                                        String bankErrorCode = (errorBody.getError() != null) ? errorBody.getError().getCode() : "UNKNOWN";
+                                        return Mono.<Throwable>error(new BusinessException(mapToInternalErrorCode(bankErrorCode)));
+                                    })
+                                    .switchIfEmpty(Mono.<Throwable>error(new BusinessException(ErrorCode.BANK_API_ERROR)))
+                    )
+                    .bodyToMono(responseType)
+                    .block();
+
+            if (response == null || response.getData() == null) {
+                log.error("외부 은행 API 응답 바디 또는 데이터가 null입니다. 은행코드: {}", bankCode);
+                throw new BusinessException(ErrorCode.BANK_API_ERROR);
+            }
+
+            return response.getData();
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("외부 은행 API 통신 중 오류 발생", e);
+            throw new BusinessException(ErrorCode.BANK_API_ERROR);
+        }
     }
 
     /**

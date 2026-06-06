@@ -1,22 +1,15 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 import {
   fetchReviewDocuments,
   submitLoanEvaluation,
   fetchContractDocuments,
   executeLoan,
   fetchBankList,
-  type EvaluationRequest,
-  type ExecutionRequest,
 } from '../api/loanApi';
-import type { ApiResponse } from '../types/common';
+import { extractApiErrorMessage } from '../utils/apiError';
 
 export const extractApiError = (error: unknown): string => {
-  if (error instanceof AxiosError && error.response?.data) {
-    const body = error.response.data as ApiResponse;
-    if (body.error?.message) return body.error.message;
-  }
-  return '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+  return extractApiErrorMessage(error);
 };
 
 export const useReviewDocuments = () =>
@@ -27,8 +20,15 @@ export const useReviewDocuments = () =>
 
 export const useSubmitLoanEvaluation = () =>
   useMutation({
-    mutationFn: ({ payload, files }: { payload: EvaluationRequest; files: File[] }) =>
-      submitLoanEvaluation(payload, files),
+    mutationFn: ({
+      payload,
+      files,
+      headers,
+    }: {
+      payload: any;
+      files: File[];
+      headers?: Record<string, string>;
+    }) => submitLoanEvaluation(payload, files, headers),
   });
 
 export const useContractDocuments = (
@@ -43,7 +43,8 @@ export const useContractDocuments = (
 
 export const useExecuteLoan = () =>
   useMutation({
-    mutationFn: (payload: ExecutionRequest) => executeLoan(payload),
+    mutationFn: ({ payload, headers }: { payload: any; headers?: Record<string, string> }) =>
+      executeLoan(payload, headers),
   });
 
 export const useBankList = () =>

@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.FrameOptionsConfig;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -17,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 @Configuration
@@ -43,12 +45,9 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/v3/api-docs/**",
             // 테스트 용 임시 통과 URL -> 플랫폼 개발 완료 시 삭제
-            "/api/v1/bank/inquiry/**",
-            "/api/v1/bank/transfer/**",
-            "/api/v1/loan/**",
-            "/api/v1/banks",
-            "/api/v1/crypto/public-key",
-            "/api/rag/**"
+            "/api/v1/keys/public",
+            "/api/rag/**",
+            "/api/v1/loan/**"
     };
 
     @Bean
@@ -61,6 +60,31 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // CSRF 비활성화 (REST API)
                 .csrf(AbstractHttpConfigurer::disable)
+                // 보안 헤더
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; " +
+                                        "script-src 'self'; " +
+                                        "style-src 'self' 'unsafe-inline'; " + // CSS는 같은 출처 + 인라인 허용 (React 컴포넌트 inline style 때문에 필요)
+                                        "img-src 'self' data:; " + // 이미지는 같은 출처 + Base64 Data URL
+                                        "font-src 'self'; " +
+                                        "connect-src 'self'; " +
+                                        "object-src 'none'; " +
+                                        "base-uri 'self'; " +
+                                        "form-action 'self'; " +
+                                        "frame-ancestors 'none'"
+                        ))
+                        // 이 앱이 다른 사이트의 iframe에 삽입되는 것을 차단 -> Clickjacking 방어
+                        .frameOptions(FrameOptionsConfig::deny)
+                        // 다른 사이트로 이동할 때 Referer 헤더를 어디까지 보낼지 결정 (다른 출처 → 도메인만 전송)
+                        .referrerPolicy(referrer -> referrer
+                                .policy(ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
+                        )
+                        // 브라우저 기능 접근 권한을 명시적으로 차단
+                        .permissionsPolicyHeader(permissions -> permissions
+                                .policy("camera=(), microphone=(), geolocation=()")
+                        )
+                )
                 // 경로별 접근 권한 설정
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_URLS).permitAll()

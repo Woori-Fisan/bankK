@@ -1,5 +1,6 @@
 package com.woorifisan.bank.domain.account.service;
 
+import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedInquiryData;
 import com.woorifisan.bank.domain.account.dto.request.TransactionHistoryRequest;
 import com.woorifisan.bank.domain.account.dto.response.TransactionHistoryDto;
 import com.woorifisan.bank.domain.account.dto.response.TransactionHistoryResponse;
@@ -13,6 +14,7 @@ import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
+import com.woorifisan.bank.global.security.service.SecurityService;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -23,14 +25,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 계좌 관련 비즈니스 로직을 처리하는 서비스
+ * 계좌 관련 비즈니스 로직을 처리하는 서비스 (E2EE 암복호화 적용)
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AccountService {
 
-    // 날짜 포맷
     // 날짜 비교용 포맷
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     // 출력용 포맷
@@ -39,60 +40,71 @@ public class AccountService {
     private final AccountMapper accountMapper;
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final CustomerMapper customerMapper;
+    private final SecurityService securityService;
 
     /**
-     * 거래 내역 조회
+     * 잔액 조회 (E2EE 적용)
      */
     @Transactional(readOnly = true)
     public BalanceInquiryResponse getBalance(BalanceInquiryRequest request) {
-        // 1. 계좌 및 고객 정보 검증 쿼리 호출
-        Account account = accountMapper.findByAccountNoAndRrnPrefix(
-                request.getAccountNo(),
-                request.getCustomerRrnPrefix()
-        ).orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        log.info("은행 서버 잔액 조회 요청 수신 - 키ID: {}", request.getBankKeyId());
 
-        // 2. 응답 반환
-        return BalanceInquiryResponse.builder()
+        // 1. 복호화 및 CEK 추출
+        SecurityService.DecryptionResult<DecryptedInquiryData> decryptionResult = 
+                securityService.decryptWithKey(request, DecryptedInquiryData.class);
+        
+        DecryptedInquiryData decryptedData = decryptionResult.getData();
+
+        // 2. 계좌 및 고객 정보 검증 쿼리 호출 (복호화된 평문 계좌번호 사용)
+        Account account = accountMapper.findByAccountNoPlain(decryptedData.getAccountNo())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+
+        // 3. 소유주 확인
+        verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix());
+
+        // 4. 응답 데이터 암호화 (추출된 CEK 사용)
+        BalanceInquiryResponse.SensitiveData sensitiveData = BalanceInquiryResponse.SensitiveData.builder()
                 .balance(account.getBalance())
-                .status(account.getStatus())
                 .build();
+        
+        String resPayload = securityService.encryptResponse(sensitiveData, decryptionResult.getCek());
+
+        // 5. 응답 반환 (민감 정보는 resPayload에, 나머지는 평문)
+        return BalanceInquiryResponse.of(resPayload, account.getStatus());
     }
 
     /**
-     * 거래 내역 조회
+     * 거래 내역 조회 (E2EE 적용)
      */
     @Transactional(readOnly = true)
     public TransactionHistoryResponse getTransactionHistoryList(TransactionHistoryRequest request) {
-        log.info("은행 서버 거래내역 조회 요청 수신 - 계좌해시: {}, 기간: {} ~ {}, 페이지: {}, 사이즈: {}",
-                request.getAccountNo(), request.getStartDate(), request.getEndDate(), request.getPage(), request.getSize());
+        log.info("은행 서버 거래내역 조회 요청 수신 - 키ID: {}, 기간: {} ~ {}",
+                request.getBankKeyId(), request.getStartDate(), request.getEndDate());
 
         // 1. 날짜 검증
         validateInquiryPeriod(request.getStartDate(), request.getEndDate());
 
-        // 2. 계좌 조회 (Blind Index 활용)
-        // TODO: 실제 환경에서는 request.getAccountNo()를 복호화한 후 SHA-256 해싱하여 검색해야 함
-        // 현재는 간단한 세팅을 위해 입력받은 값을 그대로 해시로 가정하거나 임시 로직으로 처리
-        String accountNoHash = request.getAccountNo();
+        // 2. 복호화 및 CEK 추출
+        SecurityService.DecryptionResult<DecryptedInquiryData> decryptionResult = 
+                securityService.decryptWithKey(request, DecryptedInquiryData.class);
+        
+        DecryptedInquiryData decryptedData = decryptionResult.getData();
 
-        Account account = accountMapper.findByAccountNo(accountNoHash)
+        // 3. 계좌 조회 (복호화된 평문 계좌번호 사용)
+        Account account = accountMapper.findByAccountNoPlain(decryptedData.getAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INQUIRY_ACCOUNT_NOTFOUND));
 
-        // 3. 계좌 소유주 일치 확인
-        Customer customer = customerMapper.findById(account.getCustomerId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        // 4. 계좌 소유주 일치 확인
+        verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix());
 
-        if (!customer.getRrnPrefix().equals(request.getCustomerRrnPrefix())) {
-            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        }
-
-        // 4. 전체 건수 조회
+        // 5. 전체 건수 조회
         int totalCount = transactionLedgerMapper.countHistory(
                 account.getId(),
                 request.getStartDate(),
                 request.getEndDate()
         );
 
-        // 5. 페이징된 목록 조회
+        // 6. 페이징된 목록 조회
         int offset = request.getPage() * request.getSize();
         List<TransactionLedger> ledgerList = transactionLedgerMapper.findHistoryList(
                 account.getId(),
@@ -102,8 +114,32 @@ public class AccountService {
                 request.getSize()
         );
 
-        // 6. DTO 변환 및 반환
-        return convertToResponse(request, totalCount, ledgerList);
+        // 7. 거래 내역 리스트 생성 및 암호화
+        List<TransactionHistoryDto> historyItems = ledgerList.stream()
+                .map(ledger -> TransactionHistoryDto.builder()
+                        .txId(ledger.getTxId())
+                        .txDate(ledger.getTransactedAt().format(DATE_TIME_FORMATTER))
+                        .txType(ledger.getTxType())
+                        .amount(ledger.getAmount())
+                        .balance(ledger.getBalanceAfter())
+                        .counterpartName(ledger.getTargetAccount() != null ? ledger.getTargetAccount() : "")
+                        .description(ledger.getDescription())
+                        .build())
+                .collect(Collectors.toList());
+
+        TransactionHistoryResponse.SensitiveData sensitiveData = TransactionHistoryResponse.SensitiveData.builder()
+                .history(historyItems)
+                .build();
+        
+        String resPayload = securityService.encryptResponse(sensitiveData, decryptionResult.getCek());
+
+        // 8. DTO 변환 및 반환
+        int totalPages = (int) Math.ceil((double) totalCount / request.getSize());
+        boolean hasNext = request.getPage() < totalPages - 1;
+
+        return TransactionHistoryResponse.of(
+                resPayload, totalCount, totalPages, request.getPage(), request.getSize(), hasNext
+        );
     }
 
     /**
@@ -118,29 +154,15 @@ public class AccountService {
         }
     }
 
-    private TransactionHistoryResponse convertToResponse(TransactionHistoryRequest request, int totalCount, List<TransactionLedger> ledgerList) {
-        int totalPages = (int) Math.ceil((double) totalCount / request.getSize());
-        boolean hasNext = request.getPage() < totalPages - 1;
-
-        List<TransactionHistoryDto> historyItems = ledgerList.stream()
-                .map(ledger -> TransactionHistoryDto.builder()
-                        .txId(ledger.getTxId())
-                        .txDate(ledger.getTransactedAt().format(DATE_TIME_FORMATTER))
-                        .txType(ledger.getTxType())
-                        .amount(ledger.getAmount())
-                        .balance(ledger.getBalanceAfter())
-                        .counterpartName(ledger.getTargetAccount() != null ? ledger.getTargetAccount() : "")
-                        .description(ledger.getDescription())
-                        .build())
-                .collect(Collectors.toList());
-
-        return TransactionHistoryResponse.builder()
-                .totalCount(totalCount)
-                .totalPages(totalPages)
-                .currentPage(request.getPage())
-                .size(request.getSize())
-                .hasNext(hasNext)
-                .history(historyItems)
-                .build();
+    /**
+     * 고객 본인 확인
+     */
+    private void verifyCustomerIdentification(Long customerId, String requestRrnPrefix) {
+        Customer customer = customerMapper.findById(customerId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        
+        if (!customer.getRrnPrefix().equals(requestRrnPrefix)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
     }
 }

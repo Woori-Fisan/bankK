@@ -1,8 +1,13 @@
+server:
+  port: ${PLATFORM_BACKEND_PORT:8080}
+
 spring:
   profiles:
-    active: local
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
   application:
     name: agency-platform
+
   ai:
     google:
       genai:
@@ -19,8 +24,8 @@ spring:
 
   mvc:
     async:
-      # SSE 연결이 최대 60초 유지되므로 그보다 긴 65초로 설정.
-      request-timeout: 65000
+      # SSE 연결이 최대 120초 유지되므로 그보다 긴 125초로 설정.
+      request-timeout: 125000
 
   servlet:
     multipart:
@@ -83,8 +88,8 @@ mybatis:
 # JWT
 jwt:
   secret: ${JWT_SECRET:tempJWTkeyForBankBridgeDevelopmentEnvironment123!}
-  access-expiration: 900000       # 15분 (ms)
-  refresh-expiration: 28800000    # 8시간 (ms)
+  access-expiration: 600000       # 10분 (ms)
+  refresh-expiration: 3600000    # 1시간 (ms)
 
 # mTLS 인증서 경로
 #mtls:
@@ -124,6 +129,9 @@ qdrant:
 logging:
   config: classpath:logback-spring.xml
 
+  file:
+    path: ${LOGGING_PATH:./logs}
+
 bank:
   core:
     url: ${BANK_SERVER_URL:http://localhost:8081}
@@ -142,16 +150,24 @@ bank:
       endpoints:
         balance: "/account/balance"
         history: "/account/transactions"
-        withdraw: "/transfer/withdrawal"
+        withdraw: "/transfer/withdraw"
+        withdrawal: "/transfer/withdrawal"
         deposit: "/transfer/deposit"
         recipient: "/transfer/recipient"
+        refund: "/transfer/refund"
+        execute: "/transfer/execute"
         transfer: "/transfer"
-    "004":
-      base-url: ${KB_BASE_URL:http://localhost:8082/api/v1/baas}
-      endpoints:
-        balance: "/account/balance"
-        history: "/account/transactions"
-        withdraw: "/transfer/withdrawal"
-        deposit: "/transfer/deposit"
-        recipient: "/transfer/recipient"
-        transfer: "/transfer"
+        public-key: "/keys/public"
+#    "088":
+#      base-url: http://localhost:9090/api/v1/baas
+#      endpoints:
+#        balance: "/account/balance"
+#        history: "/account/transactions"
+#        withdraw: "/transfer/withdraw"
+#        withdrawal: "/transfer/withdrawal"
+#        deposit: "/transfer/deposit"
+#        recipient: "/transfer/recipient"
+#        refund: "/transfer/refund"
+#        execute: "/transfer/execute"
+#        transfer: "/transfer"
+#        public-key: "/keys/public"
