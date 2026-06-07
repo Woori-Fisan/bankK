@@ -31,7 +31,9 @@ const ResultForm: React.FC = () => {
             const imgData = await toPng(receiptDocRef.current, { pixelRatio: 2 });
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             pdf.addImage(imgData, 'PNG', 0, 0, 210, (receiptDocRef.current.offsetHeight * 210) / receiptDocRef.current.offsetWidth);
-            pdf.save(`이체확인서_${fromName}_${new Date().toISOString().slice(0, 10)}.pdf`);
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            pdf.save(`이체확인서_${fromName}_${dateStr}.pdf`);
         } catch {
             alert('PDF 생성에 실패했습니다.');
         }
