@@ -6,7 +6,7 @@ import WithdrawResultHeader from '../sections/WithdrawResultHeader';
 import WithdrawDetailTable from '../sections/WithdrawDetailTable';
 import WithdrawReceiptDocument from '../WithdrawReceiptDocument';
 import type { WithdrawData, WithdrawResult } from '../../../types/withdraw';
-import { formatAmount } from '../../../utils/formatter';
+import { formatAmount, formatDate } from '../../../utils/formatter';
 import Card from '../../common/Card';
 import { Button } from '../../common/Button';
 import { Printer } from 'lucide-react';
@@ -36,9 +36,7 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
             const imgData = await toPng(receiptDocRef.current, { pixelRatio: 2 });
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             pdf.addImage(imgData, 'PNG', 0, 0, 210, (receiptDocRef.current.offsetHeight * 210) / receiptDocRef.current.offsetWidth);
-            const now = new Date();
-            const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            pdf.save(`출금확인서_${data.userName ?? '고객'}_${dateStr}.pdf`);
+            pdf.save(`출금확인서_${data.userName ?? '고객'}_${formatDate(new Date().toISOString(), false, 'dash')}.pdf`);
         } catch {
             alert('PDF 생성에 실패했습니다.');
         }
