@@ -110,7 +110,7 @@ public class LoanService {
                 || !Boolean.TRUE.equals(request.getIsDocumentCollected())) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
-
+        
         // 대출 기간 0 이하면 금융 계산(DSR, 월납입금)이 0으로 흘러 잘못된 승인이 날 수 있음
         if (request.getRequestedPeriod() == null || request.getRequestedPeriod() <= 0) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
@@ -214,7 +214,7 @@ public class LoanService {
                     : "unnamed";
             String fileName = UUID.randomUUID() + "_" + cleanFileName;
             Path target = loanDir.resolve(fileName);
-            
+
             try {
                 // E2EE 복호화: MultipartFile에서 바이트 배열을 읽어 복호화 수행
                 byte[] encryptedBytes = file.getBytes();

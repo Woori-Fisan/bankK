@@ -6,7 +6,6 @@ import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryRequest;
-import com.woorifisan.platform.domain.bank.external.dto.BankDepositRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
@@ -63,17 +62,7 @@ public class BankExternalClient {
         return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<TransferRecipientResponse>>() {}, bankCode);
     }
 
-    /**
-     * 특정 은행의 타행 이체용 출금 API를 호출합니다.
-     */
-    public BankTransferResponse fetchTransferWithdraw(String bankCode, BankTransferWithdrawRequest request) {
-        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
-        if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
 
-        String url = bankProperty.getUrl("withdraw");
-
-        return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {}, bankCode);
-    }
 
     /**
      * 특정 은행의 통합 이체 API를 호출합니다.
@@ -88,31 +77,7 @@ public class BankExternalClient {
         return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {}, bankCode);
     }
 
-    /**
-     * 특정 은행의 입금 API를 호출합니다.
-     */
-    public BankTransferResponse fetchDeposit(String bankCode, BankDepositRequest request) {
-        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
-        if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
 
-        String url = bankProperty.getUrl("deposit");
-        log.info("외부 은행 API 호출 [입금] - URL: {}, 은행코드: {}", url, bankCode);
-
-        return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {}, bankCode);
-    }
-
-    /**
-     * 특정 은행의 이체 환불 API를 호출합니다. (입금 실패 시 복구용)
-     */
-    public BankTransferResponse fetchRefund(String bankCode, BankTransferWithdrawRequest request) {
-        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
-        if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
-
-        String url = bankProperty.getUrl("refund");
-        log.info("외부 은행 API 호출 [이체환불] - URL: {}, 은행코드: {}", url, bankCode);
-
-        return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BankTransferResponse>>() {}, bankCode);
-    }
 
     /**
      * 특정 은행의 잔액 조회 API를 호출합니다.

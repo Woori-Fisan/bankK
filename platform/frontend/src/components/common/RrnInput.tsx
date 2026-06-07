@@ -23,6 +23,27 @@ const RrnInput: React.FC<RrnInputProps> = ({
   isChecking = false
 }) => {
   const rrnBackRef = useRef<HTMLInputElement>(null);
+  const [localError, setLocalError] = React.useState<string | undefined>(undefined);
+
+  React.useEffect(() => {
+    if (rrnFront.length === 6 && rrnBack.length === 1 && /^[1-4]$/.test(rrnBack)) {
+      setLocalError(undefined);
+    }
+  }, [rrnFront, rrnBack]);
+
+  const handleBlur = () => {
+    if (onBlur) {
+      onBlur();
+    }
+    
+    if (!rrnFront || rrnFront.length !== 6) {
+      setLocalError('주민등록번호 앞 6자리를 입력해주세요.');
+    } else if (!rrnBack || !/^[1-4]$/.test(rrnBack)) {
+      setLocalError('주민등록번호 뒤 1자리(1~4)를 입력해주세요.');
+    } else {
+      setLocalError(undefined);
+    }
+  };
 
   const handleFrontChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9]/g, '');
@@ -40,6 +61,8 @@ const RrnInput: React.FC<RrnInputProps> = ({
       onRrnBackChange(val);
     }
   };
+
+  const displayError = error || localError;
 
   return (
     <div className="space-y-4">
@@ -63,7 +86,7 @@ const RrnInput: React.FC<RrnInputProps> = ({
             maxLength={6}
             value={rrnFront}
             onChange={handleFrontChange}
-            onBlur={onBlur}
+            onBlur={handleBlur}
             className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-xl text-center text-slate-900 focus:bg-white focus:border-emerald-500 outline-none transition-all tracking-[0.3em] font-mono text-xl shadow-inner"
           />
         </div>
@@ -79,7 +102,7 @@ const RrnInput: React.FC<RrnInputProps> = ({
                 maxLength={1}
                 value={rrnBack}
                 onChange={handleBackChange}
-                onBlur={onBlur}
+                onBlur={handleBlur}
                 className="w-full px-0 py-4 bg-slate-50 border-2 border-slate-50 rounded-xl text-center text-slate-900 focus:bg-white focus:border-emerald-500 outline-none transition-all font-mono text-xl shadow-inner"
               />
             </div>
@@ -92,8 +115,10 @@ const RrnInput: React.FC<RrnInputProps> = ({
         </div>
       </div>
       
-      {error && (
-        <p className="mt-2 text-sm text-rose-500 font-bold ml-1">{error}</p>
+      {displayError ? (
+        <p className="mt-2 text-sm text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{displayError}</p>
+      ) : (
+        <p className="mt-2 text-sm select-none pointer-events-none opacity-0">&nbsp;</p>
       )}
     </div>
   );

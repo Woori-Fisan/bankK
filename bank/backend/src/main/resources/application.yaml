@@ -81,7 +81,7 @@ springdoc:
 # 은행 간 네트워크 설정
 bank-network:
   banks:
-    "088": # 하나은행 (예시)
+    "088": # 신한은행 (예시)
       base-url: http://localhost:9090
 
 

@@ -27,7 +27,6 @@ export interface EvaluationRequest {
   bankCode: string;
   customerName: string;
   customerRrnPrefix: string;
-  customerPhone: string;
   depositBankCode: string;
   depositAccountNo: string;
   requestedAmount?: number;

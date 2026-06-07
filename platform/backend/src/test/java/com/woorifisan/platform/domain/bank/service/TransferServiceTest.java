@@ -65,22 +65,20 @@ class TransferServiceTest {
         request.setWithdrawReqPayload("withdraw-jwe");
         request.setDepositReqPayload("deposit-jwe");
 
-        String expectedTxId = UUID.randomUUID().toString();
-        BankTransferResponse mockExecuteResponse = BankTransferResponse.builder()
-                .transactionId(expectedTxId)
+        BankTransferResponse mockTransferResponse = BankTransferResponse.builder()
+                .transactionId(UUID.randomUUID().toString())
                 .transactionDate("2026-05-27 10:00:00")
                 .balanceAfter(new BigDecimal("500000"))
                 .resPayload("withdraw-res-jwe")
                 .build();
 
-        // 서비스는 단일 통합 이체 API(fetchTransferExecute)를 호출함
-        given(bankExternalClient.fetchTransferExecute(eq("020"), any())).willReturn(mockExecuteResponse);
+        given(bankExternalClient.fetchTransferExecute(eq("020"), any())).willReturn(mockTransferResponse);
 
         // when
         TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key", "d-key");
 
         // then
-        assertThat(response.getTransactionId()).isEqualTo(expectedTxId);
+        assertThat(response.getTransactionId()).isEqualTo(mockTransferResponse.getTransactionId());
         assertThat(response.getTransactionDate()).isEqualTo("2026-05-27");
         assertThat(response.getBalanceAfter()).isEqualByComparingTo(new BigDecimal("500000"));
         assertThat(response.getResPayload()).isEqualTo("withdraw-res-jwe");

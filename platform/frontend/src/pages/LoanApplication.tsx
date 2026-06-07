@@ -32,7 +32,6 @@ export interface EvaluationResult {
 export interface LoanData {
     userName?: string;
     rrn?: string;
-    phone?: string;
     bank?: string;
     bankCode?: string;
     accountNo?: string;
