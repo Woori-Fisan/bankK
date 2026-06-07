@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatAmount } from '../../utils/formatter';
+import { formatAmount, formatDate } from '../../utils/formatter';
 
 interface TransferReceiptDocumentProps {
     innerRef: React.RefObject<HTMLDivElement | null>;
@@ -41,12 +41,7 @@ const TransferReceiptDocument: React.FC<TransferReceiptDocumentProps> = ({
     toName, toBankName, toBankAccountNo,
     amount, transactionDate, balanceAfter,
 }) => {
-    const today = new Date()
-        .toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-        .replace(/\. /g, '.')
-        .replace('.', '년 ')
-        .replace('.', '월 ')
-        .replace('.', '일');
+    const today = formatDate(new Date().toISOString(), false, 'text');
 
     return (
         <div style={{ position: 'fixed', left: -9999, top: 0, zIndex: -1 }}>

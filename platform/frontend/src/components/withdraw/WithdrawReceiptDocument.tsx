@@ -34,12 +34,7 @@ const WithdrawReceiptDocument: React.FC<WithdrawReceiptDocumentProps> = ({
     innerRef, transactionId, userName, bankName, accountNumber,
     amount, dateTime, balanceBefore, balanceAfter,
 }) => {
-    const today = new Date()
-        .toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-        .replace(/\. /g, '.')
-        .replace('.', '년 ')
-        .replace('.', '월 ')
-        .replace('.', '일');
+    const today = formatDate(new Date().toISOString(), false, 'text');
     const maskedAccount = accountNumber
         ? `${accountNumber.slice(0, 3)}-***-***${accountNumber.slice(-3)}`
         : '';

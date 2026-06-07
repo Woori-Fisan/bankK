@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatAmount } from '../../utils/formatter';
+import { formatAmount, formatDate } from '../../utils/formatter';
 
 interface LoanReceiptDocumentProps {
     innerRef: React.RefObject<HTMLDivElement | null>;
@@ -38,7 +38,7 @@ const LoanReceiptDocument: React.FC<LoanReceiptDocumentProps> = ({
     executeAmount, interestRate, repaymentPeriod, monthlyPayment,
     repaymentStartDate, maturityDate, bank, accountNo, productName,
 }) => {
-    const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '.').replace('.', '년 ').replace('.', '월 ').replace('.', '일');
+    const today = formatDate(new Date().toISOString(), false, 'text');
     const maskedAccount = accountNo ? `${accountNo.slice(0, 3)}-***-***${accountNo.slice(-3)}` : '';
 
     return (
