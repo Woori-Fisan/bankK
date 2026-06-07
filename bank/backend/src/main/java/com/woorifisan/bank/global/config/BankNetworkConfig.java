@@ -26,6 +26,10 @@ public class BankNetworkConfig {
         public String getInternalDepositUrl() {
             return baseUrl + "/api/v1/baas/transfer/internal/deposit";
         }
+
+        public String getStatusQueryUrl(String txId) {
+            return baseUrl + "/api/v1/baas/transfer/status/" + txId;
+        }
     }
 
     public BankProperty getBankProperty(String bankCode) {

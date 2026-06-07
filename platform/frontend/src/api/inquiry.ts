@@ -1,7 +1,7 @@
 import axiosInstance from './axiosInstance';
 import { prepareSecureRequest, decryptBankResponse } from '../utils/bankCrypto';
 import type { ApiResponse } from './transfer'; // ApiResponse 타입 재사용
- // ApiResponse 타입 재사용
+import { extractApiErrorMessage } from '../utils/apiError';
 
 export interface InquiryRequest {
     bankCode: string;
@@ -87,7 +87,7 @@ export const fetchBalance = async (request: InquiryRequest): Promise<ApiResponse
         return {
             success: false,
             data: null as any,
-            error: { code: 'CLIENT_ERROR', message: '잔액 조회 중 오류가 발생했습니다.' }
+            error: { code: 'CLIENT_ERROR', message: extractApiErrorMessage(error, '잔액 조회 중 오류가 발생했습니다.') }
         };
     }
 };
@@ -151,7 +151,7 @@ export const fetchTransactionHistory = async (request: InquiryRequest): Promise<
         return {
             success: false,
             data: null as any,
-            error: { code: 'CLIENT_ERROR', message: '거래 내역 조회 중 오류가 발생했습니다.' }
+            error: { code: 'CLIENT_ERROR', message: extractApiErrorMessage(error, '거래 내역 조회 중 오류가 발생했습니다.') }
         };
     }
 };
