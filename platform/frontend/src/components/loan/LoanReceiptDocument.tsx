@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatAmount } from '../../utils/formatter';
 
 interface LoanReceiptDocumentProps {
     innerRef: React.RefObject<HTMLDivElement | null>;
@@ -83,7 +84,7 @@ const LoanReceiptDocument: React.FC<LoanReceiptDocumentProps> = ({
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, border: '1px solid #e5e8ef' }}>
                     <tbody>
                         {row('대출 상품', productName)}
-                        {row('대출 금액', `${executeAmount.toLocaleString()} 원`)}
+                        {row('대출 금액', `${formatAmount(executeAmount)} 원`)}
                         {row('적용 금리', `연 ${interestRate}% (고정금리)`)}
                         {row('대출 기간', `${repaymentPeriod}개월`)}
                     </tbody>
@@ -94,7 +95,7 @@ const LoanReceiptDocument: React.FC<LoanReceiptDocumentProps> = ({
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, border: '1px solid #e5e8ef' }}>
                     <tbody>
                         {row('상환 방법', '원리금균등상환')}
-                        {row('월 상환금', `${monthlyPayment.toLocaleString()} 원`)}
+                        {row('월 상환금', `${formatAmount(monthlyPayment)} 원`)}
                         {row('최초 상환일', repaymentStartDate)}
                         {row('만  기  일', maturityDate)}
                     </tbody>

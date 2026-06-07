@@ -99,7 +99,7 @@ const TransferReceiptDocument: React.FC<TransferReceiptDocumentProps> = ({
                 <SectionTitle>■ 이체 내역</SectionTitle>
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, border: '1px solid #e5e8ef' }}>
                     <tbody>
-                        {row('이체 금액', `${Number(amount).toLocaleString()} 원`)}
+                        {row('이체 금액', `${formatAmount(amount)} 원`)}
                         {row('거래 일시', transactionDate)}
                         {row('거래 번호', transactionId)}
                         {row('이체 후 잔액', `${formatAmount(balanceAfter)} 원`)}

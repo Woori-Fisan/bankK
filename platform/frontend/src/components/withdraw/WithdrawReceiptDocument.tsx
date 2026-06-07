@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatDate } from '../../utils/formatter';
+import { formatAmount, formatDate } from '../../utils/formatter';
 
 interface WithdrawReceiptDocumentProps {
     innerRef: React.RefObject<HTMLDivElement | null>;
@@ -86,7 +86,7 @@ const WithdrawReceiptDocument: React.FC<WithdrawReceiptDocumentProps> = ({
                 <SectionTitle>■ 출금 내역</SectionTitle>
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, border: '1px solid #e5e8ef' }}>
                     <tbody>
-                        {row('출금 금액', `${Number(amount).toLocaleString()} 원`)}
+                        {row('출금 금액', `${formatAmount(amount)} 원`)}
                         {row('거래 일시', formatDate(dateTime, true, 'dot'))}
                         {row('거래 번호', transactionId)}
                     </tbody>
@@ -96,8 +96,8 @@ const WithdrawReceiptDocument: React.FC<WithdrawReceiptDocumentProps> = ({
                 <SectionTitle>■ 잔액 정보</SectionTitle>
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, border: '1px solid #e5e8ef' }}>
                     <tbody>
-                        {row('출금 전 잔액', `${balanceBefore.toLocaleString()} 원`)}
-                        {row('출금 후 잔액', `${balanceAfter.toLocaleString()} 원`)}
+                        {row('출금 전 잔액', `${formatAmount(balanceBefore)} 원`)}
+                        {row('출금 후 잔액', `${formatAmount(balanceAfter)} 원`)}
                     </tbody>
                 </table>
 
