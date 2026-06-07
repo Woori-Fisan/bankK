@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import { toPng } from 'html-to-image';
 import SuccessSummarySection from '../sections/SuccessSummarySection';
 import ResultDetailSection from '../sections/ResultDetailSection';
+import TransferReceiptDocument from '../TransferReceiptDocument';
 import { useTransferStore } from '../../../store/useTransferStore';
 import { formatAmount } from '../../../utils/formatter';
 import Card from '../../common/Card';
@@ -10,19 +13,46 @@ import { Printer } from 'lucide-react';
 
 const ResultForm: React.FC = () => {
     const navigate = useNavigate();
-    const { 
-        amount, toName, toBankName, toBankAccountNo, 
-        fromBankName, fromAccountNumber, 
-        transactionId, transactionDate, balanceAfter, reset 
+    const {
+        amount, fromName, toName, toBankName, toBankAccountNo,
+        fromBankName, fromAccountNumber,
+        transactionId, transactionDate, balanceAfter, reset
     } = useTransferStore();
+    const receiptDocRef = useRef<HTMLDivElement>(null);
 
     const handleHome = () => {
         reset();
         navigate('/main');
     };
 
+    const handlePrintReceipt = async () => {
+        if (!receiptDocRef.current) return;
+        try {
+            const imgData = await toPng(receiptDocRef.current, { pixelRatio: 2 });
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, (receiptDocRef.current.offsetHeight * 210) / receiptDocRef.current.offsetWidth);
+            pdf.save(`이체확인서_${fromName}_${new Date().toISOString().slice(0, 10)}.pdf`);
+        } catch {
+            alert('PDF 생성에 실패했습니다.');
+        }
+    };
+
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pb-10">
+            {/* 숨김 PDF 문서 템플릿 */}
+            <TransferReceiptDocument
+                innerRef={receiptDocRef}
+                transactionId={transactionId}
+                fromName={fromName}
+                fromBankName={fromBankName}
+                fromAccountNumber={fromAccountNumber}
+                toName={toName}
+                toBankName={toBankName}
+                toBankAccountNo={toBankAccountNo}
+                amount={amount}
+                transactionDate={transactionDate}
+                balanceAfter={balanceAfter}
+            />
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* 좌측: 성공 안내 및 상세 정보 (8컬럼) */}
                 <div className="lg:col-span-8">
@@ -72,7 +102,7 @@ const ResultForm: React.FC = () => {
                                 variant="outline"
                                 size="xl"
                                 fullWidth
-                                onClick={() => alert('출력 기능은 준비 중입니다.')}
+                                onClick={handlePrintReceipt}
                                 className="rounded-2xl h-14 text-base font-bold gap-2 border-slate-200"
                             >
                                 <Printer className="w-5 h-5" />
