@@ -29,17 +29,16 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 
     refreshPromise = (async () => {
         try {
-            const response = await axios.post('http://localhost:8082/user/refresh', {}, {
-                withCredentials: true
-            });
-            
+            const response = await axiosInstance.post(
+                '/user/refresh'
+            );
+
             const responseData = response.data?.data || response.data;
             return responseData?.accessToken || null;
         } catch (error) {
             console.error('Token Refresh Error:', error);
             return null;
         } finally {
-            // 요청이 완료되면 변수를 초기화합니다.
             refreshPromise = null;
         }
     })();
