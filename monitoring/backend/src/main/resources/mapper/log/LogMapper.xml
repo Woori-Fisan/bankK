@@ -44,7 +44,7 @@
     <select id="findLogList" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogRequest"
             resultType="com.woorifisan.monitoring.domain.log.dto.LogListDTO">
         SELECT
-            id,
+            log_id as logId,
             created_at as createdAt,
             level,
             log_type as logType,
@@ -81,10 +81,10 @@
     </select>
 
     <!-- 단건 상세 조회용: 암호화 페이로드(body_data) 등 모든 필드 포함 -->
-    <select id="findById" parameterType="long"
+    <select id="findByLogId" parameterType="String"
             resultType="com.woorifisan.monitoring.domain.log.dto.LogDetailDTO">
         SELECT
-            id,
+            log_id as logId,
             created_at as createdAt,
             level,
             log_type as logType,
@@ -103,7 +103,7 @@
             error_code as errorCode,
             error_message as errorMessage
         FROM system_logs
-        WHERE id = #{id}
+        WHERE log_id = #{logId}
     </select>
 
 

@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 public class LogListDTO {
-    private Long id;
+    private String logId;
     private LocalDateTime createdAt;
     private String level;
     private String logType;
