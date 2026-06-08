@@ -115,7 +115,7 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
         try {
             const result = await executeMutation.mutateAsync({
                 payload,
-                headers: headers as Record<string, string>,
+                headers: { ...headers, 'X-Idempotency-Key': crypto.randomUUID() },
             });
 
             // 3. 응답 복호화 (메모리에 보관 중이던 aesKey 사용)
