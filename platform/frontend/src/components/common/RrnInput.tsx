@@ -42,7 +42,9 @@ const RrnInput: React.FC<RrnInputProps> = ({
 
     if (!currentFrontValue || currentFrontValue.length !== 6) {
       setLocalError('주민등록번호 앞 6자리를 입력해주세요.');
-    } else if (e.relatedTarget === rrnBackRef.current && currentFrontValue.length === 6) {
+    } else if (e.relatedTarget === rrnBackRef.current 
+      && currentFrontValue.length === 6 
+      && (!currentBackValue || /^[1-4]$/.test(currentBackValue))) {
       setLocalError(undefined);
     } else if (!currentBackValue || !/^[1-4]$/.test(currentBackValue)) {
       setLocalError('주민등록번호 뒤 1자리(1~4)를 입력해주세요.');

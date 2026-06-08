@@ -14,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -42,7 +41,8 @@ public class LogService {
 
         try{
             totalCount = logMapper.countLogList(request);
-            totalPage = (long) Math.ceil((double) totalCount / request.getSize());
+            long pageSize = request.getSize() > 0 ? request.getSize() : 10;
+            totalPage = (long) Math.ceil((double) totalCount / pageSize);
             log.info("[Service 로직] 전체 레코드 개수: {}, 총 페이지 수: {}", totalCount, totalPage);
 
             logs = logMapper.findLogList(request);
