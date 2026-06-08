@@ -53,15 +53,4 @@ public class TransferResponse extends SecureResponse {
                 .resPayload(resPayload)
                 .build();
     }
-
-    /**
-     * 테스트용 임시 응답 생성
-     */
-    public static TransferResponse mock(BigDecimal balanceAfter) {
-        return TransferResponse.builder()
-                .transactionId(UUID.randomUUID().toString())
-                .transactionDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
-                .balanceAfter(balanceAfter)
-                .build();
-    }
 }
