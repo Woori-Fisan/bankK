@@ -1,7 +1,7 @@
 import React from 'react';
 
 const GRAFANA_METRIC_URL =
-    'http://localhost:3000/d/cfnwmp0m3r5kwf/metric-dashboard?orgId=1&from=now-1h&to=now&theme=light&kiosk=tv';
+    '/grafana/d/cfnwmp0m3r5kwf/metric-dashboard?orgId=1&from=now-1h&to=now&theme=light&kiosk=tv';
 
 const MetricDashboardPage: React.FC = () => {
     return (
@@ -15,8 +15,7 @@ const MetricDashboardPage: React.FC = () => {
                 <iframe
                     src={GRAFANA_METRIC_URL}
                     title="Grafana 메트릭 대시보드"
-                    className="w-full h-full"
-                    style={{ minHeight: '600px' }}
+                    className="w-full h-full border-0"
                     allowFullScreen
                 />
             </div>

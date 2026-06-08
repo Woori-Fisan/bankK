@@ -108,7 +108,8 @@
           "editorMode": "code",
           "expr": "sum(count_over_time({job=\"platform-backend\"}[1m]))",
           "queryType": "range",
-          "refId": "A"
+          "refId": "A",
+          "legendFormat": "Log Count"
         }
       ],
       "title": "전체 로그 타임라인",
@@ -343,7 +344,8 @@
           "editorMode": "code",
           "expr": "sum by (http_logType) (count_over_time(\n  {job=\"platform-backend\"} | json | http_logType =~ \"BANK_REQ|BANK_RES|BANK_ERR|CONTROLLER_REQ|CONTROLLER_RES|CONTROLLER_ERR\" [1m]\n))",
           "queryType": "range",
-          "refId": "A"
+          "refId": "A",
+          "legendFormat": "{{http_logType}}"
         }
       ],
       "title": "BIZ 로그 건수",

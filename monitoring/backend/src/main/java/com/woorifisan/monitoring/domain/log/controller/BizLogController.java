@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "BizLog", description = "Fluent Bit 비즈니스 로그 수신 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/logs")
+@RequestMapping("/api/v1/logs")
 public class BizLogController {
 
     private final BizLogBuffer bizLogBuffer;

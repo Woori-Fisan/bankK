@@ -1,4 +1,4 @@
-name: Monitoring Backend Deploy
+name: Platform Backend Deploy Test
 
 on:
   push:
@@ -6,19 +6,11 @@ on:
       - develop
 
     paths:
-      - 'monitoring/backend/**'
-      - '.github/workflows/monitoring-backend-deploy.yml'
-
-  # pull_request:
-  #   branches:
-  #     - develop
-
-  #   paths:
-  #     - 'monitoring/backend/**'
-  #     - '.github/workflows/monitoring-backend-deploy.yml'
+      - 'platform/backend/**'
+      - '.github/workflows/platform-backend-deploy-test.yml'
 
 concurrency:
-  group: monitoring-backend-deploy
+  group: platform-backend-deploy-test
   cancel-in-progress: true
 
 jobs:
@@ -39,12 +31,12 @@ jobs:
       # --------------------------------------------------
 
       - name: Create env file
-        working-directory: monitoring/backend
+        working-directory: platform/backend
         run: |
-          echo "${{ secrets.MONITORING_BACKEND_ENV_TEST }}" > .env
+          echo "${{ secrets.PLATFORM_BACKEND_ENV_TEST }}" > .env
 
       - name: Export env variables
-        working-directory: monitoring/backend
+        working-directory: platform/backend
         run: |
           grep -v '^#' .env | grep -v '^$' >> $GITHUB_ENV
 
@@ -75,7 +67,7 @@ jobs:
       # --------------------------------------------------
 
       - name: Grant Gradle Execute Permission
-        working-directory: monitoring/backend
+        working-directory: platform/backend
 
         run: chmod +x ./gradlew
 
@@ -84,7 +76,7 @@ jobs:
       # --------------------------------------------------
 
       - name: SonarQube Scan
-        working-directory: monitoring/backend
+        working-directory: platform/backend
 
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -111,7 +103,7 @@ jobs:
       # --------------------------------------------------
 
       - name: Build & Push with Jib
-        working-directory: monitoring/backend
+        working-directory: platform/backend
 
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -134,13 +126,13 @@ jobs:
       # Deploy
       # --------------------------------------------------
 
-      - name: Deploy to Monitoring Server
+      - name: Deploy to Runtime Server
         run: |
           ssh -o StrictHostKeyChecking=no \
             -p ${{ secrets.BASTION_PORT }} \
             -i key.pem \
             ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }} \
             "ssh -o StrictHostKeyChecking=no \
-            -i ~/.ssh/Monitoring-Key.pem \
-            ubuntu@${{ secrets.MONITORING_RUNTIME_HOST }} \
-            /home/ubuntu/monitoring-backend/deploy.sh $SHORT_SHA"
+            -i ~/.ssh/Platform-Key.pem \
+            ubuntu@${{ secrets.PLATFORM_RUNTIME_HOST }} \
+            '/home/ubuntu/platform-backend/deploy.sh'"

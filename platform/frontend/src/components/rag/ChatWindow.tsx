@@ -17,7 +17,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ onClose, isClosing, onAnimation
     const [isTyping, setIsTyping] = useState(false);
 
     // 타이머와 현재 작업 중인 메시지 정보를 저장할 Ref
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const fullTextRef = useRef<string>('');
     const activeIdRef = useRef<string | null>(null);
 

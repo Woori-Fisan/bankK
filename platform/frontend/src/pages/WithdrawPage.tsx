@@ -10,7 +10,6 @@ import PageHeader from '../components/common/PageHeader';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { formatAmount } from '../utils/formatter';
-import { prepareSecureRequest } from '../utils/bankCrypto';
 
 const WithdrawPage: React.FC = () => {
     const [step, setStep] = useState<'entry' | 'success' | 'failure'>('entry');

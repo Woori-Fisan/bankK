@@ -1,4 +1,4 @@
-name: Bank Backend Deploy
+name: Platform Backend Deploy Prod
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
       - develop
 
     paths:
-      - 'bank/backend/**'
-      - '.github/workflows/bank-backend-deploy.yml'
+      - 'platform/backend/**'
+      - '.github/workflows/platform-backend-deploy-prod.yml'
 
 concurrency:
-  group: bank-backend-deploy
+  group: platform-backend-deploy-prod
   cancel-in-progress: true
 
 jobs:
@@ -26,18 +26,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-
       # --------------------------------------------------
       # Set .env
       # --------------------------------------------------
 
       - name: Create env file
-        working-directory: bank/backend
+        working-directory: platform/backend
         run: |
-          echo "${{ secrets.BANK_BACKEND_ENV_TEST }}" > .env
+          echo "${{ secrets.PLATFORM_BACKEND_ENV_TEST }}" > .env
 
       - name: Export env variables
-        working-directory: bank/backend
+        working-directory: platform/backend
         run: |
           grep -v '^#' .env | grep -v '^$' >> $GITHUB_ENV
 
@@ -68,7 +67,7 @@ jobs:
       # --------------------------------------------------
 
       - name: Grant Gradle Execute Permission
-        working-directory: bank/backend
+        working-directory: platform/backend
 
         run: chmod +x ./gradlew
 
@@ -77,7 +76,7 @@ jobs:
       # --------------------------------------------------
 
       - name: SonarQube Scan
-        working-directory: bank/backend
+        working-directory: platform/backend
 
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -88,7 +87,6 @@ jobs:
             -Dspring.profiles.active=test \
             -Dsonar.host.url=$SONAR_HOST_URL \
             -Dsonar.token=$SONAR_TOKEN
-
 
       # --------------------------------------------------
       # Extract SHA
@@ -105,7 +103,7 @@ jobs:
       # --------------------------------------------------
 
       - name: Build & Push with Jib
-        working-directory: bank/backend
+        working-directory: platform/backend
 
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -121,20 +119,19 @@ jobs:
 
       - name: Setup SSH Key
         run: |
-          echo "${{ secrets.BASTION_SSH_KEY }}" > key.pem
+          echo "${{ secrets.PROD_BASTION_SSH_KEY }}" > key.pem
           chmod 600 key.pem
 
       # --------------------------------------------------
       # Deploy
       # --------------------------------------------------
 
-      - name: Deploy to Runtime Server
+      - name: Deploy to Platform Server
         run: |
           ssh -o StrictHostKeyChecking=no \
-            -p ${{ secrets.BASTION_PORT }} \
             -i key.pem \
-            ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }} \
+            ubuntu@${{ secrets.PROD_BASTION_HOST }} \
             "ssh -o StrictHostKeyChecking=no \
-            -i ~/.ssh/Bank-Key.pem \
-            ubuntu@${{ secrets.BANK_RUNTIME_HOST }} \
-            '/home/ubuntu/bank/deploy.sh'"
+            -i bankk-private-key.pem \
+            ubuntu@${{ secrets.PROD_PLATFORM_RUNTIME_HOST }} \
+            /home/ubuntu/platform-backend/deploy.sh $SHORT_SHA"

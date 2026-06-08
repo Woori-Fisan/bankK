@@ -57,15 +57,12 @@ public class TransferService {
      * @param request 이체 실행 요청 정보
      * @param jwsSignature 단말기 JWS 서명
      * @param withdrawKeyId 출금 은행 키 ID
-     * @param depositKeyId 입금 은행 키 ID (통합 이체에서는 출금 은행 키 위주로 사용되나 인터페이스 유지)
+     * @param depositKeyId 입금 은행 키 ID
      * @return 이체 처리 결과
      */
-    @Transactional
     public TransferResponse executeTransfer(TransferRequest request, String jwsSignature, String withdrawKeyId, String depositKeyId) {
         // 은행 측에서 통합 이체 로직을 처리하므로, 플랫폼은 출금 은행으로 단일 요청을 보냅니다.
         // E2EE 암호문은 출금 은행의 공개키로 암호화된 것을 사용합니다.
-
-        // 1. 통합 이체 요청 DTO 생성
         BankTransferWithdrawRequest executeRequest = BankTransferWithdrawRequest.of(
                 request.getWithdrawReqPayload(),
                 withdrawKeyId,
@@ -74,7 +71,6 @@ public class TransferService {
                 request.getAmount()
         );
 
-        // 2. 출금 은행의 통합 이체 API 호출
         BankTransferResponse response = bankExternalClient.fetchTransferExecute(
                 request.getWithdrawalBankCode(),
                 executeRequest
@@ -98,7 +94,7 @@ public class TransferService {
         }
         try {
             // 은행 코어는 "yyyy-MM-dd HH:mm:ss" 포맷으로 준다고 가정
-            LocalDateTime bankDate = LocalDateTime.parse(transactionDate, 
+            LocalDateTime bankDate = LocalDateTime.parse(transactionDate,
                     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             return bankDate.format(DATE_FORMATTER);
         } catch (Exception e) {

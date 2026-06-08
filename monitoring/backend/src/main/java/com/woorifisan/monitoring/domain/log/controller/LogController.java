@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Log", description = "거래 로그 조회 및 모니터링 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/monitor")
+@RequestMapping("/api/v1/monitor")
 public class LogController {
 
     private final LogService logService;

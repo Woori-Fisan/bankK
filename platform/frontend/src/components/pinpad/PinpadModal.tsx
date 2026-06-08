@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck } from 'lucide-react';
+import { X } from 'lucide-react';
 import PinpadDisplay from './PinpadDisplay';
 import PinpadKeypad from './PinpadKeypad';
 

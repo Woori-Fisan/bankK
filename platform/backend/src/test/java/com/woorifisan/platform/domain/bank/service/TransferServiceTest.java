@@ -75,7 +75,7 @@ class TransferServiceTest {
         given(bankExternalClient.fetchTransferExecute(eq("020"), any())).willReturn(mockTransferResponse);
 
         // when
-        TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key", "d-key");
+        TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key", "d-key", 1L);
 
         // then
         assertThat(response.getTransactionId()).isEqualTo(mockTransferResponse.getTransactionId());

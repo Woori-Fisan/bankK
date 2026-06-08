@@ -44,10 +44,12 @@ public class SecurityConfig {
             "/swagger-ui.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",
-            // 테스트 용 임시 통과 URL -> 플랫폼 개발 완료 시 삭제
             "/api/v1/keys/public",
             "/api/rag/**",
-            "/api/v1/loan/**"
+            // 은행→플랫폼 Webhook: 호출자가 은행 서버이므로 JWT 없이 X-Webhook-Secret으로 인증
+            "/api/v1/loan/callback",
+            // SSE 구독: 브라우저가 EventSource로 열며 JWT 헤더를 보내기 어려운 구조
+            "/api/v1/loan/subscribe"
     };
 
     @Bean

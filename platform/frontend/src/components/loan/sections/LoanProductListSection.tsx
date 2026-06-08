@@ -5,8 +5,8 @@ import type { LoanProduct } from '../../../pages/LoanApplication';
 
 interface LoanProductListSectionProps {
     products: LoanProduct[];
-    selectedId: string | undefined;
-    onSelect: (id: string) => void;
+    selectedId: number | undefined;
+    onSelect: (id: number) => void;
     tab: 'RATE' | 'LIMIT';
     onTabChange: (tab: 'RATE' | 'LIMIT') => void;
 }
