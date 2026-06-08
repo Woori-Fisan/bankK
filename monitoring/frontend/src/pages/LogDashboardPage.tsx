@@ -1,7 +1,7 @@
 import React from 'react';
 
 const GRAFANA_URL =
-    'http://localhost:3000/d/dfnt2zaw0xmgwf/monitoring-dashboard?orgId=1&refresh=10s&from=now-1h&to=now&kiosk=tv&theme=light';
+    '/grafana/d/dfnt2zaw0xmgwf/monitoring-dashboard?orgId=1&refresh=10s&from=now-1h&to=now&kiosk=tv&theme=light';
 
 const MetricsPage: React.FC = () => {
     return (
