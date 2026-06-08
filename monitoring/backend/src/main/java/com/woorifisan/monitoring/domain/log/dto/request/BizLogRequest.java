@@ -29,6 +29,7 @@ public class BizLogRequest {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class HttpContext {
 
+        private String logId;
         private String logType;
         private String bankCode;
         private String targetCode;
@@ -48,6 +49,7 @@ public class BizLogRequest {
     public BizLogInsertDTO toInsertDTO() {
         return BizLogInsertDTO.builder()
                 .timestamp(parseTimestamp(timestamp))
+                .logId(http.getLogId())
                 .level(level)
                 .logType(http.getLogType())
                 .traceId(traceId)

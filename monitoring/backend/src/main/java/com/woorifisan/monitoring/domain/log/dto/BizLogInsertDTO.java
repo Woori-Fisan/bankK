@@ -8,6 +8,7 @@ import lombok.Getter;
 @Builder
 public class BizLogInsertDTO {
     private LocalDateTime timestamp;
+    private String logId;
     private String level;
     private String logType;
     private String traceId;

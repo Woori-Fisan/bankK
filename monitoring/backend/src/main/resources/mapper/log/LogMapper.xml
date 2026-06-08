@@ -109,7 +109,7 @@
 
     <insert id="insertBizLogs" parameterType="java.util.List">
         INSERT INTO system_logs (
-            created_at,
+            created_at, log_id,
             level, log_type, trace_id, staff_id, agency_code,
             bank_code, target_code, bank_key_id,
             http_method, http_uri, http_status,
@@ -118,7 +118,7 @@
         ) VALUES
         <foreach collection="list" item="dto" separator=",">
             (
-                #{dto.timestamp},
+                #{dto.timestamp}, #{dto.logId},
                 #{dto.level}, #{dto.logType}, #{dto.traceId}, #{dto.staffId}, #{dto.agencyCode},
                 #{dto.bankCode}, #{dto.targetCode}, #{dto.bankKeyId},
                 #{dto.httpMethod}, #{dto.httpUri}, #{dto.httpStatus},
