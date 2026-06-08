@@ -158,16 +158,16 @@ bank:
         execute: "/transfer/execute"
         transfer: "/transfer"
         public-key: "/keys/public"
-    "088":
-      base-url: http://localhost:9090/api/v1/baas
-      endpoints:
-        balance: "/account/balance"
-        history: "/account/transactions"
-        withdraw: "/transfer/withdraw"
-        withdrawal: "/transfer/withdrawal"
-        deposit: "/transfer/deposit"
-        recipient: "/transfer/recipient"
-        refund: "/transfer/refund"
-        execute: "/transfer/execute"
-        transfer: "/transfer"
-        public-key: "/keys/public"
+#    "088":
+#      base-url: http://localhost:9090/api/v1/baas
+#      endpoints:
+#        balance: "/account/balance"
+#        history: "/account/transactions"
+#        withdraw: "/transfer/withdraw"
+#        withdrawal: "/transfer/withdrawal"
+#        deposit: "/transfer/deposit"
+#        recipient: "/transfer/recipient"
+#        refund: "/transfer/refund"
+#        execute: "/transfer/execute"
+#        transfer: "/transfer"
+#        public-key: "/keys/public"
