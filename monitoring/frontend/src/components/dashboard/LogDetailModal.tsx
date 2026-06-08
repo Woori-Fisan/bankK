@@ -58,7 +58,7 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
 
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Log ID: #${log.id}  |  Level: ${log.level}  |  Exported: ${new Date().toLocaleString('en-US')}`, 14, 23);
+        doc.text(`Log ID: #${log.logId}  |  Level: ${log.level}  |  Exported: ${new Date().toLocaleString('en-US')}`, 14, 23);
 
         let y = 30;
 
@@ -117,7 +117,7 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
             });
         }
 
-        doc.save(`bankk-log-${log.id}-${new Date().toISOString().slice(0, 10)}.pdf`);
+        doc.save(`bankk-log-${log.logId}-${new Date().toISOString().slice(0, 10)}.pdf`);
     };
 
     useEffect(() => {
@@ -134,14 +134,14 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
             onClick={onClose}
         >
             <div
-                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col mx-4"
+                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col mx-4"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* 헤더 */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <div className="flex items-center gap-3">
                         <span className="text-sm font-bold text-gray-900">로그 상세</span>
-                        <span className="font-mono text-xs text-gray-400">#{log.id}</span>
+                        <span className="font-mono text-xs text-gray-400">#{log.logId}</span>
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${levelStyle[log.level]}`}>
                             {log.level}
                         </span>

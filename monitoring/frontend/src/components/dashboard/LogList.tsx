@@ -115,7 +115,7 @@ const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCo
         doc.save(filename);
     };
 
-    const handleRowClick = async (id: number) => {
+    const handleRowClick = async (id: string) => {
         setDetailLoading(true);
         try {
             const res = await getLog(id);
@@ -183,8 +183,8 @@ const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCo
                                 ) : (
                                     logs.map((log) => (
                                         <tr
-                                            key={log.id}
-                                            onClick={() => handleRowClick(log.id)}
+                                            key={log.logId}
+                                            onClick={() => handleRowClick(log.logId)}
                                             className={`hover:bg-emerald-50/50 transition-colors cursor-pointer ${detailLoading ? 'pointer-events-none opacity-60' : ''}`}
                                         >
                                             <td className="px-6 py-3 text-xs text-gray-600 whitespace-nowrap">
