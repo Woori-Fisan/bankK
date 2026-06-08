@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import { toPng } from 'html-to-image';
 import WithdrawResultHeader from '../sections/WithdrawResultHeader';
 import WithdrawDetailTable from '../sections/WithdrawDetailTable';
+import WithdrawReceiptDocument from '../WithdrawReceiptDocument';
 import type { WithdrawData, WithdrawResult } from '../../../types/withdraw';
-import { formatAmount } from '../../../utils/formatter';
+import { formatAmount, formatDate } from '../../../utils/formatter';
 import Card from '../../common/Card';
 import { Button } from '../../common/Button';
 import { Printer } from 'lucide-react';
@@ -20,20 +23,45 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
     onClose,
 }) => {
     const navigate = useNavigate();
+    const receiptDocRef = useRef<HTMLDivElement>(null);
 
     const handleHome = () => {
         onClose();
         navigate('/main');
     };
 
+    const handlePrintReceipt = async () => {
+        if (!receiptDocRef.current) return;
+        try {
+            const imgData = await toPng(receiptDocRef.current, { pixelRatio: 2 });
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            pdf.addImage(imgData, 'PNG', 0, 0, 210, (receiptDocRef.current.offsetHeight * 210) / receiptDocRef.current.offsetWidth);
+            pdf.save(`출금확인서_${data.userName ?? '고객'}_${formatDate(new Date().toISOString(), false, 'dash')}.pdf`);
+        } catch {
+            alert('PDF 생성에 실패했습니다.');
+        }
+    };
+
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500 pb-10">
+            {/* 숨김 PDF 문서 템플릿 */}
+            <WithdrawReceiptDocument
+                innerRef={receiptDocRef}
+                transactionId={result.transactionId}
+                userName={data.userName ?? '고객'}
+                bankName={data.sourceAccount.bankName}
+                accountNumber={data.sourceAccount.accountNumber}
+                amount={data.amount}
+                dateTime={result.dateTime}
+                balanceBefore={result.balanceBefore}
+                balanceAfter={result.balanceAfter}
+            />
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* 좌측: 성공 안내 및 상세 정보 (8컬럼) */}
                 <div className="lg:col-span-8">
                     <Card padding="xl" className="border-slate-100 shadow-sm h-full">
                         <WithdrawResultHeader />
-                        <WithdrawDetailTable 
+                        <WithdrawDetailTable
                             bankName={data.sourceAccount.bankName}
                             accountNumber={data.sourceAccount.accountNumber}
                             birthDate={data.birthDate}
@@ -41,6 +69,7 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
                             balanceAfter={result.balanceAfter}
                             transactionId={result.transactionId}
                             dateTime={result.dateTime}
+                            fee={data.fee}
                         />
                     </Card>
                 </div>
@@ -75,7 +104,7 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
                                 variant="outline"
                                 size="xl"
                                 fullWidth
-                                onClick={() => alert('출력 기능은 준비 중입니다.')}
+                                onClick={handlePrintReceipt}
                                 className="rounded-2xl h-14 text-base font-bold gap-2 border-slate-200"
                             >
                                 <Printer className="w-5 h-5" />

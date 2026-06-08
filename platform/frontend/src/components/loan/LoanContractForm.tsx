@@ -125,6 +125,10 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                 Object.assign(result, decrypted);
             }
 
+            if (result.executedAt) {
+                result.executedAt = result.executedAt.replace('Z', '');
+            }
+
             onNext(result);
         } catch (err) {
             setSubmitError(extractApiError(err));
