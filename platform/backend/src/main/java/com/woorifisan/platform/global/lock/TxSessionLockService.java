@@ -32,6 +32,9 @@ public class TxSessionLockService {
      * 이미 락이 있으면 BusinessException(DUPLICATE_REQUEST) 발생.
      */
     public void acquireLock(Long staffId) {
+        if (staffId == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
         String key = LOCK_KEY_PREFIX + staffId;
         // SET NX EX — 원자적으로 키가 없을 때만 쓰기
         Boolean acquired = redisTemplate.opsForValue()

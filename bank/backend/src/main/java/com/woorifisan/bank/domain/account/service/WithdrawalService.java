@@ -54,10 +54,16 @@ public class WithdrawalService {
         // 3. 출금 가능 여부 체크 — 비밀번호/상태/잔액 1차 확인
         validateWithdrawal(account, decryptedData.getWithdrawalPassword(), request.getAmount());
 
-        // 4. 비관적 락으로 재조회 후 잔액 재확인 (동시 출금 race condition 방지)
-        // TransferService와 동일한 패턴: findByAccountNoPlain 조회 후 findByIdForUpdate 재조회
+        // 4. 비관적 락으로 재조회 후 전체 출금 가능 여부 재검증 (동시 출금 race condition 방지)
+        // 락 획득 전 사이에 계좌 상태/유형/잔액이 변경됐을 수 있으므로 전체 재검증
         account = accountMapper.findByIdForUpdate(account.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        if (!"DEPOSIT".equals(account.getAccountType())) {
+            throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
+        }
+        if (!"NORMAL".equals(account.getStatus())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
+        }
         if (account.getBalance().compareTo(request.getAmount()) < 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }

@@ -59,7 +59,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         boolean isPost = HttpMethod.POST.name().equals(request.getMethod());
-        boolean isTargetPath = IDEMPOTENT_PATHS.contains(request.getRequestURI());
+        boolean isTargetPath = IDEMPOTENT_PATHS.contains(request.getServletPath());
         return !isPost || !isTargetPath;
     }
 
@@ -105,18 +105,20 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 
         // 2단계: 처리권 획득 — 응답 본문을 캡처하기 위해 래퍼로 감쌈
         ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
+        boolean completed = false;
         try {
             filterChain.doFilter(request, responseWrapper);
+            completed = true;
         } finally {
-            if (responseWrapper.getStatus() == HttpServletResponse.SC_OK) {
+            if (completed && responseWrapper.getStatus() == HttpServletResponse.SC_OK) {
                 // 3단계 (성공): PROCESSING → 실제 응답 body로 교체
                 String body = new String(responseWrapper.getContentAsByteArray(), StandardCharsets.UTF_8);
                 redisTemplate.opsForValue().set(redisKey, body, TTL_SECONDS, TimeUnit.SECONDS);
                 log.debug("[멱등성] 응답 캐시 저장 - key: {}", idempotencyKey);
             } else {
-                // 3단계 (실패): 선점 해제 — 클라이언트가 동일 키로 재시도 가능
+                // 3단계 (실패/예외): 선점 해제 — 클라이언트가 동일 키로 재시도 가능
                 redisTemplate.delete(redisKey);
-                log.info("[멱등성] 처리 실패, 키 해제 - key: {}, status: {}",
+                log.info("[멱등성] 처리 실패 또는 예외, 키 해제 - key: {}, status: {}",
                         idempotencyKey, responseWrapper.getStatus());
             }
             responseWrapper.copyBodyToResponse();
