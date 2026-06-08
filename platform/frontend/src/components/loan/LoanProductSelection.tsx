@@ -51,7 +51,7 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, a
         if (isNaN(num)) return;
 
         if (num > effectiveLimit) {
-            setExecuteAmount(effectiveLimit);
+            setExecuteAmount(num);
             setAmountError('한도 금액 이상의 입력은 불가능합니다.');
         } else if (num < 1_000_000) {
             setExecuteAmount(num);
@@ -65,7 +65,7 @@ const LoanProductSelection: React.FC<LoanProductSelectionProps> = ({ products, a
     const handleQuickAdd = (val: number) => {
         const nextAmt = executeAmount + val;
         if (nextAmt > effectiveLimit) {
-            setExecuteAmount(effectiveLimit);
+            setExecuteAmount(nextAmt);
             setAmountError('한도 금액 이상의 입력은 불가능합니다.');
         } else if (nextAmt < 1_000_000) {
             setExecuteAmount(nextAmt);

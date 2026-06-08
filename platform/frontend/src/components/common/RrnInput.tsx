@@ -22,6 +22,7 @@ const RrnInput: React.FC<RrnInputProps> = ({
   label = "본인 인증 (주민등록번호)",
   isChecking = false
 }) => {
+  const rrnFrontRef = useRef<HTMLInputElement>(null);
   const rrnBackRef = useRef<HTMLInputElement>(null);
   const [localError, setLocalError] = React.useState<string | undefined>(undefined);
 
@@ -31,14 +32,21 @@ const RrnInput: React.FC<RrnInputProps> = ({
     }
   }, [rrnFront, rrnBack]);
 
-  const handleBlur = () => {
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     if (onBlur) {
       onBlur();
     }
     
-    if (!rrnFront || rrnFront.length !== 6) {
+    const currentFrontValue = rrnFrontRef.current?.value || '';
+    const currentBackValue = rrnBackRef.current?.value || '';
+
+    if (!currentFrontValue || currentFrontValue.length !== 6) {
       setLocalError('주민등록번호 앞 6자리를 입력해주세요.');
-    } else if (!rrnBack || !/^[1-4]$/.test(rrnBack)) {
+    } else if (e.relatedTarget === rrnBackRef.current 
+      && currentFrontValue.length === 6 
+      && (!currentBackValue || /^[1-4]$/.test(currentBackValue))) {
+      setLocalError(undefined);
+    } else if (!currentBackValue || !/^[1-4]$/.test(currentBackValue)) {
       setLocalError('주민등록번호 뒤 1자리(1~4)를 입력해주세요.');
     } else {
       setLocalError(undefined);
@@ -80,6 +88,7 @@ const RrnInput: React.FC<RrnInputProps> = ({
         <div className="space-y-2">
           <p className="text-[11px] font-bold text-slate-400 ml-1">주민번호 앞 6자리</p>
           <input
+            ref={rrnFrontRef}
             type="text"
             inputMode="numeric"
             placeholder="000000"
