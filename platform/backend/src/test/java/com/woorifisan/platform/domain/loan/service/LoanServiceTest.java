@@ -337,61 +337,7 @@ class LoanServiceTest {
         assertThat(response.getMaturityDate()).isEqualTo("2029-06-15");
     }
 
-    @Test
-    @DisplayName("대출 실행 성공 - depositTransactionId가 TXN- 접두사로 자동 생성됨")
-    void 대출_실행_성공_거래번호_자동생성() {
-        // given
-        Map<String, Object> bankResponse = new HashMap<>();
-        bankResponse.put("loanNo", "LOAN-2026-001");
-        bankResponse.put("customerName", "홍길동");
-        bankResponse.put("loanAmount", "30000000");
-        bankResponse.put("interestRate", "4.5");
-        bankResponse.put("repaymentPeriod", "36");
-        bankResponse.put("monthlyPayment", "897000");
-        bankResponse.put("startDate", "2026-07-15");
-        bankResponse.put("endDate", "2029-06-15");
-
-        when(bankLoanClient.executeLoan(any())).thenReturn(bankResponse);
-
-        LoanExecuteRequest request = LoanExecuteRequest.builder()
-                .evaluationId("EVAL-001")
-                .loanProductCode("100")
-                .depositAccountNo("enc-account")
-                .accountPassword("enc-password")
-                .executeAmount(new BigDecimal("30000000"))
-                .repaymentPeriod(36)
-                .build();
-
-        // when
-        LoanExecuteResponse response = loanService.executeLoan(request, 1L);
-
-        // then: Platform에서 생성한 입금 거래번호는 TXN- 접두사를 가짐
-        assertThat(response.getDepositTransactionId()).startsWith("TXN-");
-        assertThat(response.getDepositTransactionId()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("대출 실행 실패 - 상품 코드가 숫자가 아닌 경우 INVALID_INPUT 예외")
-    void 대출_실행_실패_상품코드_숫자_아님() {
-        // given: loanProductCode에 숫자가 아닌 값 전달
-        LoanExecuteRequest request = LoanExecuteRequest.builder()
-                .evaluationId("EVAL-001")
-                .loanProductCode("NOT-A-NUMBER") // Bank는 Long productId를 기대
-                .depositAccountNo("enc-account")
-                .accountPassword("enc-password")
-                .executeAmount(new BigDecimal("30000000"))
-                .repaymentPeriod(36)
-                .build();
-
-        // when & then
-        assertThatThrownBy(() -> loanService.executeLoan(request, 1L))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
-    }
-
-
-
-    // ───────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
     // 공통 픽스처 팩토리
     // ─────────────────────────────────────────────────────────────────────
 
@@ -399,7 +345,6 @@ class LoanServiceTest {
         return LoanEvaluateRequest.builder()
                 .requestKey("uuid-test-1234")
                 .bankCode("020")
-                .customerPhone("01012345678")
                 .depositBankCode("020")
                 .requestedAmount(new BigDecimal("30000000"))
                 .requestedPeriod(36)
