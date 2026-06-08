@@ -2,6 +2,7 @@ server:
   port: ${BANK_BACKEND_PORT:8081} # 은행 코어 서버 포트
 
 bank:
+  name: ${BANK_NAME:은행}
   code: ${BANK_CODE:020} # 우리은행
   document:
     storage:

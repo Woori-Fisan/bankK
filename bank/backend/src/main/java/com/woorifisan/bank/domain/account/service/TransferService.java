@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,7 +51,11 @@ public class TransferService {
     // 개별 트랜잭션 처리를 담당하는 서브 서비스 주입
     private final TransferTxService transferTxService;
 
-    private static final String CURRENT_BANK_CODE = "020"; // 우리은행 코드 임시 정의
+    @Value("${bank.code}")
+    private String CURRENT_BANK_CODE; // 우리은행 코드 임시 정의
+
+    @Value("${bank.name}")
+    private String CURRENT_BANK_NAME;
 
     /**
      * 수취인 확인
@@ -91,7 +96,7 @@ public class TransferService {
         // 5. 응답 생성 (민감 정보는 resPayload에, 나머지는 평문)
         return RecipientResponse.of(
                 resPayload,
-                "우리은행",
+                CURRENT_BANK_NAME,
                 account.getStatus()
         );
     }
