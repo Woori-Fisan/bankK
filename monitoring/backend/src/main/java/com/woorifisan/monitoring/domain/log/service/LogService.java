@@ -41,7 +41,7 @@ public class LogService {
 
         try{
             totalCount = logMapper.countLogList(request);
-            if(request.getSize() > 0){
+            if(request.getSize() <= 0){
                 request.setSize(20);
             }
             totalPage = (long) Math.ceil((double) totalCount / request.getSize());
