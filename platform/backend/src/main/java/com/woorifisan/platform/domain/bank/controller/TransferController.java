@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -48,9 +47,8 @@ public class TransferController {
             @RequestHeader("x-jws-signature") String jwsSignature,
             @RequestHeader("x-withdraw-key-id") String withdrawKeyId,
             @RequestHeader("x-deposit-key-id") String depositKeyId,
-            @RequestBody @Valid TransferRequest request,
-            @AuthenticationPrincipal Long staffId) {
-        TransferResponse response = transferService.executeTransfer(request, jwsSignature, withdrawKeyId, depositKeyId, staffId);
+            @RequestBody @Valid TransferRequest request) {
+        TransferResponse response = transferService.executeTransfer(request, jwsSignature, withdrawKeyId, depositKeyId);
         return ApiResponse.success(response);
     }
 

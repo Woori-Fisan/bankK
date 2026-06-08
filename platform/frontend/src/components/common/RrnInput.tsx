@@ -22,7 +22,36 @@ const RrnInput: React.FC<RrnInputProps> = ({
   label = "본인 인증 (주민등록번호)",
   isChecking = false
 }) => {
+  const rrnFrontRef = useRef<HTMLInputElement>(null);
   const rrnBackRef = useRef<HTMLInputElement>(null);
+  const [localError, setLocalError] = React.useState<string | undefined>(undefined);
+
+  React.useEffect(() => {
+    if (rrnFront.length === 6 && rrnBack.length === 1 && /^[1-4]$/.test(rrnBack)) {
+      setLocalError(undefined);
+    }
+  }, [rrnFront, rrnBack]);
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (onBlur) {
+      onBlur();
+    }
+    
+    const currentFrontValue = rrnFrontRef.current?.value || '';
+    const currentBackValue = rrnBackRef.current?.value || '';
+
+    if (!currentFrontValue || currentFrontValue.length !== 6) {
+      setLocalError('주민등록번호 앞 6자리를 입력해주세요.');
+    } else if (e.relatedTarget === rrnBackRef.current 
+      && currentFrontValue.length === 6 
+      && (!currentBackValue || /^[1-4]$/.test(currentBackValue))) {
+      setLocalError(undefined);
+    } else if (!currentBackValue || !/^[1-4]$/.test(currentBackValue)) {
+      setLocalError('주민등록번호 뒤 1자리(1~4)를 입력해주세요.');
+    } else {
+      setLocalError(undefined);
+    }
+  };
 
   const handleFrontChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9]/g, '');
@@ -41,6 +70,8 @@ const RrnInput: React.FC<RrnInputProps> = ({
     }
   };
 
+  const displayError = error || localError;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between px-1">
@@ -57,13 +88,14 @@ const RrnInput: React.FC<RrnInputProps> = ({
         <div className="space-y-2">
           <p className="text-[11px] font-bold text-slate-400 ml-1">주민번호 앞 6자리</p>
           <input
+            ref={rrnFrontRef}
             type="text"
             inputMode="numeric"
             placeholder="000000"
             maxLength={6}
             value={rrnFront}
             onChange={handleFrontChange}
-            onBlur={onBlur}
+            onBlur={handleBlur}
             className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-50 rounded-xl text-center text-slate-900 focus:bg-white focus:border-emerald-500 outline-none transition-all tracking-[0.3em] font-mono text-xl shadow-inner"
           />
         </div>
@@ -79,7 +111,7 @@ const RrnInput: React.FC<RrnInputProps> = ({
                 maxLength={1}
                 value={rrnBack}
                 onChange={handleBackChange}
-                onBlur={onBlur}
+                onBlur={handleBlur}
                 className="w-full px-0 py-4 bg-slate-50 border-2 border-slate-50 rounded-xl text-center text-slate-900 focus:bg-white focus:border-emerald-500 outline-none transition-all font-mono text-xl shadow-inner"
               />
             </div>
@@ -92,8 +124,10 @@ const RrnInput: React.FC<RrnInputProps> = ({
         </div>
       </div>
       
-      {error && (
-        <p className="mt-2 text-sm text-rose-500 font-bold ml-1">{error}</p>
+      {displayError ? (
+        <p className="mt-2 text-sm text-rose-500 font-bold ml-1 animate-in fade-in slide-in-from-top-1">{displayError}</p>
+      ) : (
+        <p className="mt-2 text-sm select-none pointer-events-none opacity-0">&nbsp;</p>
       )}
     </div>
   );

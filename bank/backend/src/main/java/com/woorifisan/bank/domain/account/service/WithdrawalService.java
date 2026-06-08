@@ -97,7 +97,7 @@ public class WithdrawalService {
         return WithdrawalResponse.of(
                 txId, 
                 balanceAfter, 
-                ledger.getTransactedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")),
+                ledger.getTransactedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
                 resPayload
         );
     }

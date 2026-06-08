@@ -23,7 +23,7 @@ let refreshPromise: Promise<string | null> | null = null;
 
 export const refreshAccessToken = async (): Promise<string | null> => {
     // 이미 리프레시가 진행 중이라면 기존의 Promise를 반환하여 결과를 공유합니다.
-    if (refreshPromise) {
+    if (refreshPromise !== null) {
         return refreshPromise;
     }
 

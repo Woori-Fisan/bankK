@@ -15,7 +15,7 @@ interface LoanCustomerSectionProps {
     onRrnFrontChange: (val: string) => void;
     onRrnBackChange: (val: string) => void;
     bankList: BankOption[] | undefined;
-    fieldErrors: Partial<Record<keyof LoanData | 'rrn', string>>;
+    fieldErrors: Partial<Record<keyof LoanData | 'rrn' | 'bank', string>>;
 }
 
 const LoanCustomerSection: React.FC<LoanCustomerSectionProps> = ({
@@ -41,12 +41,6 @@ const LoanCustomerSection: React.FC<LoanCustomerSectionProps> = ({
                         onChange={(e) => onFormDataChange({ ...formData, userName: e.target.value })}
                         error={fieldErrors.userName}
                     />
-                    <Input
-                        label="연락처"
-                        placeholder="010-1234-5678"
-                        value={formData.phone}
-                        onChange={(e) => onFormDataChange({ ...formData, phone: e.target.value })}
-                    />
                 </div>
 
                 {/* 2. 주민등록번호 */}
@@ -65,14 +59,14 @@ const LoanCustomerSection: React.FC<LoanCustomerSectionProps> = ({
                 <div className="pt-8 border-t border-slate-50">
                     <AccountInputSection
                         title="3. 대출금 입금 계좌"
-                        bankCode={formData.bankCode}
-                        accountNumber={formData.accountNo}
+                        bankCode={formData.bankCode || ''}
+                        accountNumber={formData.accountNo || ''}
                         banks={bankList || []}
                         onBankChange={(name, code) => {
                             onFormDataChange({ ...formData, bank: name, bankCode: code });
                         }}
                         onAccountChange={(val) => onFormDataChange({ ...formData, accountNo: val })}
-                        error={{ accountNumber: fieldErrors.accountNo }}
+                        error={{ bankCode: fieldErrors.bank, accountNumber: fieldErrors.accountNo }}
                     />
                 </div>
             </div>

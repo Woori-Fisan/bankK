@@ -32,10 +32,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(LoanController.class)
@@ -92,7 +92,6 @@ class LoanControllerTest {
         LoanEvaluateRequest evalRequest = LoanEvaluateRequest.builder()
                 .requestKey("uuid-test-1234")
                 .bankCode("020")
-                .customerPhone("01012345678")
                 .depositBankCode("020")
                 .requestedAmount(new BigDecimal("30000000"))
                 .requestedPeriod(36)

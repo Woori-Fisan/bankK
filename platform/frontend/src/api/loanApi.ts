@@ -27,7 +27,6 @@ export interface EvaluationRequest {
   bankCode: string;
   customerName: string;
   customerRrnPrefix: string;
-  customerPhone: string;
   depositBankCode: string;
   depositAccountNo: string;
   requestedAmount?: number;
@@ -103,6 +102,7 @@ export interface ExecutionResponse {
   linkedAccountId: number;
   resPayload?: string;
   borrowerName?: string; // 복호화된 고객 성명을 담을 필드 추가
+  executedAt?: string;   // 대출 실행 일시 (UTC ISO 8601)
 }
 
 export const fetchReviewDocuments = async (): Promise<ReviewDocumentsResponse> => {

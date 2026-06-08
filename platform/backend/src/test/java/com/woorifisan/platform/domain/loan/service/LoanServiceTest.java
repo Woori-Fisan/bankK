@@ -345,7 +345,6 @@ class LoanServiceTest {
         return LoanEvaluateRequest.builder()
                 .requestKey("uuid-test-1234")
                 .bankCode("020")
-                .customerPhone("01012345678")
                 .depositBankCode("020")
                 .requestedAmount(new BigDecimal("30000000"))
                 .requestedPeriod(36)

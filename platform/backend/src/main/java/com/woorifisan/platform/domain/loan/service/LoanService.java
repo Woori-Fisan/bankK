@@ -9,7 +9,6 @@ import com.woorifisan.platform.domain.bank.model.Bank;
 import com.woorifisan.platform.domain.loan.dto.request.LoanCallbackRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanEvaluateRequest;
 import com.woorifisan.platform.domain.loan.dto.request.LoanExecuteRequest;
-import com.woorifisan.platform.domain.loan.dto.response.AvailableProductDto;
 import com.woorifisan.platform.domain.loan.dto.response.LoanContractDocumentsResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluateResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanEvaluationResultResponse;
@@ -17,27 +16,24 @@ import com.woorifisan.platform.domain.loan.dto.response.LoanExecuteResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanRequiredDocumentsResponse;
 import com.woorifisan.platform.domain.loan.dto.response.TermsDocumentDto;
 import com.woorifisan.platform.global.exception.BusinessException;
-import com.woorifisan.platform.global.lock.TxSessionLockService;
 import com.woorifisan.platform.global.response.ErrorCode;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LoanService {
@@ -60,7 +56,6 @@ public class LoanService {
     private final BankMapper bankMapper;
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, String> redisTemplate;
-    private final TxSessionLockService sessionLockService;
 
     // SSE 구독
     public SseEmitter subscribe(String requestKey) {
@@ -82,7 +77,6 @@ public class LoanService {
         // 브라우저가 탭을 닫거나 네트워크 오류 시 Map에서 제거
         emitter.onError(e -> {
             pendingEmitters.remove(requestKey);
-            log.warn("[SSE] 연결 오류 - requestKey: {}", requestKey);
         });
 
         // 연결 즉시 초기 이벤트 전송 — Nginx 등 프록시가 유휴 연결로 오인해 끊는 것을 방지
@@ -90,7 +84,6 @@ public class LoanService {
             emitter.send(SseEmitter.event().name("connect").data("connected"));
         } catch (Exception ignored) {}
 
-        log.info("[SSE] 구독 등록 - requestKey: {}", requestKey);
         return emitter;
     }
 
@@ -102,7 +95,6 @@ public class LoanService {
             try {
                 emitter.send(SseEmitter.event().name("heartbeat").data("ping"));
             } catch (Exception e) {
-                log.debug("[Heartbeat] 전송 실패 - requestKey: {} (연결 종료됨)", key);
                 pendingEmitters.remove(key);
                 try { emitter.complete(); } catch (Exception ignored) {}
             }
@@ -111,7 +103,6 @@ public class LoanService {
 
     // 심사 서류 조회
     public LoanRequiredDocumentsResponse getRequiredDocuments(Long staffId) {
-        log.info("[심사서류] 조회 요청 - staffId: {}", staffId);
         List<TermsDocumentDto> documents = bankLoanClient.getEvaluationTerms().stream()
                 .map(terms -> TermsDocumentDto.builder()
                         .documentType(Objects.toString(terms.get("termsCode"), null))
@@ -138,9 +129,6 @@ public class LoanService {
             throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH);
         }
 
-        log.info("[심사신청] 은행 API 전달 시작 - requestKey: {}, staffId: {}, bankCode: {}",
-                request.getRequestKey(), staffId, request.getBankCode());
-
         // 3. Platform DTO → Bank 전용 DTO 변환 (Pass-through)
         BankLoanEvaluateRequest bankData = BankLoanEvaluateRequest.builder()
                 .reqPayload(request.getReqPayload())
@@ -165,8 +153,6 @@ public class LoanService {
         String status = Objects.toString(data.get("status"), "SUBMITTED");
         String resPayload = Objects.toString(data.get("resPayload"), null);
 
-        log.info("[심사신청] 접수 완료 - loanNo: {}, requestKey: {}", loanNo, request.getRequestKey());
-
         return LoanEvaluateResponse.builder()
                 .loanNo(loanNo)
                 .status(status)
@@ -178,13 +164,11 @@ public class LoanService {
     public void handleCallback(LoanCallbackRequest callback, String secret) {
         // 1. X-Webhook-Secret 헤더 검증
         if (!webhookSecret.equals(secret)) {
-            log.warn("[Webhook] 인증 실패 - requestKey: {}", callback.getRequestKey());
             throw new BusinessException(ErrorCode.LOAN_WEBHOOK_SECRET_INVALID);
         }
 
         String requestKey = callback.getRequestKey();
         if (requestKey == null) {
-            log.warn("[Webhook] requestKey 누락 - loanNo: {}", callback.getLoanNo());
             return;
         }
 
@@ -201,15 +185,12 @@ public class LoanService {
                     LOAN_RESULT_TTL_SECONDS,
                     TimeUnit.SECONDS
             );
-            log.info("[Webhook] Redis 결과 저장 완료 - requestKey: {}", requestKey);
         } catch (Exception e) {
-            log.error("[Webhook] Redis 결과 저장 실패 - requestKey: {}", requestKey, e);
         }
 
         // 3. Map에서 emitter 꺼내기
         SseEmitter emitter = pendingEmitters.remove(requestKey);
         if (emitter == null) {
-            log.warn("[Webhook] SSE 에미터 없음 (이미 만료) - requestKey: {} - Redis에 저장됨", requestKey);
             return;
         }
 
@@ -227,13 +208,10 @@ public class LoanService {
 
             // 6. 연결 종료
             emitter.complete();
-            log.info("[Webhook] SSE 전송 완료 - loanNo: {}, status: {}", callback.getLoanNo(), callback.getStatus());
         } catch (Exception e) {
             if (isClientDisconnected(e)) {
-                log.warn("[Webhook] 클라이언트 연결 끊김 (정상) - requestKey: {}", requestKey);
                 try { emitter.complete(); } catch (Exception ignored) {}
             } else {
-                log.error("[Webhook] SSE 전송 실패 - requestKey: {}", requestKey, e);
                 try { emitter.completeWithError(e); } catch (Exception ignored) {}
             }
         }
@@ -246,7 +224,6 @@ public class LoanService {
         try {
             return objectMapper.readValue(json, LoanEvaluationResultResponse.class);
         } catch (Exception e) {
-            log.error("[Result] Redis 역직렬화 실패 - requestKey: {}", requestKey, e);
             return null;
         }
     }
@@ -255,7 +232,6 @@ public class LoanService {
     public LoanContractDocumentsResponse getContractDocuments(String loanProductCode,
                                                                String loanNo,
                                                                Long staffId) {
-        log.info("[계약서류] 조회 - staffId: {}, loanNo: {}, productCode: {}", staffId, loanNo, loanProductCode);
         List<TermsDocumentDto> documents = bankLoanClient.getContractTerms(loanProductCode, loanNo).stream()
                 .map(terms -> TermsDocumentDto.builder()
                         .documentType(Objects.toString(terms.get("termsCode"), null))
@@ -274,45 +250,35 @@ public class LoanService {
 
     // 대출 실행
     public LoanExecuteResponse executeLoan(LoanExecuteRequest request, Long staffId) {
-        log.info("[대출실행] 요청 - staffId: {}, loanNo: {}, amount: {}",
-                staffId, request.getLoanNo(), request.getExecuteAmount());
+        // Platform DTO → Bank 전용 DTO 변환 (Pass-through)
+        BankLoanExecuteRequest bankRequest = BankLoanExecuteRequest.builder()
+                .reqPayload(request.getReqPayload())
+                .bankKeyId(request.getBankKeyId())
+                .loanNo(request.getLoanNo())
+                .productId(request.getProductId())
+                .loanAmount(request.getExecuteAmount())
+                .repaymentPeriod(request.getRepaymentPeriod())
+                .repaymentType(request.getRepaymentType())
+                .build();
 
-        sessionLockService.acquireLock(staffId);
-        try {
-            // Platform DTO → Bank 전용 DTO 변환 (Pass-through)
-            BankLoanExecuteRequest bankRequest = BankLoanExecuteRequest.builder()
-                    .reqPayload(request.getReqPayload())
-                    .bankKeyId(request.getBankKeyId())
-                    .loanNo(request.getLoanNo())
-                    .productId(request.getProductId())
-                    .loanAmount(request.getExecuteAmount())
-                    .repaymentPeriod(request.getRepaymentPeriod())
-                    .repaymentType(request.getRepaymentType())
-                    .build();
+        Map<String, Object> data = bankLoanClient.executeLoan(bankRequest);
 
-            sessionLockService.upgradeToProcessing(staffId);
-
-            Map<String, Object> data = bankLoanClient.executeLoan(bankRequest);
-            log.info("[대출실행] 완료 - loanNo: {}", data.get("loanNo"));
-
-            // Bank 응답 → Platform 응답 DTO 변환 (Pass-through)
-            return LoanExecuteResponse.builder()
-                    .resPayload(Objects.toString(data.get("resPayload"), null))
-                    .loanNo(Objects.toString(data.get("loanNo"), null))
-                    .executeAmount(toBigDecimal(data.get("loanAmount")))
-                    .interestRate(toBigDecimal(data.get("interestRate")))
-                    .repaymentPeriod(data.get("repaymentPeriod") != null
-                            ? Integer.parseInt(data.get("repaymentPeriod").toString()) : 0)
-                    .monthlyPayment(toBigDecimal(data.get("monthlyPayment")))
-                    .repaymentType(Objects.toString(data.get("repaymentType"), null))
-                    .startDate(Objects.toString(data.get("startDate"), null))
-                    .maturityDate(Objects.toString(data.get("endDate"), null))
-                    .linkedAccountId(data.get("linkedAccountId") != null
-                            ? Long.parseLong(data.get("linkedAccountId").toString()) : null)
-                    .build();
-        } finally {
-            sessionLockService.releaseLock(staffId);
-        }
+        // Bank 응답 → Platform 응답 DTO 변환 (Pass-through)
+        return LoanExecuteResponse.builder()
+                .resPayload(Objects.toString(data.get("resPayload"), null))
+                .loanNo(Objects.toString(data.get("loanNo"), null))
+                .executeAmount(toBigDecimal(data.get("loanAmount")))
+                .interestRate(toBigDecimal(data.get("interestRate")))
+                .repaymentPeriod(data.get("repaymentPeriod") != null
+                        ? Integer.parseInt(data.get("repaymentPeriod").toString()) : 0)
+                .monthlyPayment(toBigDecimal(data.get("monthlyPayment")))
+                .repaymentType(Objects.toString(data.get("repaymentType"), null))
+                .startDate(Objects.toString(data.get("startDate"), null))
+                .maturityDate(Objects.toString(data.get("endDate"), null))
+                .linkedAccountId(data.get("linkedAccountId") != null
+                        ? Long.parseLong(data.get("linkedAccountId").toString()) : null)
+                .executedAt(Instant.now().toString())
+                .build();
     }
 
     // Helpers

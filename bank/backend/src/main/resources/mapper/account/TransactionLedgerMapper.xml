@@ -6,9 +6,15 @@
     </select>
 
     <insert id="insert">
-        INSERT INTO transaction_ledger (tx_id, account_id, tx_type, amount, balance_after, target_bank_code, target_account, description, status, transacted_at)
-        VALUES (#{txId}, #{accountId}, #{txType}, #{amount}, #{balanceAfter}, #{targetBankCode}, #{targetAccount}, #{description}, #{status}, #{transactedAt})
+        INSERT INTO transaction_ledger (tx_id, account_id, tx_type, amount, balance_after, target_bank_code, target_account, description, status, transacted_at, created_at)
+        VALUES (#{txId}, #{accountId}, #{txType}, #{amount}, #{balanceAfter}, #{targetBankCode}, #{targetAccount}, #{description}, #{status}, #{transactedAt}, #{createdAt})
     </insert>
+
+    <update id="updateStatus">
+        UPDATE transaction_ledger
+        SET status = #{status}
+        WHERE tx_id = #{txId}
+    </update>
 
     <select id="findHistoryList" resultType="TransactionLedger">
         SELECT *

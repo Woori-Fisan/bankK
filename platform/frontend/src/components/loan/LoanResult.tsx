@@ -57,7 +57,7 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
             const imgData = await toPng(receiptDocRef.current, { pixelRatio: 2 });
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             pdf.addImage(imgData, 'PNG', 0, 0, 210, (receiptDocRef.current.offsetHeight * 210) / receiptDocRef.current.offsetWidth);
-            pdf.save(`대출실행확인서_${loanData.userName}_${new Date().toISOString().slice(0,10)}.pdf`);
+            pdf.save(`대출실행확인서_${loanData.userName}_${formatDate(new Date().toISOString(), false, 'dash')}.pdf`);
         } catch {
             alert('PDF 생성에 실패했습니다.');
         }
@@ -128,6 +128,7 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
                     bank={loanData.bank ?? ''}
                     accountNo={loanData.accountNo ?? ''}
                     productName={product?.name ?? ''}
+                    executedAt={executionResult.executedAt}
                 />
             )}
 

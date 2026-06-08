@@ -48,13 +48,6 @@ const ResultDetailSection: React.FC<Props> = ({
                     </div>
                 </div>
             </div>
-
-            <div className="flex justify-end">
-                <button className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-emerald-600 transition-colors text-xs font-bold">
-                    <Download className="w-4 h-4" />
-                    전자영수증 저장
-                </button>
-            </div>
         </div>
     );
 };

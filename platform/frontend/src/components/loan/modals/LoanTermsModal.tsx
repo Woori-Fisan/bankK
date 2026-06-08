@@ -20,7 +20,11 @@ const LoanTermsModal: React.FC<LoanTermsModalProps> = ({
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen) {
+            setHasScrolledToBottom(false);
+            return;
+        }
+
         const handler = (e: MessageEvent) => {
             if (e.data === 'terms-scrolled-to-bottom') {
                 setHasScrolledToBottom(true);
@@ -31,10 +35,14 @@ const LoanTermsModal: React.FC<LoanTermsModalProps> = ({
     }, [isOpen]);
 
     useEffect(() => {
-        if (isOpen) {
-            setHasScrolledToBottom(false);
-        }
-    }, [isOpen, activeDoc]);
+        // 문서가 바뀌거나 모달이 새로 열릴 때마다 상태 초기화
+        setHasScrolledToBottom(false);
+    }, [activeDoc?.documentType, isOpen]);
+
+    const handleClose = () => {
+        setHasScrolledToBottom(false);
+        onClose();
+    };
 
     const buildTermsSrcDoc = (content: string | undefined): string => {
         const body = content ?? '<p style="padding:16px;font-family:sans-serif;color:#555">내용을 불러올 수 없습니다.</p>';
@@ -98,7 +106,7 @@ const LoanTermsModal: React.FC<LoanTermsModalProps> = ({
                     </div>
                     <button
                         type="button"
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors"
                     >
                         <X className="w-6 h-6" />
@@ -123,7 +131,7 @@ const LoanTermsModal: React.FC<LoanTermsModalProps> = ({
                     )}
                     <div className="flex justify-end gap-4">
                         <Button
-                            onClick={onClose}
+                            onClick={handleClose}
                             variant="secondary"
                             className="px-8 h-14 rounded-2xl bg-white border border-slate-200 text-slate-600 font-black"
                         >
