@@ -7,6 +7,7 @@ import com.woorifisan.platform.global.config.BankNetworkConfig;
 import com.woorifisan.platform.global.config.BankNetworkConfig.BankProperty;
 import com.woorifisan.platform.global.exception.BankCoreException;
 import com.woorifisan.platform.global.exception.BusinessException;
+import com.woorifisan.platform.global.util.LogIdGenerator;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -83,6 +84,7 @@ public class BankExternalApiAspect {
         bankContext.put("request", requestJson);
 
         bankContext.put("logType", "BANK_REQ");
+        bankContext.put("logId", LogIdGenerator.generate());
         log.info("[BankAPI][Request] {}", apiType, entries(Map.of("http", bankContext)));
 
         StopWatch stopWatch = new StopWatch();
@@ -95,6 +97,7 @@ public class BankExternalApiAspect {
             bankContext.put("httpStatus", 200); // onStatus 에러 핸들러 미발동 = 2xx 성공
             bankContext.put("response", serialize(result));
             bankContext.put("logType", "BANK_RES");
+            bankContext.put("logId", LogIdGenerator.generate());
             log.info("[BankAPI][Response] {}", apiType, entries(Map.of("http", bankContext)));
 
             return result;
@@ -107,6 +110,7 @@ public class BankExternalApiAspect {
             bankContext.put("errorCode", e.getBankErrorCode());
             bankContext.put("errorMessage", e.getBankErrorMessage());
             bankContext.put("logType", "BANK_ERR");
+            bankContext.put("logId", LogIdGenerator.generate());
             log.warn("[BankAPI][BusinessError] {}", apiType, entries(Map.of("http", bankContext)));
 
             throw e;
@@ -119,6 +123,7 @@ public class BankExternalApiAspect {
             bankContext.put("errorCode", e.getErrorCode().getCode());
             bankContext.put("errorMessage", e.getMessage());
             bankContext.put("logType", "BANK_ERR");
+            bankContext.put("logId", LogIdGenerator.generate());
             log.warn("[BankAPI][BusinessError] {}", apiType, entries(Map.of("http", bankContext)));
 
             throw e;
