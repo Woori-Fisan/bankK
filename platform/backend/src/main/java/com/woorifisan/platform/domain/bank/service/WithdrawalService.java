@@ -21,7 +21,6 @@ public class WithdrawalService {
      * @param bankKeyId 헤더에서 추출된 은행 키 ID
      * @return 출금 결과 정보
      */
-    @Transactional
     public TransferResponse executeWithdraw(WithdrawalRequest request, String bankKeyId) {
         // 1. 외부 은행 코어로 전달할 요청 DTO 생성 (Zero-Knowledge Pass-through)
         BankWithdrawalRequest bankRequest = BankWithdrawalRequest.of(
