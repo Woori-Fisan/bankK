@@ -43,7 +43,6 @@ export const refreshAccessToken = async (): Promise<TokenRefreshResponse | null>
             console.error('Token Refresh Error:', error);
             return null;
         } finally {
-            // 요청이 완료되면 변수를 초기화합니다.
             refreshPromise = null;
         }
     })();
