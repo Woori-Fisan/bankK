@@ -30,11 +30,12 @@ public class SecurityConfig {
     private List<String> allowedOrigins;
 
     private static final String[] PUBLIC_URLS = {
-            "/user/login",
-            "/user/register",
-            "/user/refresh",
-            "/api/logs/biz",
-            "/user/logout",
+            "/api/v1/user/login",
+            "/api/v1/user/register",
+            "/api/v1/user/refresh",
+            "/api/v1/logs/biz",
+            "/api/v1/user/logout",
+            
             "/actuator/**",
             "/swagger-ui/**",
             "/v3/api-docs/**"
