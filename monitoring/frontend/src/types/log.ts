@@ -16,7 +16,6 @@ export interface SystemLog {
     httpStatus: number;
     elapsedMs: number;
     clientIp: string;
-    jwsSignature: string;
     bodyData: string;
     errorCode: string | null;
     errorMessage: string | null;

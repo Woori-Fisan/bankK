@@ -16,13 +16,13 @@ interface LogListProps {
 }
 
 const getTransactionType = (uri: string | null): string => {
-    if (!uri) return '';
+    if (!uri) return '기타';
     const lower = uri.toLowerCase();
     if (lower.includes('withdrawal')) return '출금';
     if (lower.includes('transfer')) return '이체';
     if (lower.includes('loan')) return '대출';
     if (lower.includes('inquiry') || lower.includes('account')) return '조회';
-    return '';
+    return '기타';
 };
 
 const AGENCY_NAME: Record<string, string> = {
@@ -49,6 +49,7 @@ const TRANSACTION_TYPE_EN: Record<string, string> = {
     '이체': 'Transfer',
     '대출': 'Loan',
     '조회': 'Inquiry',
+    '기타': 'Other',
 };
 
 const BANK_NAME_EN: Record<string, string> = {

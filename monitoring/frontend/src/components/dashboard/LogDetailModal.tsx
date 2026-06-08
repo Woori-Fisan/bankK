@@ -47,6 +47,8 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 );
 
 const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
+    const isTransfer = log.httpUri?.toLowerCase().includes('transfer') ?? false;
+
     const exportToPdf = () => {
         const doc = new jsPDF();
 
@@ -79,14 +81,15 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
             ['Log Type', log.logType ?? '-'],
         ]);
 
-        section('Tracking / Identity', [
+        const trackingRows: [string, string][] = [
             ['Trace ID', log.traceId ?? '-'],
             ['Staff ID', log.staffId ?? '-'],
             ['Bank Code', log.bankCode ?? '-'],
-            ['Target Code', log.targetCode ?? '-'],
+            ...(isTransfer ? [['Target Code', log.targetCode ?? '-'] as [string, string]] : []),
             ['Agency Code', log.agencyCode ?? '-'],
             ['Bank Key ID', log.bankKeyId ?? '-'],
-        ]);
+        ];
+        section('Tracking / Identity', trackingRows);
 
         section('HTTP', [
             ['Method', log.httpMethod ?? '-'],
@@ -101,18 +104,6 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
                 ['Error Code', log.errorCode ?? '-'],
                 ['Error Message', log.errorMessage ?? '-'],
             ]);
-        }
-
-        if (log.jwsSignature) {
-            autoTable(doc, {
-                startY: y,
-                head: [['JWS Signature']],
-                body: [[log.jwsSignature]],
-                styles: { fontSize: 7, cellPadding: 2.5, font: 'courier' },
-                headStyles: { fillColor: [15, 118, 110], fontStyle: 'bold', fontSize: 9, font: 'helvetica' },
-                margin: { left: 14, right: 14 },
-            });
-            y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
         }
 
         if (log.bodyData) {
@@ -183,7 +174,7 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
                         <Field label="Trace ID" value={log.traceId} mono />
                         <Field label="담당 직원 ID" value={log.staffId} mono />
                         <Field label="은행 코드" value={log.bankCode} />
-                        <Field label="대상 기관 코드" value={log.targetCode} />
+                        {isTransfer && <Field label="대상 기관 코드" value={log.targetCode} />}
                         <Field label="대행기관 코드" value={log.agencyCode} />
                         <Field label="은행 키 ID" value={log.bankKeyId} mono />
                     </Section>
@@ -209,14 +200,6 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
                             <Field label="에러 메시지" value={log.errorMessage} />
                         </Section>
                     ) : null}
-
-                    {/* JWS 서명 */}
-                    <div>
-                        <p className="text-xs font-bold text-gray-500 mb-2 pb-1 border-b border-gray-100">JWS 서명</p>
-                        <pre className="text-[11px] font-mono text-gray-600 bg-gray-50 rounded-lg p-3 break-all whitespace-pre-wrap overflow-x-auto">
-                            {log.jwsSignature || '-'}
-                        </pre>
-                    </div>
 
                     {/* 요청/응답 본문 */}
                     <div>
