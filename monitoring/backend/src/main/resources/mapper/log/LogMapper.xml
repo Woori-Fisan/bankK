@@ -108,7 +108,7 @@
 
 
     <insert id="insertBizLogs" parameterType="java.util.List">
-        INSERT INTO system_logs (
+        INSERT IGNORE INTO system_logs (
             created_at, log_id,
             level, log_type, trace_id, staff_id, agency_code,
             bank_code, target_code, bank_key_id,
