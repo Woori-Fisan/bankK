@@ -41,8 +41,10 @@ public class LogService {
 
         try{
             totalCount = logMapper.countLogList(request);
-            long pageSize = request.getSize() > 0 ? request.getSize() : 10;
-            totalPage = (long) Math.ceil((double) totalCount / pageSize);
+            if(request.getSize() > 0){
+                request.setSize(20);
+            }
+            totalPage = (long) Math.ceil((double) totalCount / request.getSize());
             log.info("[Service 로직] 전체 레코드 개수: {}, 총 페이지 수: {}", totalCount, totalPage);
 
             logs = logMapper.findLogList(request);
