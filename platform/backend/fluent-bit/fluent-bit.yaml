@@ -59,7 +59,7 @@ pipeline:
       match: "platform.backend.biz"
       host: ${MONITORING_SERVER_IP}
       port: ${MONITORING_SERVER_PORT}
-      uri: /api/logs/biz
+      uri: /api/v1/logs/biz
       format: json
       retry_limit: False
       storage.total_limit_size: 200M
