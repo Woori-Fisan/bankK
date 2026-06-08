@@ -29,9 +29,7 @@ export const refreshAccessToken = async (): Promise<TokenRefreshResponse | null>
 
     refreshPromise = (async () => {
         try {
-            const response = await axios.post('http://localhost:8082/api/v1/user/refresh', {}, {
-                withCredentials: true
-            });
+            const response = await axiosInstance.post('/user/refresh');
             
             const responseData = response.data?.data || response.data;
             if (responseData && responseData.accessToken) {
