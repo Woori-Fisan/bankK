@@ -19,6 +19,7 @@ import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -275,6 +276,7 @@ public class LoanService {
                 .maturityDate(Objects.toString(data.get("endDate"), null))
                 .linkedAccountId(data.get("linkedAccountId") != null
                         ? Long.parseLong(data.get("linkedAccountId").toString()) : null)
+                .executedAt(Instant.now().toString())
                 .build();
     }
 
