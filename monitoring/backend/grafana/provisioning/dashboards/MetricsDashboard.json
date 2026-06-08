@@ -109,7 +109,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "http_server_requests_seconds_count{uri!~\"/actuator/.*\"}",
+          "expr": "rate(http_server_requests_seconds_count{uri!~\"/actuator/.*\"}[1m])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{uri}} ({{method}} | {{status}})",
@@ -208,7 +208,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "http_server_requests_seconds_sum{uri!~\"/actuator/.*\"}",
+          "expr": "rate(http_server_requests_seconds_sum{uri!~\"/actuator/.*\"}[1m]) / rate(http_server_requests_seconds_count{uri!~\"/actuator/.*\"}[1m])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -249,8 +249,8 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byName",
-              "options": "{__name__=\"jvm_memory_used_bytes\", application=\"platform-backend\", area=\"heap\", exported_application=\"agency-platform\", id=\"G1 Eden Space\", instance=\"host.docker.internal:8080\", job=\"platform-backend\"}"
+              "id": "byRegexp",
+              "options": "/id=\"G1 Eden Space\"/"
             },
             "properties": [
               {
@@ -261,8 +261,8 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "{__name__=\"jvm_memory_used_bytes\", application=\"platform-backend\", area=\"heap\", exported_application=\"agency-platform\", id=\"G1 Old Gen\", instance=\"host.docker.internal:8080\", job=\"platform-backend\"}"
+              "id": "byRegexp",
+              "options": "/id=\"G1 Old Gen\"/"
             },
             "properties": [
               {
@@ -273,8 +273,8 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "{__name__=\"jvm_memory_used_bytes\", application=\"platform-backend\", area=\"heap\", exported_application=\"agency-platform\", id=\"G1 Survivor Space\", instance=\"host.docker.internal:8080\", job=\"platform-backend\"}"
+              "id": "byRegexp",
+              "options": "/id=\"G1 Survivor Space\"/"
             },
             "properties": [
               {
@@ -285,8 +285,8 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "{__name__=\"jvm_memory_used_bytes\", application=\"platform-backend\", area=\"nonheap\", exported_application=\"agency-platform\", id=\"CodeCache\", instance=\"host.docker.internal:8080\", job=\"platform-backend\"}"
+              "id": "byRegexp",
+              "options": "/id=\"CodeCache\"/"
             },
             "properties": [
               {
@@ -297,8 +297,8 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "{__name__=\"jvm_memory_used_bytes\", application=\"platform-backend\", area=\"nonheap\", exported_application=\"agency-platform\", id=\"Compressed Class Space\", instance=\"host.docker.internal:8080\", job=\"platform-backend\"}"
+              "id": "byRegexp",
+              "options": "/id=\"Compressed Class Space\"/"
             },
             "properties": [
               {
@@ -309,8 +309,8 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "{__name__=\"jvm_memory_used_bytes\", application=\"platform-backend\", area=\"nonheap\", exported_application=\"agency-platform\", id=\"Metaspace\", instance=\"host.docker.internal:8080\", job=\"platform-backend\"}"
+              "id": "byRegexp",
+              "options": "/id=\"Metaspace\"/"
             },
             "properties": [
               {
