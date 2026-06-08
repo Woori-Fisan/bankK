@@ -1,4 +1,4 @@
-name: Monitoring Frontend Deploy
+name: Monitoring Frontend Deploy Test
 
 on:
   push:
@@ -7,18 +7,10 @@ on:
 
     paths:
       - 'monitoring/frontend/**'
-      - '.github/workflows/monitoring-frontend-deploy.yml'
-
-  # pull_request:
-  #   branches:
-  #     - develop
-
-  #   paths:
-  #     - 'monitoring/frontend/**'
-  #     - '.github/workflows/monitoring-frontend-deploy.yml'
+      - '.github/workflows/monitoring-frontend-deploy-test.yml'
 
 concurrency:
-  group: monitoring-frontend-deploy
+  group: monitoring-frontend-deploy-test
   cancel-in-progress: true
 
 jobs:
