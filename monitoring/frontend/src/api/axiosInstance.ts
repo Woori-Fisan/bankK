@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { refreshAccessToken } from './auth';
 
 export const axiosInstance = axios.create({
-    baseURL: 'http://localhost:8082',
+    baseURL: '/api/v1',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -11,7 +11,7 @@ export const axiosInstance = axios.create({
 });
 
 export const axiosTokenInstance = axios.create({
-    baseURL: 'http://localhost:8082',
+    baseURL: '/api/v1',
     headers: {
         'Content-Type': 'application/json',
     },

@@ -15,8 +15,7 @@ const MetricsPage: React.FC = () => {
                 <iframe
                     src={GRAFANA_URL}
                     title="Grafana 모니터링 대시보드"
-                    className="w-full h-full"
-                    style={{ minHeight: '600px' }}
+                    className="w-full h-full border-0"
                     allowFullScreen
                 />
             </div>

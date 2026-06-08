@@ -1,20 +1,17 @@
 import React from 'react';
 import { formatAmount } from '../../../utils/formatter';
-import Card from '../../common/Card';
 
 interface WithdrawConfirmSectionProps {
     sourceAccount: {
         bankName: string;
         accountNumber: string;
     };
-    birthDate: string;
     amount: string;
     fee: number;
 }
 
 const WithdrawConfirmSection: React.FC<WithdrawConfirmSectionProps> = ({
     sourceAccount,
-    birthDate,
     amount,
     fee,
 }) => {

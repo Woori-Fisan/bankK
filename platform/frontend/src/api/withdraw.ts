@@ -30,7 +30,9 @@ export const executeWithdraw = async (request: WithdrawalRequest): Promise<Withd
         const { payload, headers, aesKey } = secureRequest;
 
         // 2. API 전송
-        const response = await axiosInstance.post<WithdrawApiResponse>('/bank/withdrawals', payload, { headers });
+        const response = await axiosInstance.post<WithdrawApiResponse>('/bank/withdrawals', payload, {
+            headers: { ...headers, 'X-Idempotency-Key': crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}` }
+        });
 
         // 3. 응답 복호화 (성공 시에만)
         if (response.data.success && (response.data.data as any)?.resPayload) {

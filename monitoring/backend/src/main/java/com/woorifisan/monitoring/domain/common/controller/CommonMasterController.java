@@ -18,7 +18,7 @@ import java.util.List;
 @Tag(name = "Master Data", description = "시스템 공통 마스터 데이터 조회 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/monitor/common")
+@RequestMapping("/api/v1/monitor/common")
 public class CommonMasterController {
     private final CommonMasterService commonMasterService;
 
