@@ -20,7 +20,6 @@ const WithdrawConfirmForm: React.FC<WithdrawConfirmFormProps> = ({
             <Card padding="lg" className="border-slate-100 shadow-xl shadow-slate-200/50">
                 <WithdrawConfirmSection 
                     sourceAccount={data.sourceAccount}
-                    // birthDate={data.birthDate}
                     amount={data.amount}
                     fee={data.fee}
                 />
