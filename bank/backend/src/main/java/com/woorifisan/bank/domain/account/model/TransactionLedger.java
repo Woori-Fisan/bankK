@@ -46,6 +46,7 @@ public class TransactionLedger {
                 .description(description)
                 .status(status != null ? status : "SUCCESS")
                 .transactedAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
                 .build();
     }
 }
