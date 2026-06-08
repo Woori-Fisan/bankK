@@ -128,6 +128,7 @@ const LoanResult: React.FC<LoanResultProps> = ({ loanData, product, evaluationRe
                     bank={loanData.bank ?? ''}
                     accountNo={loanData.accountNo ?? ''}
                     productName={product?.name ?? ''}
+                    executedAt={executionResult.executedAt}
                 />
             )}
 

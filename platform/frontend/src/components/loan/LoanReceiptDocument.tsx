@@ -14,6 +14,7 @@ interface LoanReceiptDocumentProps {
     bank: string;
     accountNo: string;
     productName: string;
+    executedAt?: string;
 }
 
 const row = (label: string, value: string) => (
@@ -36,9 +37,10 @@ const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 const LoanReceiptDocument: React.FC<LoanReceiptDocumentProps> = ({
     innerRef, loanId, borrowerName,
     executeAmount, interestRate, repaymentPeriod, monthlyPayment,
-    repaymentStartDate, maturityDate, bank, accountNo, productName,
+    repaymentStartDate, maturityDate, bank, accountNo, productName, executedAt,
 }) => {
     const today = formatDate(new Date().toISOString(), false, 'text');
+    const executedAtDisplay = executedAt ? formatDate(executedAt, true, 'dot') : today;
     const maskedAccount = accountNo ? `${accountNo.slice(0, 3)}-***-***${accountNo.slice(-3)}` : '';
 
     return (
@@ -76,6 +78,7 @@ const LoanReceiptDocument: React.FC<LoanReceiptDocumentProps> = ({
                     <tbody>
                         {row('성    명', borrowerName)}
                         {row('입금 계좌', `${bank} ${maskedAccount}`)}
+                        {row('거 래 일 시', executedAtDisplay)}
                     </tbody>
                 </table>
 
