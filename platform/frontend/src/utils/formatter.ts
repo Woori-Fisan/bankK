@@ -36,12 +36,12 @@ export const formatToKorean = (amount: number | string) => {
 
 /**
  * 날짜 문자열을 다양한 형식으로 변환합니다.
- * @param {string} dateStr - 변환할 날짜 문자열 (ISO 형식 등)
- * @param {boolean} includeTime - 시간 포함 여부
- * @param {'text' | 'dot'} type - 포맷 형식 ('text': 년/월/일, 'dot': YYYY.MM.DD)
- * @returns {string} 포맷팅된 날짜 문자열
+ * @param dateStr - 변환할 날짜 문자열 (ISO 형식 등)
+ * @param includeTime - 시간 포함 여부
+ * @param type - 포맷 형식 ('text': 년/월/일, 'dot': YYYY.MM.DD, 'dash': YYYY-MM-DD)
+ * @returns 포맷팅된 날짜 문자열
  */
-export const formatDate = (dateStr: string, includeTime: boolean = false, type: 'text' | 'dot' = 'dot') => {
+export const formatDate = (dateStr: string, includeTime: boolean = false, type: 'text' | 'dot' | 'dash' = 'dot') => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return dateStr;
@@ -57,6 +57,9 @@ export const formatDate = (dateStr: string, includeTime: boolean = false, type: 
     if (type === 'text') {
         const base = `${y}년 ${Number(m)}월 ${Number(d)}일`;
         return includeTime ? `${base} ${Number(h)}시 ${Number(min)}분 ${Number(s)}초` : base;
+    } else if (type === 'dash') {
+        const base = `${y}-${m}-${d}`;
+        return includeTime ? `${base} ${h}:${min}:${s}` : base;
     } else {
         const base = `${y}.${m}.${d}`;
         return includeTime ? `${base} ${h}:${min}:${s}` : base;

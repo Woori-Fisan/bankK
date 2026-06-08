@@ -44,4 +44,7 @@ public class LoanExecuteResponse extends SecureResponse {
 
     /** 연결된 계좌 ID */
     private Long linkedAccountId;
+
+    /** 대출 실행 일시 (UTC ISO 8601, 예: 2026-06-08T01:30:00Z) */
+    private String executedAt;
 }

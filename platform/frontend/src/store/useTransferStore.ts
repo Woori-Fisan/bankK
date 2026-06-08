@@ -13,7 +13,7 @@ const initialState = {
     toBankName: '',
     toAccountNumber: '',
     toBankAccountNo: '',
-    toName: '(주)글로벌네트워크', // 더미 결과값 유지
+    toName: '',
     amount: 0,
     password: '',
     transactionId: '',
