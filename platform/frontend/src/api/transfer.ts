@@ -133,7 +133,7 @@ export const executeTransfer = async (request: TransferRequest): Promise<ApiResp
 
         // 2. 요청 전송
         const response = await axiosInstance.post<ApiResponse<TransferResponse>>('/bank/transfer', payload, {
-            headers
+            headers: { ...headers, 'X-Idempotency-Key': crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}` }
         });
 
         // 3. 응답 복호화 (출금 후 잔액 정보는 출금 은행의 응답이므로 withdrawAesKey 사용)

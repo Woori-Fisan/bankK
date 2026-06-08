@@ -109,10 +109,10 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "http_server_requests_seconds_count",
+          "expr": "rate(http_server_requests_seconds_count{uri!~\"/actuator/.*\"}[1m])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "__auto",
+          "legendFormat": "{{uri}} ({{method}} | {{status}})",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -208,17 +208,17 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "http_server_requests_seconds_sum",
+          "expr": "rate(http_server_requests_seconds_sum{uri!~\"/actuator/.*\"}[1m]) / rate(http_server_requests_seconds_count{uri!~\"/actuator/.*\"}[1m])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "{{uri}} ({{method}} | {{status}})",
           "range": true,
           "refId": "A",
           "useBackend": false
         }
       ],
-      "title": "응답시간",
+      "title": "응답시간(seconds)",
       "type": "timeseries"
     },
     {
@@ -246,7 +246,80 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/id=\"G1 Eden Space\"/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Heap_G1_Eden_Space"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/id=\"G1 Old Gen\"/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Heap_G1_Old_Gen"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/id=\"G1 Survivor Space\"/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Heap_G1_Survivor_Space"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/id=\"CodeCache\"/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Nonheap_CodeCache"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/id=\"Compressed Class Space\"/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Nonheap_Compressed_Class_Space"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/id=\"Metaspace\"/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Nonheap_Metaspace"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -349,7 +422,20 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hikaricp_connections_active"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "HikariCP_Active_Pool"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,

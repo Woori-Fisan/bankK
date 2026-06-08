@@ -3,13 +3,11 @@ package com.woorifisan.platform.domain.bank.controller;
 import com.woorifisan.platform.domain.bank.dto.request.WithdrawalRequest;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.service.WithdrawalService;
-import com.woorifisan.platform.global.config.resolver.CurrentUser;
 import com.woorifisan.platform.global.config.swagger.CustomExceptionDescription;
 import com.woorifisan.platform.global.config.swagger.SwaggerResponseDescription;
 import com.woorifisan.platform.global.response.ApiResponse;
 import com.woorifisan.platform.global.security.annotation.VerifyTerminalSignature;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +26,6 @@ public class WithdrawController {
     @VerifyTerminalSignature
     @PostMapping
     public ApiResponse<TransferResponse> executeWithdraw(
-            @Parameter(hidden = true) @CurrentUser Long staffId,
             @RequestHeader("x-jws-signature") String jwsSignature,
             @RequestHeader("x-bank-key-id") String bankKeyId,
             @Valid @RequestBody WithdrawalRequest request) {

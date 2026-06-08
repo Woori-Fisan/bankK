@@ -10,7 +10,6 @@ interface WithdrawDetailTableProps {
     balanceAfter: number;
     transactionId: string;
     dateTime: string;
-    fee: number;
 }
 
 const WithdrawDetailTable: React.FC<WithdrawDetailTableProps> = ({
@@ -19,7 +18,6 @@ const WithdrawDetailTable: React.FC<WithdrawDetailTableProps> = ({
     balanceBefore,
     balanceAfter,
     dateTime,
-    fee,
 }) => {
     return (
         <div className="space-y-6">

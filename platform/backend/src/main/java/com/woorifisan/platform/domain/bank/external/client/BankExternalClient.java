@@ -19,10 +19,12 @@ import com.woorifisan.platform.global.response.ApiResponse;
 import com.woorifisan.platform.global.response.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -124,8 +126,10 @@ public class BankExternalClient {
      */
     private <T> T getRequest(String url, ParameterizedTypeReference<ApiResponse<T>> responseType, String bankCode) {
         try {
+            String traceId = MDC.get("traceId");
             ApiResponse<T> response = webClient.get()
                     .uri(url)
+                    .headers(h -> { if (StringUtils.hasText(traceId)) h.set("X-Trace-Id", traceId); })
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, clientResponse ->
                             clientResponse.bodyToMono(responseType)
@@ -157,9 +161,11 @@ public class BankExternalClient {
      */
     private <T, R> T postRequest(String url, R requestBody, ParameterizedTypeReference<ApiResponse<T>> responseType, String bankCode) {
         try {
+            String traceId = MDC.get("traceId");
             ApiResponse<T> response = webClient.post()
                     .uri(url)
                     .contentType(MediaType.APPLICATION_JSON)
+                    .headers(h -> { if (StringUtils.hasText(traceId)) h.set("X-Trace-Id", traceId); })
                     .bodyValue(requestBody)
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, clientResponse ->

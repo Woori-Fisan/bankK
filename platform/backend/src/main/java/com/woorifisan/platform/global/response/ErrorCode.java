@@ -40,6 +40,8 @@ public enum ErrorCode {
 
     // 멱등성
     DUPLICATE_REQUEST("IDEM_001", "중복 요청입니다.", HttpStatus.CONFLICT),
+    IDEMPOTENCY_PROCESSING("IDEM_002", "동일 키의 요청이 처리 중입니다.", HttpStatus.CONFLICT),
+    IDEMPOTENCY_KEY_MISSING("IDEM_003", "X-Idempotency-Key 헤더가 필요합니다.", HttpStatus.BAD_REQUEST),
 
     // 이체
     TRANSFER_PARAMETER_FAULT("TRANSFER_001", "필수 항목이 누락되었습니다.", HttpStatus.BAD_REQUEST),
