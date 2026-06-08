@@ -37,7 +37,6 @@ public class BizLogRequest {
         private Long elapsedMs;
         private String errorCode;
         private String errorMessage;
-        private String jwsSignature;
         private String httpMethod;
         private String httpUri;
         private Integer httpStatus;
@@ -62,7 +61,6 @@ public class BizLogRequest {
                 .httpStatus(http.getHttpStatus())
                 .elapsedMs(http.getElapsedMs())
                 .clientIp(http.getClientIp())
-                .jwsSignature(http.getJwsSignature())
                 .bodyData(resolveBodyData())
                 .errorCode(http.getErrorCode())
                 .errorMessage(http.getErrorMessage())
