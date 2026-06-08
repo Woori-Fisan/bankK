@@ -11,6 +11,6 @@ public class TokenRefreshResponse {
     @Schema(description = "새로운 Access Token")
     private String accessToken;
 
-    @Schema(description = "Access Token 만료 시간 (초)")
-    private int accessTokenExpiresIn;
+    @Schema(description = "Refresh Token 만료 시간 (초)")
+    private long refreshTokenExpiresIn;
 }

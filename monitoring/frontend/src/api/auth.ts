@@ -1,4 +1,4 @@
-import type { LoginApiResponse, LoginRequest, RegisterRequest } from '../types/auth';
+import type { LoginApiResponse, LoginRequest, RegisterRequest, TokenRefreshResponse } from '../types/auth';
 import type { ApiCommonResponse } from '../types/common';
 import axios from 'axios';
 import { axiosInstance, axiosTokenInstance } from './axiosInstance';
@@ -19,9 +19,9 @@ export const logout = async (): Promise<ApiCommonResponse<void>> => {
 };
 
 // 중복 리프레시 요청을 방지하기 위한 변수
-let refreshPromise: Promise<string | null> | null = null;
+let refreshPromise: Promise<TokenRefreshResponse | null> | null = null;
 
-export const refreshAccessToken = async (): Promise<string | null> => {
+export const refreshAccessToken = async (): Promise<TokenRefreshResponse | null> => {
     // 이미 리프레시가 진행 중이라면 기존의 Promise를 반환하여 결과를 공유합니다.
     if (refreshPromise !== null) {
         return refreshPromise;
@@ -29,12 +29,18 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 
     refreshPromise = (async () => {
         try {
-            const response = await axios.post('http://localhost:8082/user/refresh', {}, {
+            const response = await axios.post('http://localhost:8082/api/v1/user/refresh', {}, {
                 withCredentials: true
             });
             
             const responseData = response.data?.data || response.data;
-            return responseData?.accessToken || null;
+            if (responseData && responseData.accessToken) {
+                return {
+                    accessToken: responseData.accessToken,
+                    refreshTokenExpiresIn: responseData.refreshTokenExpiresIn
+                };
+            }
+            return null;
         } catch (error) {
             console.error('Token Refresh Error:', error);
             return null;
