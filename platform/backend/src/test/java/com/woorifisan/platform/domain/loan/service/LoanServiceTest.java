@@ -349,6 +349,44 @@ class LoanServiceTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // sendHeartbeats
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("sendHeartbeats - pendingEmitters 비어있으면 아무것도 하지 않음")
+    void sendHeartbeats_비어있으면_스킵() throws Exception {
+        assertThat(getPendingEmitters()).isEmpty();
+
+        loanService.sendHeartbeats(); // 예외 없이 종료
+    }
+
+    @Test
+    @DisplayName("sendHeartbeats - 활성 emitter에 heartbeat 전송")
+    void sendHeartbeats_활성_emitter에_heartbeat_전송() throws Exception {
+        SseEmitter mockEmitter = mock(SseEmitter.class);
+        getPendingEmitters().put("key-1", mockEmitter);
+
+        loanService.sendHeartbeats();
+
+        verify(mockEmitter).send(any(SseEmitter.SseEventBuilder.class));
+        assertThat(getPendingEmitters()).containsKey("key-1"); // 성공 시 emitter 유지
+    }
+
+    @Test
+    @DisplayName("sendHeartbeats - emitter 전송 실패 시 map에서 제거 후 complete 호출")
+    void sendHeartbeats_전송_실패_시_emitter_제거() throws Exception {
+        SseEmitter mockEmitter = mock(SseEmitter.class);
+        org.mockito.Mockito.doThrow(new RuntimeException("broken pipe"))
+                .when(mockEmitter).send(any(SseEmitter.SseEventBuilder.class));
+        getPendingEmitters().put("key-fail", mockEmitter);
+
+        loanService.sendHeartbeats();
+
+        assertThat(getPendingEmitters()).doesNotContainKey("key-fail");
+        verify(mockEmitter).complete();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // 공통 픽스처 팩토리
     // ─────────────────────────────────────────────────────────────────────
 
