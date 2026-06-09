@@ -17,7 +17,7 @@ import com.woorifisan.bank.domain.account.mapper.AccountMapper;
 import com.woorifisan.bank.domain.account.mapper.TransactionLedgerMapper;
 import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
-import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
@@ -31,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.BDDMockito.willThrow;
 
 @ExtendWith(MockitoExtension.class)
 class AccountServiceTest {
@@ -46,6 +47,9 @@ class AccountServiceTest {
 
     @Mock
     private CustomerMapper customerMapper;
+
+    @Mock
+    private CustomerService customerService;
 
     @Mock
     private SecurityService securityService;
@@ -89,13 +93,7 @@ class AccountServiceTest {
                     .accountNo("acc-123")
                     .build();
 
-            Customer customer = Customer.builder()
-                    .id(10L)
-                    .rrnPrefix("900101")
-                    .build();
-
             given(accountMapper.findByAccountNoPlain("acc-123")).willReturn(Optional.of(account));
-            given(customerMapper.findById(10L)).willReturn(Optional.of(customer));
             given(transactionLedgerMapper.countHistory(anyLong(), anyString(), anyString())).willReturn(5);
             given(transactionLedgerMapper.findHistoryList(anyLong(), anyString(), anyString(), anyInt(), anyInt()))
                     .willReturn(List.of());
@@ -146,19 +144,15 @@ class AccountServiceTest {
                     .customerId(10L)
                     .build();
 
-            Customer customer = Customer.builder()
-                    .id(10L)
-                    .rrnPrefix("900101") // 다름
-                    .build();
-
             given(accountMapper.findByAccountNoPlain("acc-123")).willReturn(Optional.of(account));
-            given(customerMapper.findById(10L)).willReturn(Optional.of(customer));
+            willThrow(new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND))
+                    .given(customerService).verifyCustomerIdentification(anyLong(), anyString(), any());
 
             // when & then
             assertThatThrownBy(() -> accountService.getTransactionHistoryList(
                     requestOf("2024-01-01", "2024-01-31")))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining(ErrorCode.USER_NOT_FOUND.getMessage());
+                    .hasMessageContaining(ErrorCode.ACCOUNT_NOT_FOUND.getMessage());
         }
     }
 }

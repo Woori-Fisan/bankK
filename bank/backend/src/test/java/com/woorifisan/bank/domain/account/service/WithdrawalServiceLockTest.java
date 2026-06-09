@@ -15,7 +15,7 @@ import com.woorifisan.bank.domain.account.mapper.AccountMapper;
 import com.woorifisan.bank.domain.account.mapper.TransactionLedgerMapper;
 import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
-import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
@@ -42,6 +42,9 @@ class WithdrawalServiceLockTest {
 
     @Mock
     private CustomerMapper customerMapper;
+
+    @Mock
+    private CustomerService customerService;
 
     @Mock
     private TransactionLedgerMapper transactionLedgerMapper;
@@ -93,13 +96,7 @@ class WithdrawalServiceLockTest {
                     .version(1)
                     .build();
 
-            Customer customer = Customer.builder()
-                    .id(10L)
-                    .rrnPrefix("900101")
-                    .build();
-
             given(accountMapper.findByAccountNoPlain("acc-123")).willReturn(Optional.of(account));
-            given(customerMapper.findById(10L)).willReturn(Optional.of(customer));
             given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
 
             // when & then
@@ -125,13 +122,8 @@ class WithdrawalServiceLockTest {
                     .version(1)
                     .build();
 
-            Customer customer = Customer.builder()
-                    .id(10L)
-                    .rrnPrefix("900101")
-                    .build();
-
             given(accountMapper.findByAccountNoPlain("acc-123")).willReturn(Optional.of(account));
-            given(customerMapper.findById(10L)).willReturn(Optional.of(customer));
+            given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(account));
             given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
             given(accountMapper.updateBalance(anyLong(), any(BigDecimal.class), anyInt())).willReturn(0);
 

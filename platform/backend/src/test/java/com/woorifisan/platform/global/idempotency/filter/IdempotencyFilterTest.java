@@ -19,6 +19,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -129,6 +131,50 @@ class IdempotencyFilterTest {
         filter.doFilterInternal(request, response, chain);
 
         verify(redisTemplate).delete(REDIS_KEY);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 대출 엔드포인트 멱등성 적용 검증
+    // ─────────────────────────────────────────────────────────────
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/loan/evaluation", "/api/v1/loan/contract/execution"})
+    @DisplayName("대출 POST 경로도 멱등성 필터 정상 적용 - 첫 요청 성공 및 응답 캐시 저장")
+    void loanPaths_idempotencyFilterApplied(String loanPath) throws Exception {
+        given(valueOps.setIfAbsent(any(), eq("PROCESSING"), anyLong(), any())).willReturn(true);
+
+        MockHttpServletRequest  request  = buildRequest(loanPath, IDEM_KEY);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = successChain("{\"success\":true}");
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        verify(valueOps).set(any(), any(String.class), anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("GET 요청은 대출 경로라도 멱등성 필터 미적용 (shouldNotFilter = true)")
+    void getRequest_loanPath_filterSkipped() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/loan/evaluation");
+        request.setServletPath("/api/v1/loan/evaluation");
+        assertThat(filter.shouldNotFilter(request)).isTrue();
+    }
+
+    @Test
+    @DisplayName("POST 대출 심사신청 경로는 shouldNotFilter = false (필터 적용 대상)")
+    void postRequest_loanEvaluation_filterApplied() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/loan/evaluation");
+        request.setServletPath("/api/v1/loan/evaluation");
+        assertThat(filter.shouldNotFilter(request)).isFalse();
+    }
+
+    @Test
+    @DisplayName("POST 대출 실행 경로는 shouldNotFilter = false (필터 적용 대상)")
+    void postRequest_loanExecution_filterApplied() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/loan/contract/execution");
+        request.setServletPath("/api/v1/loan/contract/execution");
+        assertThat(filter.shouldNotFilter(request)).isFalse();
     }
 
     // ─────────────────────────────────────────────────────────────
