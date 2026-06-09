@@ -32,7 +32,5 @@ ALTER TABLE system_logs
 -- 7. 초기 파티션 설정 (이후 파티션 관리는 PartitionMaintenanceService 가 담당)
 ALTER TABLE system_logs
     PARTITION BY RANGE COLUMNS (created_at) (
-        PARTITION p20260608 VALUES LESS THAN ('2026-06-09'),
-        PARTITION p20260609 VALUES LESS THAN ('2026-06-10'),
         PARTITION p_future  VALUES LESS THAN (MAXVALUE)
     );

@@ -5,6 +5,14 @@
 
 <mapper namespace="com.woorifisan.monitoring.domain.log.mapper.PartitionMapper">
 
+    <select id="partitionExists" parameterType="String" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM information_schema.PARTITIONS
+        WHERE TABLE_SCHEMA  = DATABASE()
+          AND TABLE_NAME    = 'system_logs'
+          AND PARTITION_NAME = #{partitionName}
+    </select>
+
     <!--
         파티션명은 SQL 식별자이므로 ${ } 사용 (내부 로직에서만 생성되는 값)
         p_future를 새 날짜 파티션 + 새 p_future로 재편성
@@ -17,19 +25,8 @@
     </update>
 
     <!-- 파티션명은 SQL 식별자이므로 ${ } 사용 -->
-    <update id="dropOldPartition">
+    <update id="dropPartition">
         ALTER TABLE system_logs DROP PARTITION ${partitionName}
     </update>
-
-    <!-- cutoff는 값 비교이므로 #{ } 사용 가능 -->
-    <select id="findOldPartitionNames" resultType="String">
-        SELECT PARTITION_NAME
-        FROM information_schema.PARTITIONS
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME   = 'system_logs'
-          AND PARTITION_NAME != 'p_future'
-          AND PARTITION_NAME  &lt; #{cutoff}
-        ORDER BY PARTITION_NAME
-    </select>
 
 </mapper>
