@@ -24,8 +24,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class MdcTraceFilter extends OncePerRequestFilter {
 
-    private static final String TRACE_ID_HEADER = "X-Request-ID";
-    private static final String MDC_TRACE_ID = "traceId";
+    private static final String TRACE_ID_HEADER    = "X-Request-ID";
+    private static final String BANK_KEY_ID_HEADER  = "x-bank-key-id";
+    private static final String MDC_TRACE_ID        = "traceId";
+    private static final String MDC_BANK_KEY_ID     = "bankKeyId";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -42,6 +44,11 @@ public class MdcTraceFilter extends OncePerRequestFilter {
 
             // 2. MDC에 적재 (logback-spring.xml에서 %X{traceId}로 참조)
             MDC.put(MDC_TRACE_ID, traceId);
+
+            String bankKeyId = request.getHeader(BANK_KEY_ID_HEADER);
+            if (StringUtils.hasText(bankKeyId)) {
+                MDC.put(MDC_BANK_KEY_ID, bankKeyId);
+            }
 
             // 3. 클라이언트 추적을 위해 응답 헤더로 echo
             response.setHeader(TRACE_ID_HEADER, traceId);
