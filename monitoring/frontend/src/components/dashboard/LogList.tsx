@@ -162,7 +162,7 @@ const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCo
                                     <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">발생지</th>
                                     <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">레벨</th>
                                     <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">트랜잭션 ID</th>
-                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">은행명</th>
+                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[110px]">은행명</th>
                                     <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">대행기관</th>
                                     <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">직원 ID</th>
                                     <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">상태</th>
@@ -203,7 +203,7 @@ const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCo
                                                 </span>
                                             </td>
                                             <td className="px-6 py-3 text-xs font-mono text-gray-500">{log.traceId}</td>
-                                            <td className="px-6 py-3 text-xs text-gray-600">{BANK_NAME[log.bankCode] ?? log.bankCode}</td>
+                                            <td className="px-6 py-3 text-xs text-gray-600 whitespace-nowrap min-w-[110px]">{BANK_NAME[log.bankCode] ?? log.bankCode}</td>
                                             <td className="px-6 py-3 text-xs text-gray-600">{AGENCY_NAME[log.agencyCode] ?? log.agencyCode}</td>
                                             <td className="px-6 py-3 text-xs text-gray-600">{log.staffId}</td>
                                             <td className={`px-6 py-3 text-xs font-bold ${getStatusColor(log.httpStatus)}`}>
