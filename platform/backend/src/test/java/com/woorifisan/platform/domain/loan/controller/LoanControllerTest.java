@@ -24,6 +24,8 @@ import com.woorifisan.platform.domain.loan.service.LoanService;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.exception.GlobalExceptionHandler;
 import com.woorifisan.platform.global.response.ErrorCode;
+import com.woorifisan.platform.global.idempotency.filter.IdempotencyFilter;
+import com.woorifisan.platform.global.security.aspect.TerminalSignatureAspect;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -48,6 +50,12 @@ class LoanControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private TerminalSignatureAspect terminalSignatureAspect;
+
+    @MockitoBean
+    private IdempotencyFilter idempotencyFilter;
 
     @MockitoBean
     private LoanService loanService;

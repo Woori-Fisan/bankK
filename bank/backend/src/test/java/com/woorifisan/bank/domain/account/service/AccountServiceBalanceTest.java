@@ -22,12 +22,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.context.jdbc.SqlConfig;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-@Sql("/sql/account-service-test.sql")
+@Sql(scripts = "/sql/account-service-test.sql", config = @SqlConfig(encoding = "UTF-8"))
 public class AccountServiceBalanceTest {
 
     @Autowired
@@ -46,6 +47,7 @@ public class AccountServiceBalanceTest {
         DecryptedInquiryData data = new DecryptedInquiryData();
         data.setAccountNo(accountNo);
         data.setCustomerRrnPrefix(rrnPrefix);
+        data.setCustomerName("테스터");
         SecurityService.DecryptionResult<DecryptedInquiryData> result =
                 new SecurityService.DecryptionResult<>(data, mock(SecretKey.class));
         given(securityService.decryptWithKey(any(), eq(DecryptedInquiryData.class)))
@@ -86,7 +88,7 @@ public class AccountServiceBalanceTest {
     }
 
     @Test
-    @DisplayName("실패: 주민번호 앞자리가 일치하지 않으면 USER_NOT_FOUND 예외가 발생한다")
+    @DisplayName("실패: 주민번호 앞자리가 일치하지 않으면 ACCOUNT_NOT_FOUND 예외가 발생한다")
     void 잔액조회_실패_주민번호불일치() {
         // given
         mockDecrypt("111-222-3333", "wrong-rrn");
@@ -94,6 +96,6 @@ public class AccountServiceBalanceTest {
         // when & then
         assertThatThrownBy(() -> accountService.getBalance(dummyRequest()))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.USER_NOT_FOUND);
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCOUNT_NOT_FOUND);
     }
 }

@@ -15,6 +15,8 @@ import com.woorifisan.platform.domain.bank.service.AccountInquiryService;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.exception.GlobalExceptionHandler;
 import com.woorifisan.platform.global.response.ErrorCode;
+import com.woorifisan.platform.global.idempotency.filter.IdempotencyFilter;
+import com.woorifisan.platform.global.security.aspect.TerminalSignatureAspect;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +37,12 @@ class AccountInquiryControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private TerminalSignatureAspect terminalSignatureAspect;
+
+    @MockitoBean
+    private IdempotencyFilter idempotencyFilter;
 
     @MockitoBean
     private AccountInquiryService accountInquiryService;
