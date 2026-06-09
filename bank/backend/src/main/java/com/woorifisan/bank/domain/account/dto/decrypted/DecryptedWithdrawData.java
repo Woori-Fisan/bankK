@@ -17,6 +17,7 @@ public class DecryptedWithdrawData {
     private String withdrawalAccountNo;
     private String withdrawalPassword;
     private String customerRrnPrefix;
+    private String customerName;
     private String depositAccountNo;
 
 }

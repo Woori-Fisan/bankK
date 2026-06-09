@@ -41,7 +41,7 @@ public class BankExternalApiAspect {
     /** BankExternalClient 메서드명 → BankNetworkConfig URL 키 매핑 */
     private static final Map<String, String> API_TYPE_TO_URL_KEY = Map.of(
             "fetchRecipient",        "recipient",
-            "executeTransfer",       "transfer",
+            "fetchTransferExecute",  "execute",
             "fetchBalance",          "balance",
             "withdraw",              "withdrawal",
             "fetchHistory",          "history"

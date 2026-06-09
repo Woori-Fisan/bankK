@@ -8,6 +8,7 @@ export interface WithdrawalRequest {
     withdrawalAccountNo: string;
     withdrawalPassword: string;
     customerRrnPrefix: string;
+    customerName: string;
     amount: number;
 }
 

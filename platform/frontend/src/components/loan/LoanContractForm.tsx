@@ -97,7 +97,7 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
             },
             {
                 loanNo: evaluationId,
-                productId: product.id,
+                productId: product.loanProductCode ? Number(product.loanProductCode) : 0,
                 executeAmount: product.executeAmount ?? product.limit,
                 repaymentPeriod: product.period ?? 12,
                 repaymentType: '원리금균등',

@@ -12,6 +12,7 @@ import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
@@ -39,7 +40,7 @@ public class AccountService {
 
     private final AccountMapper accountMapper;
     private final TransactionLedgerMapper transactionLedgerMapper;
-    private final CustomerMapper customerMapper;
+    private final CustomerService customerService;
     private final SecurityService securityService;
 
     /**
@@ -60,7 +61,7 @@ public class AccountService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
 
         // 3. 소유주 확인
-        verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix());
+        customerService.verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix(), decryptedData.getCustomerName());
 
         // 4. 응답 데이터 암호화 (추출된 CEK 사용)
         BalanceInquiryResponse.SensitiveData sensitiveData = BalanceInquiryResponse.SensitiveData.builder()
@@ -95,7 +96,7 @@ public class AccountService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.INQUIRY_ACCOUNT_NOTFOUND));
 
         // 4. 계좌 소유주 일치 확인
-        verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix());
+        customerService.verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix(), decryptedData.getCustomerName());
 
         // 5. 전체 건수 조회
         int totalCount = transactionLedgerMapper.countHistory(
@@ -151,18 +152,6 @@ public class AccountService {
 
         if (startDate.isAfter(endDate)) {
             throw new BusinessException(ErrorCode.INQUIRY_INVALID_DATE_RANGE);
-        }
-    }
-
-    /**
-     * 고객 본인 확인
-     */
-    private void verifyCustomerIdentification(Long customerId, String requestRrnPrefix) {
-        Customer customer = customerMapper.findById(customerId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        
-        if (!customer.getRrnPrefix().equals(requestRrnPrefix)) {
-            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
     }
 }

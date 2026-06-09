@@ -31,6 +31,7 @@ export interface TransferRequest {
     withdrawalAccountNo: string;
     withdrawalPassword: string;
     customerRrnPrefix: string;
+    customerName: string;
     depositBankCode: string;
     depositAccountNo: string;
     amount: number;
@@ -112,7 +113,8 @@ export const executeTransfer = async (request: TransferRequest): Promise<ApiResp
                 withdrawalAccountNo: request.withdrawalAccountNo,
                 withdrawalPassword: request.withdrawalPassword,
                 customerRrnPrefix: request.customerRrnPrefix,
-                depositAccountNo: request.depositAccountNo // 출금 은행이 알 수 있도록 포함
+                depositAccountNo: request.depositAccountNo, // 출금 은행이 알 수 있도록 포함
+                customerName: request.customerName
             },
             { 
                 depositAccountNo: request.depositAccountNo,

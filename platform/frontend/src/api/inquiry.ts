@@ -7,6 +7,7 @@ export interface InquiryRequest {
     bankCode: string;
     accountNo: string;
     customerRrnPrefix: string;
+    customerName: string;
     startDate?: string;
     endDate?: string;
     page?: number;
@@ -46,7 +47,8 @@ export const fetchBalance = async (request: InquiryRequest): Promise<ApiResponse
         const secureRequest = await prepareSecureRequest(
             { 
                 accountNo: request.accountNo,
-                customerRrnPrefix: request.customerRrnPrefix 
+                customerRrnPrefix: request.customerRrnPrefix, 
+                customerName: request.customerName
             }, // 민감 데이터
             { bankCode: request.bankCode }, // 비민감 데이터 (서명에 포함)
             request.bankCode
@@ -101,7 +103,8 @@ export const fetchTransactionHistory = async (request: InquiryRequest): Promise<
         const secureRequest = await prepareSecureRequest(
             { 
                 accountNo: request.accountNo,
-                customerRrnPrefix: request.customerRrnPrefix 
+                customerRrnPrefix: request.customerRrnPrefix ,
+                customerName: request.customerName
             }, // 민감 데이터
             { 
                 bankCode: request.bankCode,
