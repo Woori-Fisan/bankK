@@ -36,12 +36,12 @@ public class MdcTraceFilter extends OncePerRequestFilter {
         try {
             // 1. X-Idempotency-Key 우선 → X-Request-ID → 신규 UUID
             String idempotencyKey = request.getHeader(IdempotencyFilter.IDEMPOTENCY_KEY_HEADER);
-            String traceId = StringUtils.hasText(idempotencyKey)
-                    ? idempotencyKey.replace("-", "")
+            String originalTraceId = StringUtils.hasText(idempotencyKey)
+                    ? idempotencyKey
                     : Optional.ofNullable(request.getHeader(TRACE_ID_HEADER))
                               .filter(StringUtils::hasText)
-                              .map(id -> id.replace("-", ""))
-                              .orElse(UUID.randomUUID().toString().replace("-", ""));
+                              .orElse(UUID.randomUUID().toString());
+            String traceId = originalTraceId.replace("-", "");
 
             // 2. MDC에 적재 (logback-spring.xml에서 %X{traceId}로 참조)
             MDC.put(MDC_TRACE_ID, traceId);
@@ -51,8 +51,8 @@ public class MdcTraceFilter extends OncePerRequestFilter {
                 MDC.put(MDC_BANK_KEY_ID, bankKeyId);
             }
 
-            // 3. 클라이언트 추적을 위해 응답 헤더로 echo
-            response.setHeader(TRACE_ID_HEADER, traceId);
+            // 3. 클라이언트 추적을 위해 응답 헤더로 echo (원본 포맷 유지)
+            response.setHeader(TRACE_ID_HEADER, originalTraceId);
 
             filterChain.doFilter(request, response);
         } finally {
