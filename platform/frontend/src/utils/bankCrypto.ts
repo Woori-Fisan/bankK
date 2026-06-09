@@ -178,6 +178,10 @@ export const prepareSecureRequest = async (
             timestamp: Date.now()
         });
 
+        if (!jwsSignature) {
+            throw new Error('JWS 서명 생성 실패');
+        }
+
         return {
             payload: { reqPayload, ...nonSensitiveData },
             headers: { 'x-jws-signature': jwsSignature, 'x-bank-key-id': keyId },
@@ -227,6 +231,10 @@ export const prepareTransferSecureRequest = async (
             ...combinedPayload,
             timestamp: Date.now()
         });
+
+        if (!jwsSignature) {
+            throw new Error('JWS 서명 생성 실패');
+        }
 
         return {
             payload: combinedPayload,

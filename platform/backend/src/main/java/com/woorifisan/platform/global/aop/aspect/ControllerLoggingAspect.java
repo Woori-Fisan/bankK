@@ -183,6 +183,11 @@ public class ControllerLoggingAspect {
                 if (bankCode != null || targetCode != null) return;
             } catch (Exception ignored) {}
         }
+        
+        // bankCode를 찾지 못한 경우 기본값 "-" 설정
+        if (httpContext.get("bankCode") == null) {
+            httpContext.put("bankCode", "-");
+        }
     }
 
     private String serialize(Object obj) {

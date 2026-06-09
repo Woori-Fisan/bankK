@@ -44,7 +44,7 @@ public class SwaggerConfig {
                         .bearerFormat("JWT"));
 
         Server localServer = new Server();
-        localServer.setUrl("http://localhost:8082");
+        localServer.setUrl("/");
         localServer.setDescription("Local Development Server");
 
         Info info = new Info()
