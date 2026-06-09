@@ -5,6 +5,7 @@ import static net.logstash.logback.argument.StructuredArguments.entries;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
+import com.woorifisan.platform.global.util.LogIdGenerator;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
@@ -81,6 +82,7 @@ public class ControllerLoggingAspect {
         putBankCodes(args, httpContext);
 
         httpContext.put("logType", "CONTROLLER_REQ");
+        httpContext.put("logId", LogIdGenerator.generate());
         log.info("[Request] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
 
         long start = System.currentTimeMillis();
@@ -91,6 +93,7 @@ public class ControllerLoggingAspect {
             applyElapsedAndStatus(httpContext, executionTime, response);
             httpContext.put("response", serialize(result));
             httpContext.put("logType", "CONTROLLER_RES");
+            httpContext.put("logId", LogIdGenerator.generate());
             log.info("[Response] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
             return result;
         } catch (BusinessException e) {
@@ -100,6 +103,7 @@ public class ControllerLoggingAspect {
             httpContext.put("errorCode", e.getErrorCode().getCode());
             httpContext.put("errorMessage", e.getMessage());
             httpContext.put("logType", "CONTROLLER_ERR");
+            httpContext.put("logId", LogIdGenerator.generate());
             log.warn("[Error] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
             throw e;
         } catch (Throwable e) {
@@ -109,6 +113,7 @@ public class ControllerLoggingAspect {
             httpContext.put("errorCode", ErrorCode.INTERNAL_SERVER_ERROR.getCode());
             httpContext.put("errorMessage", e.getMessage());
             httpContext.put("logType", "CONTROLLER_ERR");
+            httpContext.put("logId", LogIdGenerator.generate());
             log.error("[Error] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
             throw e;
         }

@@ -16,13 +16,13 @@ interface LogListProps {
 }
 
 const getTransactionType = (uri: string | null): string => {
-    if (!uri) return '';
+    if (!uri) return '기타';
     const lower = uri.toLowerCase();
     if (lower.includes('withdrawal')) return '출금';
     if (lower.includes('transfer')) return '이체';
     if (lower.includes('loan')) return '대출';
     if (lower.includes('inquiry') || lower.includes('account')) return '조회';
-    return '';
+    return '기타';
 };
 
 const AGENCY_NAME: Record<string, string> = {
@@ -49,6 +49,7 @@ const TRANSACTION_TYPE_EN: Record<string, string> = {
     '이체': 'Transfer',
     '대출': 'Loan',
     '조회': 'Inquiry',
+    '기타': 'Other',
 };
 
 const BANK_NAME_EN: Record<string, string> = {
@@ -114,7 +115,7 @@ const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCo
         doc.save(filename);
     };
 
-    const handleRowClick = async (id: number) => {
+    const handleRowClick = async (id: string) => {
         setDetailLoading(true);
         try {
             const res = await getLog(id);
@@ -182,8 +183,8 @@ const LogList: React.FC<LogListProps> = ({ logs, totalPage, currentPage, totalCo
                                 ) : (
                                     logs.map((log) => (
                                         <tr
-                                            key={log.id}
-                                            onClick={() => handleRowClick(log.id)}
+                                            key={log.logId}
+                                            onClick={() => handleRowClick(log.logId)}
                                             className={`hover:bg-emerald-50/50 transition-colors cursor-pointer ${detailLoading ? 'pointer-events-none opacity-60' : ''}`}
                                         >
                                             <td className="px-6 py-3 text-xs text-gray-600 whitespace-nowrap">

@@ -1,7 +1,7 @@
 import type { ApiCommonResponse } from './common';
 
 export interface SystemLog {
-    id: number;
+    logId: string;
     createdAt: string;
     level: 'INFO' | 'WARN' | 'ERROR';
     logType: string;
@@ -16,7 +16,6 @@ export interface SystemLog {
     httpStatus: number;
     elapsedMs: number;
     clientIp: string;
-    jwsSignature: string;
     bodyData: string;
     errorCode: string | null;
     errorMessage: string | null;
