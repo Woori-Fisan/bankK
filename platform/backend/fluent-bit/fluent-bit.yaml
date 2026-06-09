@@ -4,6 +4,8 @@ service:
   log_level: info
   storage.type: filesystem
   storage.path: /fluent-bit/storage
+  # 메모리에 유지할 최대 로그 크기
+  # 이를 넘어서면 디스크 버퍼로 전환 -> Fluent Bit의 OOM 완벽하게 방지
   storage.backlog.mem_limit: 100MB
   storage.metrics: on
 
@@ -29,6 +31,8 @@ pipeline:
       refresh_interval: 5
       mem_buf_limit: 5MB
       skip_long_lines: true
+      # 임계치를 넘으면 새 로그 읽기를 멈춤
+      storage.pause_on_chunks_overlimit: on
 
   filters:
     - name: record_modifier
@@ -52,6 +56,7 @@ pipeline:
       port: ${LOKI_PORT}
       labels: job=platform-backend
       retry_limit: False # 무한 재시도
+      # 임계치를 넘으면 해당 Output에 대한 디스크 버퍼 입력을 동결
       storage.total_limit_size: 500M
 
     # 비즈니스 로그 → 모니터링 WAS

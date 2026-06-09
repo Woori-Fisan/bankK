@@ -62,24 +62,24 @@ public class LogService {
                 .build();
     }
 
-    public LogDetailDTO getLogDetail(Long id) {
-        log.info("[Service 시작] 거래 로그 단건 조회 로직 수행 - ID: {}", id);
+    public LogDetailDTO getLogDetail(String logId) {
+        log.info("[Service 시작] 거래 로그 단건 조회 로직 수행 - logId: {}", logId);
 
         LogDetailDTO logDetail;
 
         try{
-            logDetail = logMapper.findById(id);
+            logDetail = logMapper.findByLogId(logId);
         } catch (Exception e) {
-            log.error("[DB 에러] 로그 단건 조회 실패 - ID: {}", id, e);
+            log.error("[DB 에러] 로그 단건 조회 실패 - logId: {}", logId, e);
             throw new BusinessException("로그를 조회하는 과정에서 문제가 발생하였습니다.", ErrorCode.LOG_FETCH_ERROR);
         }
 
         if (logDetail == null) {
-            log.warn("[Service 경고] 해당 ID의 로그를 찾을 수 없음 - ID: {}", id);
+            log.warn("[Service 경고] 해당 logId의 로그를 찾을 수 없음 - logId: {}", logId);
             throw new BusinessException("해당 로그 정보를 찾을 수 없습니다.", ErrorCode.NOT_EXIST_LOG);
         }
 
-        log.info("[Service 완료] 로그 단건 조회 결과 - ID: {}, Trace ID: {}", logDetail.getId(), logDetail.getTraceId());
+        log.info("[Service 완료] 로그 단건 조회 결과 - logId: {}, Trace ID: {}", logDetail.getLogId(), logDetail.getTraceId());
         return logDetail;
     }
 

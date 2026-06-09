@@ -34,17 +34,17 @@
             <if test="startDate != null and startDate != ''">
                 AND created_at &gt;= #{startDate}
             </if>
-            <if test="endDate != null and endDate != ''">
-                AND created_at &lt;= #{endDate}
+            <if test="endDateUpperBound != null and endDateUpperBound != ''">
+                AND created_at &lt; #{endDateUpperBound}
             </if>
         </where>
     </sql>
 
-    <!-- 목록 조회용: 대용량 텍스트 필드(body_data, jws_signature) 및 상세 전용 필드 제외 -->
+    <!-- 목록 조회용: 대용량 텍스트 필드(body_data) 및 상세 전용 필드 제외 -->
     <select id="findLogList" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogRequest"
             resultType="com.woorifisan.monitoring.domain.log.dto.LogListDTO">
         SELECT
-            id,
+            log_id as logId,
             created_at as createdAt,
             level,
             log_type as logType,
@@ -80,11 +80,11 @@
         <include refid="logSearchCondition" />
     </select>
 
-    <!-- 단건 상세 조회용: 암호화 페이로드(body_data) 및 서명(jws_signature) 등 모든 필드 포함 -->
-    <select id="findById" parameterType="long"
+    <!-- 단건 상세 조회용: 암호화 페이로드(body_data) 등 모든 필드 포함 -->
+    <select id="findByLogId" parameterType="String"
             resultType="com.woorifisan.monitoring.domain.log.dto.LogDetailDTO">
         SELECT
-            id,
+            log_id as logId,
             created_at as createdAt,
             level,
             log_type as logType,
@@ -99,31 +99,30 @@
             http_status as httpStatus,
             elapsed_ms as elapsedMs,
             client_ip as clientIp,
-            jws_signature as jwsSignature,
             body_data as bodyData,
             error_code as errorCode,
             error_message as errorMessage
         FROM system_logs
-        WHERE id = #{id}
+        WHERE log_id = #{logId}
     </select>
 
 
     <insert id="insertBizLogs" parameterType="java.util.List">
-        INSERT INTO system_logs (
-            created_at,
+        INSERT IGNORE INTO system_logs (
+            created_at, log_id,
             level, log_type, trace_id, staff_id, agency_code,
             bank_code, target_code, bank_key_id,
             http_method, http_uri, http_status,
-            elapsed_ms, client_ip, jws_signature,
+            elapsed_ms, client_ip,
             body_data, error_code, error_message
         ) VALUES
         <foreach collection="list" item="dto" separator=",">
             (
-                #{dto.timestamp},
+                #{dto.timestamp}, #{dto.logId},
                 #{dto.level}, #{dto.logType}, #{dto.traceId}, #{dto.staffId}, #{dto.agencyCode},
                 #{dto.bankCode}, #{dto.targetCode}, #{dto.bankKeyId},
                 #{dto.httpMethod}, #{dto.httpUri}, #{dto.httpStatus},
-                #{dto.elapsedMs}, #{dto.clientIp}, #{dto.jwsSignature},
+                #{dto.elapsedMs}, #{dto.clientIp},
                 #{dto.bodyData}, #{dto.errorCode}, #{dto.errorMessage}
             )
         </foreach>
