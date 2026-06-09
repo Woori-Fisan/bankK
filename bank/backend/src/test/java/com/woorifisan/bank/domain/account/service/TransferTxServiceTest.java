@@ -15,6 +15,7 @@ import com.woorifisan.bank.domain.account.mapper.TransactionLedgerMapper;
 import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.security.service.SecurityService;
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -39,6 +40,9 @@ class TransferTxServiceTest {
 
     @Mock
     private CustomerMapper customerMapper;
+
+    @Mock
+    private CustomerService customerService;
 
     @Mock
     private TransactionLedgerMapper transactionLedgerMapper;
@@ -96,7 +100,6 @@ class TransferTxServiceTest {
         javax.crypto.SecretKey cek = new javax.crypto.spec.SecretKeySpec(new byte[16], "AES");
         
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
-        given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
         given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000").negate(), sender.getVersion())).willReturn(1);
