@@ -1,6 +1,5 @@
 import type { LoginApiResponse, LoginRequest, RegisterRequest, TokenRefreshResponse } from '../types/auth';
 import type { ApiCommonResponse } from '../types/common';
-import axios from 'axios';
 import { axiosInstance, axiosTokenInstance } from './axiosInstance';
 
 export const register = async (request: RegisterRequest): Promise<ApiCommonResponse<void>> => {
