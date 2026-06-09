@@ -27,6 +27,7 @@ const FinalConfirmForm: React.FC = () => {
                 withdrawalAccountNo: fromAccountNumber,
                 withdrawalPassword: pin,
                 customerRrnPrefix: customerRrnPrefix,
+                customerName: fromName,
                 depositBankCode: toBank,
                 depositAccountNo: toAccountNumber,
                 amount: amount

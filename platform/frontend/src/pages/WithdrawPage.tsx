@@ -55,6 +55,7 @@ const WithdrawPage: React.FC = () => {
                 withdrawalAccountNo: withdrawData.sourceAccount.accountNumber,
                 withdrawalPassword: pin,
                 customerRrnPrefix: withdrawData.birthDate,
+                customerName: withdrawData.userName || '',
                 amount: Number(withdrawData.amount)
             });
 

@@ -47,7 +47,8 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
             const response = await fetchBalance({
                 bankCode: sourceAccount.bankCode,
                 accountNo: sourceAccount.accountNumber,
-                customerRrnPrefix: birthDate
+                customerRrnPrefix: birthDate,
+                customerName: userName
             });
 
             if (response.success && response.data) {

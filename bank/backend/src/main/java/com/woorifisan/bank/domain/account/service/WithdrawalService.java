@@ -7,8 +7,7 @@ import com.woorifisan.bank.domain.account.mapper.AccountMapper;
 import com.woorifisan.bank.domain.account.mapper.TransactionLedgerMapper;
 import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
-import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
-import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
@@ -30,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class WithdrawalService {
 
     private final AccountMapper accountMapper;
-    private final CustomerMapper customerMapper;
+    private final CustomerService customerService;
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final PasswordEncoder passwordEncoder;
     private final SecurityService securityService;
@@ -49,7 +48,7 @@ public class WithdrawalService {
         Account account = accountMapper.findByAccountNoPlain(decryptedData.getWithdrawalAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
 
-        verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix());
+        customerService.verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix(), decryptedData.getCustomerName());
 
         // 3. 출금 가능 여부 체크 — 비밀번호/상태/잔액 1차 확인
         validateWithdrawal(account, decryptedData.getWithdrawalPassword(), request.getAmount());
@@ -126,15 +125,6 @@ public class WithdrawalService {
         // 3. 잔액 확인
         if (account.getBalance().compareTo(amount) < 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
-    }
-
-    private void verifyCustomerIdentification(Long customerId, String requestRrnPrefix) {
-        Customer customer = customerMapper.findById(customerId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        
-        if (!customer.getRrnPrefix().startsWith(requestRrnPrefix)) {
-            throw new BusinessException(ErrorCode.IDENTIFICATION_ERROR);
         }
     }
 }

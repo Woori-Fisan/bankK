@@ -8,8 +8,7 @@ import com.woorifisan.bank.domain.account.mapper.AccountMapper;
 import com.woorifisan.bank.domain.account.mapper.TransactionLedgerMapper;
 import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
-import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
-import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
@@ -34,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TransferTxService {
 
     private final AccountMapper accountMapper;
-    private final CustomerMapper customerMapper;
+    private final CustomerService customerService;
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final PasswordEncoder passwordEncoder;
     private final SecurityService securityService;
@@ -52,7 +51,7 @@ public class TransferTxService {
         Account sender = accountMapper.findByAccountNoPlain(decryptedData.getWithdrawalAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         
-        verifyCustomerIdentification(sender.getCustomerId(), decryptedData.getCustomerRrnPrefix());
+        customerService.verifyCustomerIdentification(sender.getCustomerId(), decryptedData.getCustomerRrnPrefix(), decryptedData.getCustomerName());
         
         if (!passwordEncoder.matches(decryptedData.getWithdrawalPassword(), sender.getPassword())) {
             throw new BusinessException(ErrorCode.BANK_PW_ERROR);
@@ -201,15 +200,6 @@ public class TransferTxService {
         ));
 
         return TransferResponse.of(effectiveTxId, getCurrentTimestamp(), newBalance);
-    }
-
-    private void verifyCustomerIdentification(Long customerId, String requestRrnPrefix) {
-        Customer customer = customerMapper.findById(customerId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        String rrnPrefix = customer.getRrnPrefix();
-        if (!rrnPrefix.startsWith(requestRrnPrefix)) {
-            throw new BusinessException(ErrorCode.IDENTIFICATION_ERROR);
-        }
     }
 
     private String getCurrentTimestamp() {
