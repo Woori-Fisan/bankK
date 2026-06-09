@@ -37,9 +37,10 @@ public class MdcTraceFilter extends OncePerRequestFilter {
             // 1. X-Idempotency-Key 우선 → X-Request-ID → 신규 UUID
             String idempotencyKey = request.getHeader(IdempotencyFilter.IDEMPOTENCY_KEY_HEADER);
             String traceId = StringUtils.hasText(idempotencyKey)
-                    ? idempotencyKey
+                    ? idempotencyKey.replace("-", "")
                     : Optional.ofNullable(request.getHeader(TRACE_ID_HEADER))
                               .filter(StringUtils::hasText)
+                              .map(id -> id.replace("-", ""))
                               .orElse(UUID.randomUUID().toString().replace("-", ""));
 
             // 2. MDC에 적재 (logback-spring.xml에서 %X{traceId}로 참조)
