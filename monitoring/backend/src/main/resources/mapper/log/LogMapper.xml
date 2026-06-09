@@ -34,8 +34,8 @@
             <if test="startDate != null and startDate != ''">
                 AND created_at &gt;= #{startDate}
             </if>
-            <if test="endDate != null and endDate != ''">
-                AND created_at &lt; DATE_ADD(DATE_FORMAT(#{endDate}, '%Y-%m-%d %H:%i:00'), INTERVAL 1 MINUTE)
+            <if test="endDateUpperBound != null and endDateUpperBound != ''">
+                AND created_at &lt; #{endDateUpperBound}
             </if>
         </where>
     </sql>
