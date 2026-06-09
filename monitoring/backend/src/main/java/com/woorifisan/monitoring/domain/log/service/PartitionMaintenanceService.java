@@ -41,7 +41,7 @@ public class PartitionMaintenanceService {
         String partitionName = "p" + day.format(NAME_FMT);
 
         if (partitionMapper.partitionExists(partitionName)) {
-            log.info("[파티션 생성 스킵] {} 이미 존재", partitionName);
+            log.info("[파티션 생성 스킵] {}", partitionName);
             return;
         }
 
