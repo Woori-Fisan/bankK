@@ -20,14 +20,14 @@ public class CustomerService {
      */
     public void verifyCustomerIdentification(Long customerId, String requestRrnPrefix, String customerName) {
         Customer customer = customerMapper.findById(customerId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
 
         // 계좌번호로 조회한 사용자와 일치 여부 검증
         if (
                 !customer.getRrnPrefix().equals(requestRrnPrefix)
                 || !customer.getCustomerName().equals(customerName))
         {
-            throw new BusinessException(ErrorCode.IDENTIFICATION_ERROR);
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND);
         }
     }
 }

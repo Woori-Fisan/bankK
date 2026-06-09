@@ -74,7 +74,7 @@ const TransferEntryForm: React.FC = () => {
             if (response.success) {
                 updateData({ 
                     toName: response.data.depositorName,
-                    //toBankName: response.data.depositBankName,
+                    toBankName: response.data.depositBankName,
                     toBankAccountNo: response.data.depositBankAccountNo
                 });
             } else {
