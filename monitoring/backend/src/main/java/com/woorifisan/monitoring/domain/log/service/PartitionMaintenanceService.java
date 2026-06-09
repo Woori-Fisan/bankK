@@ -3,6 +3,7 @@ package com.woorifisan.monitoring.domain.log.service;
 import com.woorifisan.monitoring.domain.log.mapper.PartitionMapper;
 import jakarta.annotation.PostConstruct;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ public class PartitionMaintenanceService {
 
     private static final int RETENTION_DAYS = 10;
 
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final DateTimeFormatter NAME_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -26,9 +28,9 @@ public class PartitionMaintenanceService {
         maintain();
     }
 
-    @Scheduled(cron = "0 0 1 * * *")
+    @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")
     public void maintain() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(KST);
 
         for (int i = 0; i <= 2; i++) {
             createPartitionIfNotExists(today.plusDays(i));
