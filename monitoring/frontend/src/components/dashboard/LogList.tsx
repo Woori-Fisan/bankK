@@ -19,6 +19,7 @@ const getTransactionType = (uri: string | null): string => {
     if (!uri) return '기타';
     const lower = uri.toLowerCase();
     if (lower.includes('withdrawal')) return '출금';
+    if (lower.includes('recipient')) return '조회';
     if (lower.includes('transfer')) return '이체';
     if (lower.includes('loan')) return '대출';
     if (lower.includes('inquiry') || lower.includes('account')) return '조회';
