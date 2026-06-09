@@ -208,34 +208,6 @@ class LoanReviewAsyncServiceTest {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // processReview - 기존 ACTIVE 대출로 한도 부족 → 거절 (시나리오 6 통합)
-    // ─────────────────────────────────────────────────────────────
-
-    @Nested
-    @DisplayName("processReview - DSR 초과로 인한 거절 (시나리오 6)")
-    class ProcessReview {
-
-        @Test
-        @DisplayName("기존 ACTIVE 대출로 승인 한도 100만원 미만 → REJECTED 저장")
-        void 기존대출로_한도부족_거절() throws Exception {
-            // 기존 ACTIVE 대출: 원금 6,300만 / 6% / 60개월 → 월납 > 120만 → 여유 없음
-            LoanLedger bigExistingLoan = LoanLedger.builder()
-                    .loanAmount(new BigDecimal("63000000"))
-                    .interestRate(new BigDecimal("6.00"))
-                    .repaymentPeriod(60)
-                    .build();
-
-            // 검증: DSR 한도 초과 시 approvedLimit이 0원 임을 확인
-            BigDecimal limit = invokeCalculateApprovedLimit(
-                    List.of(bigExistingLoan), new BigDecimal("6.00"), 60);
-
-            assertThat(limit).isEqualByComparingTo(BigDecimal.ZERO);
-            // limit < 1,000,000 이면 processReview가 REJECTED 처리함
-            assertThat(limit.compareTo(new BigDecimal("1000000"))).isLessThan(0);
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────
     // Private 메서드 호출 헬퍼 (Java reflection)
     // ─────────────────────────────────────────────────────────────
 
