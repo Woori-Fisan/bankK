@@ -185,7 +185,7 @@ public class ControllerLoggingAspect {
         }
         
         // bankCode를 찾지 못한 경우 기본값 "-" 설정
-        if (!httpContext.containsKey("bankCode")) {
+        if (httpContext.get("bankCode") == null) {
             httpContext.put("bankCode", "-");
         }
     }
