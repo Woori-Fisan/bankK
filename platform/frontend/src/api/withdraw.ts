@@ -14,7 +14,8 @@ export const executeWithdraw = async (request: WithdrawalRequest): Promise<Withd
             { 
                 withdrawalAccountNo: request.withdrawalAccountNo,
                 withdrawalPassword: request.withdrawalPassword,
-                customerRrnPrefix: request.customerRrnPrefix
+                customerRrnPrefix: request.customerRrnPrefix,
+                customerName: request.customerName
             },
             { 
                 amount: request.amount,
