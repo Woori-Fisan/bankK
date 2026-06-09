@@ -44,7 +44,8 @@ public class BankExternalApiAspect {
             "fetchTransferExecute",  "execute",
             "fetchBalance",          "balance",
             "withdraw",              "withdrawal",
-            "fetchHistory",          "history"
+            "fetchHistory",          "history",
+            "fetchPublicKey",        "public-key"
     );
 
     /** {@link com.woorifisan.platform.domain.bank.external.client.BankExternalClient}의 모든 public 메서드를 포인트컷으로 지정한다. */
