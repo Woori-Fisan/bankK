@@ -49,11 +49,16 @@ const LoginForm: React.FC = () => {
                 localStorage.setItem('loginTime', formattedTime);
 
                 const accessToken = response.data?.accessToken;
+                const refreshTokenExpiresIn = response.data?.refreshTokenExpiresIn;
                 if (accessToken) {
                     setAccessToken(accessToken);
-                    const decoded = decodeJwt(accessToken);
-                    if (decoded?.exp) {
-                        setTokenExpiry(decoded.exp * 1000);
+                    if (refreshTokenExpiresIn) {
+                        setTokenExpiry(Date.now() + refreshTokenExpiresIn * 1000);
+                    } else {
+                        const decoded = decodeJwt(accessToken);
+                        if (decoded?.exp) {
+                            setTokenExpiry(decoded.exp * 1000);
+                        }
                     }
                 }
 

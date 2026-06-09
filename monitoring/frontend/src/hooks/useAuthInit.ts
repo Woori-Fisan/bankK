@@ -14,12 +14,16 @@ export const useAuthInit = () => {
             if (savedUserId) setUserId(savedUserId);
             if (savedLoginTime) setLoginTime(savedLoginTime);
 
-            const newToken = await refreshAccessToken();
-            if (newToken) {
-                setAccessToken(newToken);
-                const decoded = decodeJwt(newToken);
-                if (decoded?.exp) {
-                    setTokenExpiry(decoded.exp * 1000);
+            const refreshResult = await refreshAccessToken();
+            if (refreshResult && refreshResult.accessToken) {
+                setAccessToken(refreshResult.accessToken);
+                if (refreshResult.refreshTokenExpiresIn) {
+                    setTokenExpiry(Date.now() + refreshResult.refreshTokenExpiresIn * 1000);
+                } else {
+                    const decoded = decodeJwt(refreshResult.accessToken);
+                    if (decoded?.exp) {
+                        setTokenExpiry(decoded.exp * 1000);
+                    }
                 }
             } else {
                 clearAuth();
