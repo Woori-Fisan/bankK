@@ -54,6 +54,18 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 인증 실패 예외 처리 (401 Unauthorized)
+     */
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    protected ResponseEntity<ApiResponse<?>> handleAuthenticationException(org.springframework.security.core.AuthenticationException e) {
+        log.error("AuthenticationException: {}", e.getMessage());
+        return new ResponseEntity<>(
+                ApiResponse.error(ErrorResponse.of(ErrorCode.INVALID_TOKEN)),
+                ErrorCode.INVALID_TOKEN.getHttpStatus()
+        );
+    }
+
+    /**
      * 그 외 모든 예외 처리
      */
     @ExceptionHandler(Exception.class)

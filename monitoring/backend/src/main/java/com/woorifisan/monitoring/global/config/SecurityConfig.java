@@ -1,7 +1,7 @@
 package com.woorifisan.monitoring.global.config;
 
 import com.woorifisan.monitoring.global.filter.JwtAuthFilter;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,18 +16,24 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
+    private final HandlerExceptionResolver exceptionResolver;
 
     @Value("${cors.allowed-origins}")
     private List<String> allowedOrigins;
+
+    public SecurityConfig(JwtProvider jwtProvider, @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
+        this.jwtProvider = jwtProvider;
+        this.exceptionResolver = exceptionResolver;
+    }
 
     private static final String[] PUBLIC_URLS = {
             "/api/v1/user/login",
@@ -35,7 +41,6 @@ public class SecurityConfig {
             "/api/v1/user/refresh",
             "/api/v1/logs/biz",
             "/api/v1/user/logout",
-            
             "/actuator/**",
             "/swagger-ui/**",
             "/v3/api-docs/**"
@@ -52,6 +57,10 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint((request, response, authException) ->
+                    exceptionResolver.resolveException(request, response, null, authException))
+            )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(PUBLIC_URLS).permitAll()
                 .anyRequest().authenticated()

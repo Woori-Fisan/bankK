@@ -36,11 +36,14 @@ axiosTokenInstance.interceptors.response.use(
     if (status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
-      const newAccessToken = await refreshAccessToken();
+      const refreshResult = await refreshAccessToken();
       
-      if (newAccessToken) {
-        useAuthStore.getState().setAccessToken(newAccessToken);
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+      if (refreshResult && refreshResult.accessToken) {
+        useAuthStore.getState().setAccessToken(refreshResult.accessToken);
+        if (refreshResult.refreshTokenExpiresIn) {
+          useAuthStore.getState().setTokenExpiry(Date.now() + refreshResult.refreshTokenExpiresIn * 1000);
+        }
+        originalRequest.headers.Authorization = `Bearer ${refreshResult.accessToken}`;
         return axiosInstance(originalRequest);
       }
       
