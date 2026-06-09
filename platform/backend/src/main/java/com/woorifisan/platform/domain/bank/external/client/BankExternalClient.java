@@ -206,6 +206,7 @@ public class BankExternalClient {
             case "ACC_006" -> ErrorCode.BANK_PW_ERROR;
             case "ERR_001" -> ErrorCode.INVALID_INPUT;
             case "ERR_002" -> ErrorCode.INTERNAL_SERVER_ERROR;
+            case "USER_001" -> ErrorCode.USER_NOT_FOUND;
             default -> ErrorCode.BANK_API_ERROR;
         };
     }

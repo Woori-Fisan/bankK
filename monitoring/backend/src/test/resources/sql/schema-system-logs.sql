@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS system_logs (
+    log_id        VARCHAR(128)  NOT NULL  COMMENT '분산 로그 고유 ID (traceId_타임스탬프밀리초_나노초)',
+    created_at    DATETIME(3)   NOT NULL  COMMENT '로그 발생 시각',
+    level         VARCHAR(10)             COMMENT 'INFO / WARN / ERROR',
+    log_type      VARCHAR(30)             COMMENT '로그 유형',
+    trace_id      VARCHAR(64)             COMMENT '요청 흐름 추적 ID',
+    staff_id      VARCHAR(50)             COMMENT '요청 직원 ID',
+    agency_code   VARCHAR(50)             COMMENT '대행기관 코드',
+    bank_code     VARCHAR(10)             COMMENT '출금 은행 코드',
+    target_code   VARCHAR(10)             COMMENT '입금 은행 코드',
+    bank_key_id   VARCHAR(255)            COMMENT 'RSA KEY ID',
+    http_method   VARCHAR(10)             COMMENT 'GET / POST',
+    http_uri      VARCHAR(255)            COMMENT '요청 URI',
+    http_status   SMALLINT                COMMENT 'HTTP 응답 상태 코드',
+    elapsed_ms    BIGINT                  COMMENT '처리 시간 (밀리초)',
+    client_ip     VARCHAR(45)             COMMENT '클라이언트 IP',
+    body_data     TEXT                    COMMENT '요청/응답 바디',
+    error_code    VARCHAR(50)             COMMENT '에러 코드',
+    error_message TEXT                    COMMENT '에러 메시지',
+    PRIMARY KEY (log_id, created_at)
+);

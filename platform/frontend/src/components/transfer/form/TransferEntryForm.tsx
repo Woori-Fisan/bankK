@@ -50,7 +50,8 @@ const TransferEntryForm: React.FC = () => {
             const response = await fetchBalance({
                 bankCode: fromBank,
                 accountNo: fromAccountNumber,
-                customerRrnPrefix: customerRrnPrefix
+                customerRrnPrefix: customerRrnPrefix,
+                customerName: fromName
             });
             if (response.success) {
                 updateData({ balance: response.data.balance });

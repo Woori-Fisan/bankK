@@ -29,6 +29,7 @@ public class BizLogRequest {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class HttpContext {
 
+        private String logId;
         private String logType;
         private String bankCode;
         private String targetCode;
@@ -37,7 +38,6 @@ public class BizLogRequest {
         private Long elapsedMs;
         private String errorCode;
         private String errorMessage;
-        private String jwsSignature;
         private String httpMethod;
         private String httpUri;
         private Integer httpStatus;
@@ -49,6 +49,7 @@ public class BizLogRequest {
     public BizLogInsertDTO toInsertDTO() {
         return BizLogInsertDTO.builder()
                 .timestamp(parseTimestamp(timestamp))
+                .logId(http.getLogId())
                 .level(level)
                 .logType(http.getLogType())
                 .traceId(traceId)
@@ -62,7 +63,6 @@ public class BizLogRequest {
                 .httpStatus(http.getHttpStatus())
                 .elapsedMs(http.getElapsedMs())
                 .clientIp(http.getClientIp())
-                .jwsSignature(http.getJwsSignature())
                 .bodyData(resolveBodyData())
                 .errorCode(http.getErrorCode())
                 .errorMessage(http.getErrorMessage())

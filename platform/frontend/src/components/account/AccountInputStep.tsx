@@ -12,7 +12,8 @@ import AccountSideSummary from './sections/AccountSideSummary';
 interface AccountInputStepProps {
     onNext: (data: { 
         bankCode: string; 
-        accountNo: string; 
+        accountNo: string;
+        customerName: string,
         customerRrnPrefix: string;
     }) => void;
     apiError?: string;
@@ -85,6 +86,7 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
             bankCode: formData.bankCode,
             accountNo: formData.accountNo,
             customerRrnPrefix: formData.rrnFront + formData.rrnBack,
+            customerName: formData.userName
         });
     };
 
