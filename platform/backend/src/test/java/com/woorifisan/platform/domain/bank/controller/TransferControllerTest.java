@@ -13,6 +13,8 @@ import com.woorifisan.platform.domain.bank.dto.request.TransferRecipientRequest;
 import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
 import com.woorifisan.platform.domain.bank.service.TransferService;
 import com.woorifisan.platform.global.exception.GlobalExceptionHandler;
+import com.woorifisan.platform.global.idempotency.filter.IdempotencyFilter;
+import com.woorifisan.platform.global.security.aspect.TerminalSignatureAspect;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,12 @@ class TransferControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private TerminalSignatureAspect terminalSignatureAspect;
+
+    @MockitoBean
+    private IdempotencyFilter idempotencyFilter;
 
     @MockitoBean
     private TransferService transferService;

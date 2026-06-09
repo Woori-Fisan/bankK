@@ -131,6 +131,7 @@ class WithdrawalServiceLockTest {
                     .build();
 
             given(accountMapper.findByAccountNoPlain("acc-123")).willReturn(Optional.of(account));
+            given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(account));
             given(customerMapper.findById(10L)).willReturn(Optional.of(customer));
             given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
             given(accountMapper.updateBalance(anyLong(), any(BigDecimal.class), anyInt())).willReturn(0);

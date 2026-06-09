@@ -14,6 +14,8 @@ import com.woorifisan.platform.domain.bank.dto.request.WithdrawalRequest;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.service.WithdrawalService;
 import com.woorifisan.platform.global.exception.GlobalExceptionHandler;
+import com.woorifisan.platform.global.idempotency.filter.IdempotencyFilter;
+import com.woorifisan.platform.global.security.aspect.TerminalSignatureAspect;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +39,12 @@ class WithdrawControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
+    private TerminalSignatureAspect terminalSignatureAspect;
+
+    @MockitoBean
+    private IdempotencyFilter idempotencyFilter;
+
+    @MockitoBean
     private WithdrawalService withdrawalService;
 
     @Test
@@ -55,7 +63,7 @@ class WithdrawControllerTest {
                 .transactionDate("2023-05-20 10:00:00")
                 .build();
 
-        given(withdrawalService.executeWithdraw(any(WithdrawalRequest.class), anyString(), anyLong())).willReturn(response);
+        given(withdrawalService.executeWithdraw(any(WithdrawalRequest.class), anyString())).willReturn(response);
 
         // when & then
         mockMvc.perform(post("/api/v1/bank/withdrawals")

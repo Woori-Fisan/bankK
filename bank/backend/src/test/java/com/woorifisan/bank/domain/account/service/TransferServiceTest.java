@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 
 import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedWithdrawData;
 import com.woorifisan.bank.domain.account.dto.request.TransferRequest;
@@ -21,6 +23,8 @@ import com.woorifisan.bank.domain.customer.model.Customer;
 import com.woorifisan.bank.global.config.BankNetworkConfig;
 import com.woorifisan.bank.global.security.service.SecurityService;
 import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,13 +34,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.http.HttpStatus;
-import com.woorifisan.bank.global.config.BankNetworkConfig;
-import java.util.Map;
-import java.util.HashMap;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestTemplate;
 
 @ExtendWith(MockitoExtension.class)
 class TransferServiceTest {
@@ -63,13 +65,7 @@ class TransferServiceTest {
     private BankNetworkConfig bankNetworkConfig;
 
     @Mock
-    private TransferTxService transferTxService; // 신규 서브 트랜잭션 서비스 Mock 추가
-
-    @Mock
-    private BankNetworkConfig bankNetworkConfig;
-
-    @Mock
-    private RestTemplate restTemplate;
+    private TransferTxService transferTxService;
 
     private Account sender;
     private Customer senderCustomer;
@@ -79,6 +75,9 @@ class TransferServiceTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(transferService, "CURRENT_BANK_CODE", "020");
+        ReflectionTestUtils.setField(transferService, "CURRENT_BANK_NAME", "우리은행");
+
         sender = Account.builder()
                 .id(1L)
                 .customerId(10L)

@@ -314,6 +314,17 @@ class LoanServiceTest {
     // ─────────────────────────────────────────────────────────────────────
 
     @Test
+    @DisplayName("대출 실행 실패 - 은행이 비밀번호 오류를 반환하면 그대로 전파 (시나리오 5a)")
+    void 대출_실행_실패_비밀번호오류() {
+        when(bankLoanClient.executeLoan(any(BankLoanExecuteRequest.class)))
+                .thenThrow(new BusinessException(ErrorCode.BANK_PW_ERROR));
+
+        assertThatThrownBy(() -> loanService.executeLoan(defaultExecuteRequest(), 1L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.BANK_PW_ERROR);
+    }
+
+    @Test
     @DisplayName("대출 실행 성공 - Bank 응답을 LoanExecuteResponse로 변환")
     void 대출_실행_성공() {
         Map<String, Object> bankResponse = new HashMap<>();
