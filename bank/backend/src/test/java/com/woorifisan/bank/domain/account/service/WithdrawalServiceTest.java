@@ -25,12 +25,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.context.jdbc.SqlConfig;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-@Sql("/sql/withdrawal-service-test.sql")
+@Sql(scripts = "/sql/withdrawal-service-test.sql", config = @SqlConfig(encoding = "UTF-8"))
 class WithdrawalServiceTest {
 
     @Autowired
@@ -48,11 +49,12 @@ class WithdrawalServiceTest {
                 .willReturn("encrypted-payload");
     }
 
-    private void mockDecrypt(String accountNo, String rrnPrefix, String password) {
+    private void mockDecrypt(String accountNo, String rrnPrefix, String password, String customerName) {
         DecryptedWithdrawData data = DecryptedWithdrawData.builder()
                 .withdrawalAccountNo(accountNo)
                 .customerRrnPrefix(rrnPrefix)
                 .withdrawalPassword(password)
+                .customerName(customerName)
                 .build();
         SecurityService.DecryptionResult<DecryptedWithdrawData> result =
                 new SecurityService.DecryptionResult<>(data, mock(SecretKey.class));
@@ -72,7 +74,7 @@ class WithdrawalServiceTest {
     @DisplayName("성공: 모든 조건이 충족되면 출금이 완료되고 잔액이 차감된다")
     void 출금_성공() {
         // given
-        mockDecrypt("acc-100", "rrn-100", "123456");
+        mockDecrypt("acc-100", "rrn-100", "123456", "성공자");
 
         // when
         WithdrawalResponse response = withdrawalService.withdraw(requestOf(new BigDecimal("30000.00")));
@@ -90,7 +92,7 @@ class WithdrawalServiceTest {
     @DisplayName("실패: 비밀번호 해시가 틀리면 ACCOUNT_PW_ERROR 예외가 발생한다")
     void 출금_실패_비밀번호불일치() {
         // given
-        mockDecrypt("acc-100", "rrn-100", "5678");
+        mockDecrypt("acc-100", "rrn-100", "5678", "성공자");
 
         // when & then
         assertThatThrownBy(() -> withdrawalService.withdraw(requestOf(new BigDecimal("1000.00"))))
@@ -102,7 +104,7 @@ class WithdrawalServiceTest {
     @DisplayName("실패: 잔액이 부족하면 INSUFFICIENT_BALANCE 예외가 발생한다")
     void 출금_실패_잔액부족() {
         // given
-        mockDecrypt("acc-101", "rrn-101", "123456");
+        mockDecrypt("acc-101", "rrn-101", "123456", "가난뱅이");
 
         // when & then
         assertThatThrownBy(() -> withdrawalService.withdraw(requestOf(new BigDecimal("5000.00"))))
@@ -114,7 +116,7 @@ class WithdrawalServiceTest {
     @DisplayName("실패: 계좌가 잠금 상태면 ACCOUNT_NOT_NORMAL 예외가 발생한다")
     void 출금_실패_계좌잠금() {
         // given
-        mockDecrypt("acc-102", "rrn-102", "123456");
+        mockDecrypt("acc-102", "rrn-102", "123456", "잠긴자");
 
         // when & then
         assertThatThrownBy(() -> withdrawalService.withdraw(requestOf(new BigDecimal("1000.00"))))
@@ -126,7 +128,7 @@ class WithdrawalServiceTest {
     @DisplayName("실패: 출금 불가능한 계좌 유형이면 INVALID_ACCOUNT_TYPE 예외가 발생한다")
     void 출금_실패_계좌유형부적합() {
         // given
-        mockDecrypt("acc-103", "rrn-103", "123456");
+        mockDecrypt("acc-103", "rrn-103", "123456", "대출자");
 
         // when & then
         assertThatThrownBy(() -> withdrawalService.withdraw(requestOf(new BigDecimal("1000.00"))))
