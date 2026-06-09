@@ -5,8 +5,8 @@ import type { LoanProduct } from '../../../pages/LoanApplication';
 
 interface LoanProductListSectionProps {
     products: LoanProduct[];
-    selectedId: string | undefined;
-    onSelect: (id: string) => void;
+    selectedId: number | undefined;
+    onSelect: (id: number) => void;
     tab: 'RATE' | 'LIMIT';
     onTabChange: (tab: 'RATE' | 'LIMIT') => void;
 }
@@ -44,6 +44,7 @@ const LoanProductListSection: React.FC<LoanProductListSectionProps> = ({
             <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2 custom-scrollbar">
                 {products.map(product => {
                     const isSelected = selectedId === product.id;
+                    
                     return (
                         <div
                             key={product.id}

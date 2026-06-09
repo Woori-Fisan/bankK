@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Log", description = "거래 로그 조회 및 모니터링 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/monitor")
+@RequestMapping("/api/v1/monitor")
 public class LogController {
 
     private final LogService logService;
@@ -41,16 +41,16 @@ public class LogController {
         return ApiResponse.success(response);
     }
 
-    @Operation(summary = "거래 로그 단건 조회", description = "로그 고유 ID를 통해 특정 거래의 상세 페이로드, 서명, 에러 메시지 등 모든 정보를 조회합니다.")
-    @GetMapping("/transactions/{id}")
+    @Operation(summary = "거래 로그 단건 조회", description = "로그 고유 ID를 통해 특정 거래의 상세 페이로드, 에러 메시지 등 모든 정보를 조회합니다.")
+    @GetMapping("/transactions/{logId}")
     public ApiResponse<LogListDTO> getLog(
-            @Parameter(description = "로그 PK ID", example = "1")
-            @PathVariable("id") Long id) {
-        log.info("[API 요청] 거래 로그 단건 조회 - ID: {}", id);
+            @Parameter(description = "로그 고유 ID (log_id)", example = "abc123_1717812345678_123456789")
+            @PathVariable("logId") String logId) {
+        log.info("[API 요청] 거래 로그 단건 조회 - logId: {}", logId);
 
-        LogListDTO response = logService.getLogDetail(id);
+        LogListDTO response = logService.getLogDetail(logId);
 
-        log.info("[API 응답] 거래 로그 단건 조회 완료 - ID: {}, Trace ID: {}", response.getId(), response.getTraceId());
+        log.info("[API 응답] 거래 로그 단건 조회 완료 - logId: {}, Trace ID: {}", response.getLogId(), response.getTraceId());
 
         return ApiResponse.success(response);
     }

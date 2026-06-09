@@ -13,4 +13,5 @@ import lombok.Setter;
 public class DecryptedInquiryData {
     private String accountNo;
     private String customerRrnPrefix;
+    private String customerName;
 }

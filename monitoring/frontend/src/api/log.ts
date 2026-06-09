@@ -7,8 +7,8 @@ export const getLogList = async (request: LogListRequest): Promise<LogListApiRes
     return response.data;
 };
 
-export const getLog = async (id: number): Promise<LogApiResponse> => {
-    const response = await axiosTokenInstance.get<LogApiResponse>(`/monitor/transactions/${id}`);
+export const getLog = async (logId: string): Promise<LogApiResponse> => {
+    const response = await axiosTokenInstance.get<LogApiResponse>(`/monitor/transactions/${logId}`);
     return response.data;
 };
 

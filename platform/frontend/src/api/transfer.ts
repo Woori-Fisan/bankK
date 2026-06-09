@@ -31,6 +31,7 @@ export interface TransferRequest {
     withdrawalAccountNo: string;
     withdrawalPassword: string;
     customerRrnPrefix: string;
+    customerName: string;
     depositBankCode: string;
     depositAccountNo: string;
     amount: number;
@@ -112,7 +113,8 @@ export const executeTransfer = async (request: TransferRequest): Promise<ApiResp
                 withdrawalAccountNo: request.withdrawalAccountNo,
                 withdrawalPassword: request.withdrawalPassword,
                 customerRrnPrefix: request.customerRrnPrefix,
-                depositAccountNo: request.depositAccountNo // 출금 은행이 알 수 있도록 포함
+                depositAccountNo: request.depositAccountNo, // 출금 은행이 알 수 있도록 포함
+                customerName: request.customerName
             },
             { 
                 depositAccountNo: request.depositAccountNo,
@@ -133,7 +135,7 @@ export const executeTransfer = async (request: TransferRequest): Promise<ApiResp
 
         // 2. 요청 전송
         const response = await axiosInstance.post<ApiResponse<TransferResponse>>('/bank/transfer', payload, {
-            headers
+            headers: { ...headers, 'X-Idempotency-Key': crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}` }
         });
 
         // 3. 응답 복호화 (출금 후 잔액 정보는 출금 은행의 응답이므로 withdrawAesKey 사용)

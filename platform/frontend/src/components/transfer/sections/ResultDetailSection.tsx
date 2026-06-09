@@ -1,5 +1,5 @@
 import React from 'react';
-import { CreditCard, Download } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 import { formatAmount } from '../../../utils/formatter';
 
 interface Props {

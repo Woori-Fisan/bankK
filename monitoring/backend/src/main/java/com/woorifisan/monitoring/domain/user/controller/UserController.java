@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "User", description = "운영 관리자 계정 관리 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/user")
+@RequestMapping("/api/v1/user")
 public class UserController {
 
     private final UserService userService;
@@ -53,6 +53,7 @@ public class UserController {
         LoginResponse loginResponse = LoginResponse.builder()
                 .accessToken(tokenDto.getAccessToken())
                 .loginId(tokenDto.getLoginId())
+                .refreshTokenExpiresIn(tokenDto.getRefreshTokenExpiresIn())
                 .build();
 
         return ApiResponse.success(loginResponse);
@@ -117,7 +118,7 @@ public class UserController {
 
         TokenRefreshResponse refreshResponse = TokenRefreshResponse.builder()
                 .accessToken(tokenDto.getAccessToken())
-                .accessTokenExpiresIn((int) tokenDto.getAccessTokenExpiresIn())
+                .refreshTokenExpiresIn(tokenDto.getRefreshTokenExpiresIn())
                 .build();
 
         return ApiResponse.success(refreshResponse);

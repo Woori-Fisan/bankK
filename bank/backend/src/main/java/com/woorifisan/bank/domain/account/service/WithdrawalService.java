@@ -7,8 +7,7 @@ import com.woorifisan.bank.domain.account.mapper.AccountMapper;
 import com.woorifisan.bank.domain.account.mapper.TransactionLedgerMapper;
 import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
-import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
-import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
@@ -30,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class WithdrawalService {
 
     private final AccountMapper accountMapper;
-    private final CustomerMapper customerMapper;
+    private final CustomerService customerService;
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final PasswordEncoder passwordEncoder;
     private final SecurityService securityService;
@@ -49,18 +48,32 @@ public class WithdrawalService {
         Account account = accountMapper.findByAccountNoPlain(decryptedData.getWithdrawalAccountNo())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
 
-        verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix());
+        customerService.verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix(), decryptedData.getCustomerName());
 
-        // 3. 출금 가능 여부 체크 (이미 해싱된 비밀번호 비교)
+        // 3. 출금 가능 여부 체크 — 비밀번호/상태/잔액 1차 확인
         validateWithdrawal(account, decryptedData.getWithdrawalPassword(), request.getAmount());
 
-        // 4. 잔액 업데이트 (낙관적 락)
+        // 4. 비관적 락으로 재조회 후 전체 출금 가능 여부 재검증 (동시 출금 race condition 방지)
+        // 락 획득 전 사이에 계좌 상태/유형/잔액이 변경됐을 수 있으므로 전체 재검증
+        account = accountMapper.findByIdForUpdate(account.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        if (!"DEPOSIT".equals(account.getAccountType())) {
+            throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
+        }
+        if (!"NORMAL".equals(account.getStatus())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
+        }
+        if (account.getBalance().compareTo(request.getAmount()) < 0) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+
+        // 5. 잔액 업데이트 (낙관적 락 버전 체크)
         int updatedRows = accountMapper.updateBalance(account.getId(), request.getAmount().negate(), account.getVersion());
         if (updatedRows == 0) {
             throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
         }
 
-        // 5. 거래 내역 생성 및 저장 (업데이트 성공 후 기록)
+        // 6. 거래 내역 생성 및 저장 (업데이트 성공 후 기록)
         String txId = "TXW-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
         BigDecimal balanceAfter = account.getBalance().subtract(request.getAmount());
 
@@ -77,7 +90,7 @@ public class WithdrawalService {
         );
         transactionLedgerMapper.insert(ledger);
 
-        // 6. 결과 암호화
+        // 7. 결과 암호화
         WithdrawalResponse.SensitiveData sensitiveData = WithdrawalResponse.SensitiveData.builder()
                 .balanceAfter(balanceAfter)
                 .build();
@@ -112,15 +125,6 @@ public class WithdrawalService {
         // 3. 잔액 확인
         if (account.getBalance().compareTo(amount) < 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
-    }
-
-    private void verifyCustomerIdentification(Long customerId, String requestRrnPrefix) {
-        Customer customer = customerMapper.findById(customerId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        
-        if (!customer.getRrnPrefix().startsWith(requestRrnPrefix)) {
-            throw new BusinessException(ErrorCode.IDENTIFICATION_ERROR);
         }
     }
 }

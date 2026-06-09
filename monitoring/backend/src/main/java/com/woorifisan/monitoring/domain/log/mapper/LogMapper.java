@@ -13,7 +13,7 @@ import java.util.Map;
 public interface LogMapper {
     List<LogListDTO> findLogList(LogRequest request);
     long countLogList(LogRequest request);
-    LogDetailDTO findById(Long id);
+    LogDetailDTO findByLogId(String logId);
     Map<String, Object> findLogSummary(LogSummaryRequest request);
-    void insertBizLogs(List<BizLogInsertDTO> dtos);
+    int insertBizLogs(List<BizLogInsertDTO> dtos);
 }

@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "BizLog", description = "Fluent Bit 비즈니스 로그 수신 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/logs")
+@RequestMapping("/api/v1/logs")
 public class BizLogController {
 
     private final BizLogBuffer bizLogBuffer;
@@ -25,6 +25,15 @@ public class BizLogController {
     public ResponseEntity<Void> receiveBizLogs(@RequestBody List<BizLogRequest> logs) {
         logs.stream()
                 .filter(req -> req != null && req.getHttp() != null && req.getHttp().getLogType() != null)
+                .filter(req -> {
+                    String uri = req.getHttp().getHttpUri();
+                    if (uri == null) return true;
+                    return !(uri.startsWith("/api/v1/auth") ||
+                             uri.startsWith("/api/v1/banks") ||
+                             uri.startsWith("/api/v1/keys") ||
+                             uri.startsWith("/api/v1/rag") ||
+                             uri.contains("/keys/public")); // 은행 공개키 조회 연동 로그도 제외
+                })
                 .map(BizLogRequest::toInsertDTO)
                 .forEach(bizLogBuffer::offer);
         return ResponseEntity.ok().build();

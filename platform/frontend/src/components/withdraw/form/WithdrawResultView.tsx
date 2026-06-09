@@ -69,7 +69,6 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
                             balanceAfter={result.balanceAfter}
                             transactionId={result.transactionId}
                             dateTime={result.dateTime}
-                            fee={data.fee}
                         />
                     </Card>
                 </div>

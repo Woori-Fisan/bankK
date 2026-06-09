@@ -32,8 +32,8 @@ mybatis:
 # ── JWT ──────────────────────────────────────────
 jwt:
   secret: ${JWT_SECRET:tempJWTkeyForBankKDevelopmentEnvironment123!}
-  access-expiration: 900000       # 15분 (ms)
-  refresh-expiration: 28800000    # 8시간 (ms)
+  access-expiration: 600000       # 10분 (ms)
+  refresh-expiration: 3600000    # 1시간 (ms)
 
 # Swagger
 springdoc:
