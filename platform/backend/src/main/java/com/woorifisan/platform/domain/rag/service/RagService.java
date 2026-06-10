@@ -9,10 +9,14 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +46,33 @@ public class RagService {
             
             [답변]
             """;
+
+    private static final String KNOWLEDGE_BASE_DOCUMENT_ID = "knowledge-base";
+    private static final String KNOWLEDGE_BASE_PATH = "rag/knowledge-base.md";
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void loadKnowledgeBase() {
+        ClassPathResource resource = new ClassPathResource(KNOWLEDGE_BASE_PATH);
+        if (!resource.exists()) {
+            log.warn("지식 베이스 파일을 찾을 수 없습니다: {}", KNOWLEDGE_BASE_PATH);
+            return;
+        }
+        try {
+            String text = resource.getContentAsString(StandardCharsets.UTF_8);
+            log.info("지식 베이스 로드 시작. 파일: {}, 크기: {} bytes", KNOWLEDGE_BASE_PATH, text.length());
+
+            qdrantRepository.deleteByDocumentId(KNOWLEDGE_BASE_DOCUMENT_ID);
+
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("filename", "knowledge-base.md");
+            metadata.put("source", "classpath");
+
+            qdrantRepository.saveDocuments(KNOWLEDGE_BASE_DOCUMENT_ID, text, metadata);
+            log.info("지식 베이스 인덱싱 완료.");
+        } catch (Exception e) {
+            log.error("지식 베이스 로드 중 오류 발생. RAG 기능이 비활성화될 수 있습니다.", e);
+        }
+    }
 
     public String processPdf(MultipartFile file) {
         String originalFilename = file.getOriginalFilename();
