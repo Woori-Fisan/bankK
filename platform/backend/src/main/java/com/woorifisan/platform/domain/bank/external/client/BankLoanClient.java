@@ -46,14 +46,22 @@ public class BankLoanClient {
 
     // GET /api/v1/loan/evaluation/terms
     public List<Map<String, Object>> getEvaluationTerms(String bankCode) {
-        String uri = bankNetworkConfig.getBankProperty(bankCode).getUrl("evaluation-terms");
+        BankNetworkConfig.BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
+        if (bankProperty == null) {
+            throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+        }
+        String uri = bankProperty.getUrl("evaluation-terms");
         return getRequest(uri,
                 new ParameterizedTypeReference<ApiResponse<List<Map<String, Object>>>>() {});
     }
 
     // POST /api/v1/loan/evaluation (multipart: data 파트 JSON + files 파트)
     public Map<String, Object> submitEvaluation(String bankCode, BankLoanEvaluateRequest data, List<MultipartFile> files) {
-        String uri = bankNetworkConfig.getBankProperty(bankCode).getUrl("evaluation");
+        BankNetworkConfig.BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
+        if (bankProperty == null) {
+            throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+        }
+        String uri = bankProperty.getUrl("evaluation");
         MultipartBodyBuilder builder = buildMultipart(data, files);
         return postMultipartRequest(uri, builder,
                 new ParameterizedTypeReference<ApiResponse<Map<String, Object>>>() {},
@@ -62,7 +70,11 @@ public class BankLoanClient {
 
     // GET /api/v1/loan/contract/terms/{productId}/{loanNo}
     public List<Map<String, Object>> getContractTerms(String bankCode, String productId, String loanNo) {
-        String uriPrefix = bankNetworkConfig.getBankProperty(bankCode).getUrl("contract-terms");
+        BankNetworkConfig.BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
+        if (bankProperty == null) {
+            throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+        }
+        String uriPrefix = bankProperty.getUrl("contract-terms");
         String uri = uriPrefix + "/" + productId + "/" + loanNo;
         return getRequest(uri,
                 new ParameterizedTypeReference<ApiResponse<List<Map<String, Object>>>>() {});
@@ -70,7 +82,11 @@ public class BankLoanClient {
 
     // POST /api/v1/loan/execution
     public Map<String, Object> executeLoan(String bankCode, BankLoanExecuteRequest request) {
-        String uri = bankNetworkConfig.getBankProperty(bankCode).getUrl("execution");
+        BankNetworkConfig.BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
+        if (bankProperty == null) {
+            throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+        }
+        String uri = bankProperty.getUrl("execution");
         return postRequest(uri, request,
                 new ParameterizedTypeReference<ApiResponse<Map<String, Object>>>() {},
                 Duration.ofSeconds(5));

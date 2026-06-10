@@ -4,11 +4,12 @@ import { useReviewDocuments } from '../../hooks/useLoan';
 import { extractApiError } from '../../hooks/useLoan';
 
 interface LoanGuideProps {
+    bankCode: string;
     onNext: () => void;
 }
 
-const LoanGuide: React.FC<LoanGuideProps> = ({ onNext }) => {
-    const { data, isLoading, error } = useReviewDocuments("020");
+const LoanGuide: React.FC<LoanGuideProps> = ({ bankCode, onNext }) => {
+    const { data, isLoading, error } = useReviewDocuments(bankCode);
 
     const mandatoryDocs = data?.documents.filter((d) => d.isMandatory) ?? [];
     const optionalDocs = data?.documents.filter((d) => !d.isMandatory) ?? [];
