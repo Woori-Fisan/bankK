@@ -32,7 +32,7 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
     onNext,
     onBack,
 }) => {
-    const { data, isLoading, error } = useContractDocuments(product.loanProductCode, evaluationId);
+    const { data, isLoading, error } = useContractDocuments(loanData.bankCode, product.loanProductCode, evaluationId);
     const [agreedDocs, setAgreedDocs] = useState<AgreedContractDoc[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeDoc, setActiveDoc] = useState<AgreedContractDoc | null>(null);
@@ -96,6 +96,7 @@ const LoanContractForm: React.FC<LoanContractFormProps> = ({
                 depositAccountNo: loanData.accountNo!,
             },
             {
+                bankCode: loanData.bankCode!,
                 loanNo: evaluationId,
                 productId: product.loanProductCode ? Number(product.loanProductCode) : 0,
                 executeAmount: product.executeAmount ?? product.limit,

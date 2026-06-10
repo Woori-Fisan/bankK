@@ -1,22 +1,28 @@
 package com.woorifisan.monitoring.domain.log.service;
 
-import com.woorifisan.monitoring.domain.log.mapper.PartitionMapper;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.woorifisan.monitoring.domain.log.mapper.PartitionMapper;
 
 @ExtendWith(MockitoExtension.class)
 class PartitionMaintenanceServiceTest {
@@ -47,9 +53,6 @@ class PartitionMaintenanceServiceTest {
             String pExpired = "p20260531"; // 10일 전: 2026-05-31
 
             given(partitionMapper.partitionExists(p0)).willReturn(false);
-            given(partitionMapper.partitionExists(p1)).willReturn(false);
-            given(partitionMapper.partitionExists(p2)).willReturn(false);
-            given(partitionMapper.partitionExists(pExpired)).willReturn(true);
 
             // when
             partitionMaintenanceService.maintain();

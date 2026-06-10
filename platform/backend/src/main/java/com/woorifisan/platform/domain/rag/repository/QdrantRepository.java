@@ -1,7 +1,10 @@
 package com.woorifisan.platform.domain.rag.repository;
 
 import io.qdrant.client.QdrantClient;
+import io.qdrant.client.grpc.Collections.Distance;
+import io.qdrant.client.grpc.Collections.VectorParams;
 import io.qdrant.client.grpc.JsonWithInt.Value;
+import io.qdrant.client.grpc.Points.Filter;
 import io.qdrant.client.grpc.Points.PointStruct;
 import io.qdrant.client.grpc.Points.ScoredPoint;
 import io.qdrant.client.grpc.Points.SearchPoints;
@@ -14,6 +17,9 @@ import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static io.qdrant.client.ConditionFactory.matchKeyword;
 
 import static io.qdrant.client.PointIdFactory.id;
 import static io.qdrant.client.ValueFactory.value;
@@ -30,14 +36,36 @@ public class QdrantRepository {
     private static final String COLLECTION_NAME = "agency-docs";
     private static final int SEARCH_RESULT_LIMIT = 3;
 
+    private final AtomicBoolean collectionExists = new AtomicBoolean(false);
+
     private final TokenTextSplitter tokenTextSplitter = TokenTextSplitter.builder()
             .withChunkSize(800)
             .withMinChunkSizeChars(100)
             .withKeepSeparator(true)
             .build();
 
+    private void ensureCollectionExists() throws Exception {
+        if (collectionExists.get()) return;
+        List<String> names = qdrantClient.listCollectionsAsync().get();
+        if (!names.contains(COLLECTION_NAME)) {
+            qdrantClient.createCollectionAsync(COLLECTION_NAME,
+                    VectorParams.newBuilder()
+                            .setSize(3072)
+                            .setDistance(Distance.Cosine)
+                            .build()).get();
+            log.info("[QdrantRepository] 컬렉션 '{}' 생성 완료", COLLECTION_NAME);
+        }
+        collectionExists.set(true);
+    }
+
     public void saveDocuments(String documentId, String text, Map<String, Object> metadata) {
         log.info("[QdrantRepository] 문서 처리 시작. ID: {}", documentId);
+
+        try {
+            ensureCollectionExists();
+        } catch (Exception e) {
+            throw new RuntimeException("Qdrant 컬렉션 초기화 실패", e);
+        }
 
         // 1. Chunking
         Document rootDoc = new Document(text, metadata);
@@ -50,8 +78,9 @@ public class QdrantRepository {
             Document chunk = chunks.get(i);
             float[] embedding = embeddingModel.embed(chunk);
             
+            UUID pointId = UUID.nameUUIDFromBytes((documentId + "-" + i).getBytes(java.nio.charset.StandardCharsets.UTF_8));
             points.add(PointStruct.newBuilder()
-                    .setId(id(UUID.randomUUID()))
+                    .setId(id(pointId))
                     .setVectors(vectors(toFloatList(embedding)))
                     .putAllPayload(buildPayload(chunk, documentId, i))
                     .build());
@@ -64,6 +93,18 @@ public class QdrantRepository {
         } catch (Exception e) {
             log.error("[QdrantRepository] 저장 중 오류 발생", e);
             throw new RuntimeException("Qdrant 저장 실패", e);
+        }
+    }
+
+    public void deleteByDocumentId(String documentId) {
+        Filter filter = Filter.newBuilder()
+                .addMust(matchKeyword("documentId", documentId))
+                .build();
+        try {
+            qdrantClient.deleteAsync(COLLECTION_NAME, filter).get();
+            log.info("[QdrantRepository] documentId={} 포인트 삭제 완료", documentId);
+        } catch (Exception e) {
+            log.error("[QdrantRepository] 삭제 중 오류 발생", e);
         }
     }
 
