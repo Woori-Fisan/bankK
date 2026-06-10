@@ -73,7 +73,7 @@ public class ControllerLoggingAspect {
         String   methodName = joinPoint.getSignature().getName();
 
         Map<String, Object> httpContext = new HashMap<>();
-        httpContext.put("bankKeyId", null); // 추후 구현 예정
+        httpContext.put("bankKeyId", MDC.get("bankKeyId"));
         httpContext.put("httpMethod", request.getMethod());
         httpContext.put("httpUri", request.getRequestURI());
         httpContext.put("clientIp", getClientIp(request));

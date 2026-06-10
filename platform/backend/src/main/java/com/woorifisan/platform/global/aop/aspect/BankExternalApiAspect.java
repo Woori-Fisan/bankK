@@ -77,7 +77,7 @@ public class BankExternalApiAspect {
         String bankUri = bankProperty != null ? bankProperty.getUrl(urlKey) : null;
 
         Map<String, Object> bankContext = new HashMap<>();
-        bankContext.put("bankKeyId", null); // 추후 구현 예정
+        bankContext.put("bankKeyId", MDC.get("bankKeyId"));
         bankContext.put("bankCode", bankCode);
         bankContext.put("apiType", apiType);
         bankContext.put("httpMethod", "POST"); // BankExternalClient는 모든 요청을 POST로 전송
