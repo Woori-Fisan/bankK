@@ -132,6 +132,9 @@ public class LoanService {
         } else if (!"NORMAL".equals(account.getStatus())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_ABNORMAL);
         }
+        if (!"DEPOSIT".equals(account.getAccountType())) {
+            throw new BusinessException(ErrorCode.LOAN_ACCOUNT_INVALID_TYPE);
+        }
 
         // 5. 계좌 소유자와 요청 고객 정보 일치 여부 확인 (본인 확인)
         Customer customer = customerMapper.findById(account.getCustomerId())
@@ -340,6 +343,9 @@ public class LoanService {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_LOCKED);
         } else if (!"NORMAL".equals(account.getStatus())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_ABNORMAL);
+        }
+        if (!"DEPOSIT".equals(account.getAccountType())) {
+            throw new BusinessException(ErrorCode.LOAN_ACCOUNT_INVALID_TYPE);
         }
         // bcrypt 해시와 비교
         if (!passwordEncoder.matches(decrypted.getAccountPassword(), account.getPassword())) {

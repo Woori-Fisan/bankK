@@ -249,11 +249,24 @@ class LoanServiceTest {
         }
 
         @Test
+        @DisplayName("실패 - 계좌 유형 DEPOSIT 아님 → LOAN_ACCOUNT_INVALID_TYPE")
+        void 실패_계좌유형_DEPOSIT_아님() {
+            mockEvaluateDecrypt(RRN_PREFIX, CUSTOMER_NAME);
+            Account account = Account.builder()
+                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").accountType("LOAN").build();
+            given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.of(account));
+
+            assertThatThrownBy(() -> loanService.acceptLoan(defaultEvaluateRequest(), validFiles()))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.LOAN_ACCOUNT_INVALID_TYPE);
+        }
+
+        @Test
         @DisplayName("실패 - 고객 이름 불일치 → LOAN_CUSTOMER_IDENTITY_MISMATCH (시나리오 1a)")
         void 실패_이름_불일치() {
             mockEvaluateDecrypt(RRN_PREFIX, "김오류");
             Account normal = Account.builder()
-                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").build();
+                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").accountType("DEPOSIT").build();
             Customer customer = Customer.builder()
                     .id(10L).rrnPrefix(RRN_PREFIX).customerName(CUSTOMER_NAME).build();
             given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.of(normal));
@@ -269,7 +282,7 @@ class LoanServiceTest {
         void 실패_주민번호_불일치() {
             mockEvaluateDecrypt("9001012", CUSTOMER_NAME);
             Account normal = Account.builder()
-                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").build();
+                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").accountType("DEPOSIT").build();
             Customer customer = Customer.builder()
                     .id(10L).rrnPrefix(RRN_PREFIX).customerName(CUSTOMER_NAME).build();
             given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.of(normal));
@@ -285,7 +298,7 @@ class LoanServiceTest {
         void 실패_중복신청() {
             mockEvaluateDecrypt(RRN_PREFIX, CUSTOMER_NAME);
             Account normal = Account.builder()
-                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").build();
+                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").accountType("DEPOSIT").build();
             Customer customer = Customer.builder()
                     .id(10L).rrnPrefix(RRN_PREFIX).customerName(CUSTOMER_NAME).build();
             given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.of(normal));
@@ -302,7 +315,7 @@ class LoanServiceTest {
         void 성공() {
             mockEvaluateDecrypt(RRN_PREFIX, CUSTOMER_NAME);
             Account normal = Account.builder()
-                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").build();
+                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").accountType("DEPOSIT").build();
             Customer customer = Customer.builder()
                     .id(10L).rrnPrefix(RRN_PREFIX).customerName(CUSTOMER_NAME).build();
             given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.of(normal));
@@ -447,6 +460,24 @@ class LoanServiceTest {
         }
 
         @Test
+        @DisplayName("실패 - 계좌 유형 DEPOSIT 아님 → LOAN_ACCOUNT_INVALID_TYPE")
+        void 실패_계좌유형_DEPOSIT_아님_실행() {
+            mockExecuteDecrypt(ACCOUNT_NO, "1234");
+            given(loanLedgerMapper.findByLoanNo(LOAN_NO))
+                    .willReturn(Optional.of(approvedLedger(new BigDecimal("50000000"))));
+            given(loanProductMapper.findByProductId(1L)).willReturn(Optional.of(testProduct()));
+            given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
+            Account account = Account.builder()
+                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO)
+                    .status("NORMAL").accountType("SAVINGS").build();
+            given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(account));
+
+            assertThatThrownBy(() -> loanService.executeLoan(defaultExecuteRequest()))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.LOAN_ACCOUNT_INVALID_TYPE);
+        }
+
+        @Test
         @DisplayName("실패 - 계좌번호 불일치 → LOAN_ACCOUNT_NOT_FOUND")
         void 실패_계좌번호_불일치() {
             mockExecuteDecrypt(ACCOUNT_NO, "1234");
@@ -474,7 +505,7 @@ class LoanServiceTest {
             given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
             Account account = Account.builder()
                     .id(1L).customerId(10L).accountNo(ACCOUNT_NO)
-                    .password(HASHED_PW).status("NORMAL").balance(BigDecimal.ZERO).build();
+                    .password(HASHED_PW).status("NORMAL").accountType("DEPOSIT").balance(BigDecimal.ZERO).build();
             given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(account));
             given(passwordEncoder.matches("9999", HASHED_PW)).willReturn(false);
 
@@ -493,7 +524,7 @@ class LoanServiceTest {
             given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
             Account account = Account.builder()
                     .id(1L).customerId(10L).accountNo(ACCOUNT_NO)
-                    .password(HASHED_PW).status("NORMAL").balance(new BigDecimal("1000000")).build();
+                    .password(HASHED_PW).status("NORMAL").accountType("DEPOSIT").balance(new BigDecimal("1000000")).build();
             given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(account));
             given(passwordEncoder.matches("1234", HASHED_PW)).willReturn(true);
             given(accountMapper.updateBalance(eq(1L), any(BigDecimal.class))).willReturn(1);
