@@ -112,7 +112,7 @@ jobs:
         run: |
           ./gradlew jib \
             -PbuildNumber=$SHORT_SHA
-          
+
       # --------------------------------------------------
       # Configure AWS Credentials
       # --------------------------------------------------
@@ -135,6 +135,19 @@ jobs:
           chmod 600 key.pem
 
       # --------------------------------------------------
+      # Update SSM Image Tag
+      # --------------------------------------------------
+
+      - name: Update SSM Image Tag
+        run: |
+          aws ssm put-parameter \
+            --region ap-northeast-2 \
+            --name "/bankk/platform/backend/image-tag" \
+            --value "$SHORT_SHA" \
+            --type String \
+            --overwrite
+
+      # --------------------------------------------------
       # Deploy
       # --------------------------------------------------
 
@@ -153,14 +166,12 @@ jobs:
           echo "Platform deployment completed."
 
       # --------------------------------------------------
-      # Update SSM Image Tag
+      # Instance Refresh
       # --------------------------------------------------
 
-      - name: Update SSM Image Tag
+      - name: Start Instance Refresh
         run: |
-          aws ssm put-parameter \
+          aws autoscaling start-instance-refresh \
             --region ap-northeast-2 \
-            --name "/bankk/platform/backend/image-tag" \
-            --value "$SHORT_SHA" \
-            --type String \
-            --overwrite
+            --auto-scaling-group-name bankk-platform-asg \
+            --preferences '{"MinHealthyPercentage":100,"InstanceWarmup":300}'
