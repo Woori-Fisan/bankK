@@ -69,7 +69,6 @@ class TransferTxServiceTest {
                 .password("hashedPassword")
                 .accountType("DEPOSIT")
                 .status("NORMAL")
-                .version(1)
                 .build();
 
         receiver = Account.builder()
@@ -80,7 +79,6 @@ class TransferTxServiceTest {
                 .password("hashedPassword2")
                 .accountType("DEPOSIT")
                 .status("NORMAL")
-                .version(1)
                 .build();
     }
 
@@ -106,7 +104,7 @@ class TransferTxServiceTest {
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000").negate(), sender.getVersion())).willReturn(1);
+        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000").negate())).willReturn(1);
         given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
 
         // when
@@ -116,7 +114,7 @@ class TransferTxServiceTest {
         assertNotNull(response);
         assertEquals(0, new BigDecimal("90000").compareTo(response.getBalanceAfter()));
         assertEquals("encrypted-res", response.getResPayload());
-        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate(), sender.getVersion());
+        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate());
         verify(transactionLedgerMapper).insert(any());
     }
 
@@ -193,7 +191,6 @@ class TransferTxServiceTest {
                 .password("hashedPassword")
                 .accountType("LOAN") // DEPOSIT이 아님
                 .status("NORMAL")
-                .version(1)
                 .build();
 
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(nonDepositSender));
@@ -223,7 +220,6 @@ class TransferTxServiceTest {
                 .password("hashedPassword")
                 .accountType("DEPOSIT")
                 .status("LOCKED") // NORMAL이 아님
-                .version(1)
                 .build();
 
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(abnormalSender));
@@ -292,7 +288,6 @@ class TransferTxServiceTest {
                 .password("hashedPassword")
                 .accountType("LOAN") // DEPOSIT이 아님
                 .status("NORMAL")
-                .version(1)
                 .build();
 
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
@@ -323,7 +318,6 @@ class TransferTxServiceTest {
                 .password("hashedPassword")
                 .accountType("DEPOSIT")
                 .status("LOCKED") // NORMAL이 아님
-                .version(1)
                 .build();
 
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
@@ -354,7 +348,6 @@ class TransferTxServiceTest {
                 .password("hashedPassword")
                 .accountType("DEPOSIT")
                 .status("NORMAL")
-                .version(1)
                 .build();
 
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
@@ -365,27 +358,6 @@ class TransferTxServiceTest {
         BusinessException ex = assertThrows(BusinessException.class, () ->
                 transferTxService.withdrawTransfer(request, decryptedData, TEST_CEK));
         assertEquals(ErrorCode.INSUFFICIENT_BALANCE, ex.getErrorCode());
-    }
-
-    @Test
-    @DisplayName("출금 이체 시 낙관적 락 버전 불일치로 업데이트에 실패하면 예외가 발생한다")
-    void withdrawTransfer_concurrentModification() {
-        // given
-        TransferRequest request = TransferRequest.builder().amount(new BigDecimal("10000")).build();
-        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
-                .withdrawalAccountNo("111-111")
-                .withdrawalPassword("1234")
-                .build();
-
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
-        given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
-        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000").negate(), sender.getVersion())).willReturn(0);
-
-        // when & then
-        BusinessException ex = assertThrows(BusinessException.class, () ->
-                transferTxService.withdrawTransfer(request, decryptedData, TEST_CEK));
-        assertEquals(ErrorCode.CONCURRENT_MODIFICATION, ex.getErrorCode());
     }
 
     @Test
@@ -407,7 +379,7 @@ class TransferTxServiceTest {
 
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000"), sender.getVersion())).willReturn(1);
+        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000"))).willReturn(1);
 
         // when
         TransferResponse response = transferTxService.refundTransfer(request, originalData);
@@ -415,7 +387,7 @@ class TransferTxServiceTest {
         // then
         assertNotNull(response);
         assertEquals(0, new BigDecimal("110000").compareTo(response.getBalanceAfter()));
-        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000"), sender.getVersion());
+        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000"));
         verify(transactionLedgerMapper).insert(any());
     }
 
@@ -429,7 +401,7 @@ class TransferTxServiceTest {
 
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000"), sender.getVersion())).willReturn(1);
+        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000"))).willReturn(1);
 
         // when
         TransferResponse response = transferTxService.refundTransfer(request, originalData, originalTxId);
@@ -472,23 +444,6 @@ class TransferTxServiceTest {
     }
 
     @Test
-    @DisplayName("이체 환불 시 낙관적 락 버전 불일치로 업데이트에 실패하면 예외가 발생한다")
-    void refundTransfer_concurrentModification() {
-        // given
-        TransferRequest request = TransferRequest.builder().amount(new BigDecimal("10000")).build();
-        DecryptedWithdrawData originalData = DecryptedWithdrawData.builder().withdrawalAccountNo("111-111").build();
-
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
-        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000"), sender.getVersion())).willReturn(0);
-
-        // when & then
-        BusinessException ex = assertThrows(BusinessException.class, () ->
-                transferTxService.refundTransfer(request, originalData));
-        assertEquals(ErrorCode.CONCURRENT_MODIFICATION, ex.getErrorCode());
-    }
-
-    @Test
     @DisplayName("내부 입금이 성공한다")
     void internalDeposit_success() {
         // given
@@ -502,7 +457,7 @@ class TransferTxServiceTest {
 
         given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(receiver));
         given(accountMapper.findByIdForUpdate(2L)).willReturn(Optional.of(receiver));
-        given(accountMapper.updateBalance(receiver.getId(), new BigDecimal("20000"), receiver.getVersion())).willReturn(1);
+        given(accountMapper.updateBalance(receiver.getId(), new BigDecimal("20000"))).willReturn(1);
 
         // when
         TransferResponse response = transferTxService.internalDeposit(request);
@@ -545,7 +500,6 @@ class TransferTxServiceTest {
                 .password("hashedPassword2")
                 .accountType("DEPOSIT")
                 .status("LOCKED") // NORMAL이 아님
-                .version(1)
                 .build();
 
         given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(abnormalReceiver));
@@ -589,7 +543,6 @@ class TransferTxServiceTest {
                 .password("hashedPassword2")
                 .accountType("DEPOSIT")
                 .status("LOCKED") // NORMAL이 아님
-                .version(1)
                 .build();
 
         given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(receiver));
@@ -599,25 +552,6 @@ class TransferTxServiceTest {
         BusinessException ex = assertThrows(BusinessException.class, () ->
                 transferTxService.internalDeposit(request));
         assertEquals(ErrorCode.ACCOUNT_NOT_NORMAL, ex.getErrorCode());
-    }
-
-    @Test
-    @DisplayName("내부 입금 시 낙관적 락 버전 불일치로 업데이트에 실패하면 예외가 발생한다")
-    void internalDeposit_concurrentModification() {
-        // given
-        InternalDepositRequest request = InternalDepositRequest.builder()
-                .depositAccountNo("222-222")
-                .amount(new BigDecimal("20000"))
-                .build();
-
-        given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(receiver));
-        given(accountMapper.findByIdForUpdate(2L)).willReturn(Optional.of(receiver));
-        given(accountMapper.updateBalance(receiver.getId(), new BigDecimal("20000"), receiver.getVersion())).willReturn(0);
-
-        // when & then
-        BusinessException ex = assertThrows(BusinessException.class, () ->
-                transferTxService.internalDeposit(request));
-        assertEquals(ErrorCode.CONCURRENT_MODIFICATION, ex.getErrorCode());
     }
 
     @Test
