@@ -67,11 +67,8 @@ public class WithdrawalService {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
-        // 5. 잔액 업데이트 (낙관적 락 버전 체크)
-        int updatedRows = accountMapper.updateBalance(account.getId(), request.getAmount().negate(), account.getVersion());
-        if (updatedRows == 0) {
-            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
-        }
+        // 5. 잔액 업데이트
+        accountMapper.updateBalance(account.getId(), request.getAmount().negate());
 
         // 6. 거래 내역 생성 및 저장 (업데이트 성공 후 기록)
         String txId = "TXW-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();

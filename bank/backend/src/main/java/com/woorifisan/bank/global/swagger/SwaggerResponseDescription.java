@@ -28,7 +28,6 @@ public enum SwaggerResponseDescription {
             ErrorCode.INSUFFICIENT_BALANCE,
             ErrorCode.INVALID_ACCOUNT_TYPE,
             ErrorCode.ACCOUNT_NOT_NORMAL,
-            ErrorCode.CONCURRENT_MODIFICATION,
             ErrorCode.INVALID_INPUT,
             ErrorCode.INTERNAL_SERVER_ERROR
     )),

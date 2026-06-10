@@ -17,7 +17,6 @@ public class Account {
     private String accountType;
     private BigDecimal balance;
     private String status;
-    private Integer version;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
