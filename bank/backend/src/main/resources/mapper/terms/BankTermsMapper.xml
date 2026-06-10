@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.woorifisan.bank.domain.terms.mapper.BankTermsMapper">
+    <select id="findById" resultType="BankTerms">
+        SELECT * FROM bank_terms WHERE id = #{id}
+    </select>
+
+    <select id="findActiveByTermsType" resultType="BankTerms">
+        SELECT * FROM bank_terms
+        WHERE is_active = true AND terms_type = #{termsType}
+        ORDER BY is_mandatory DESC, id ASC
+    </select>
+</mapper>

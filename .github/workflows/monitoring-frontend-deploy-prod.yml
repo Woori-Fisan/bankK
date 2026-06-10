@@ -1,0 +1,113 @@
+name: Monitoring Frontend Deploy Prod
+
+on:
+  push:
+    branches:
+      - develop
+
+    paths:
+      - 'monitoring/frontend/**'
+      - '.github/workflows/monitoring-frontend-deploy-prod.yml'
+
+concurrency:
+  group: monitoring-frontend-deploy-prod
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: monitoring/frontend
+
+    steps:
+
+      # --------------------------------------------------
+      # Checkout
+      # --------------------------------------------------
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------
+      # Node Setup
+      # --------------------------------------------------
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'monitoring/frontend/.nvmrc'
+          cache: npm
+          cache-dependency-path: monitoring/frontend/package-lock.json
+
+      - name: Setup npm
+        run: npm install -g npm@11.6.2
+
+      # --------------------------------------------------
+      # Install Dependencies
+      # --------------------------------------------------
+
+      - name: Install Dependencies
+        run: npm ci
+
+      # --------------------------------------------------
+      # Run Tests
+      # --------------------------------------------------
+
+      - name: Run Tests
+        run: |
+          if find src -name "*.test.*" -o -name "*.spec.*" | grep -q .; then
+            npm run test -- --run
+          else
+            echo "No test files found. Skipping tests."
+          fi
+
+      # --------------------------------------------------
+      # Build
+      # --------------------------------------------------
+
+      - name: Build Frontend
+        run: npm run build
+
+      # --------------------------------------------------
+      # SonarQube Scan
+      # --------------------------------------------------
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          projectBaseDir: monitoring/frontend
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      # --------------------------------------------------
+      # Configure AWS Credentials
+      # --------------------------------------------------
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # --------------------------------------------------
+      # Upload Dist To S3
+      # --------------------------------------------------
+
+      - name: Upload Dist To S3
+        run: |
+          aws s3 sync dist/ s3://${{ secrets.MONITORING_S3_BUCKET_NAME }} \
+            --delete
+
+      # --------------------------------------------------
+      # Invalidate CloudFront Cache
+      # --------------------------------------------------
+
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.MONITORING_CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.woorifisan.monitoring.domain.log.mapper.PartitionMapper">
+
+    <select id="partitionExists" parameterType="String" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM information_schema.PARTITIONS
+        WHERE TABLE_SCHEMA  = DATABASE()
+          AND TABLE_NAME    = 'system_logs'
+          AND PARTITION_NAME = #{partitionName}
+    </select>
+
+    <!--
+        파티션명은 SQL 식별자이므로 ${ } 사용 (내부 로직에서만 생성되는 값)
+        p_future를 새 날짜 파티션 + 새 p_future로 재편성
+    -->
+    <update id="addDailyPartition">
+        ALTER TABLE system_logs REORGANIZE PARTITION p_future INTO (
+            PARTITION ${partitionName} VALUES LESS THAN ('${lessThanDate} 00:00:00'),
+            PARTITION p_future         VALUES LESS THAN (MAXVALUE)
+        )
+    </update>
+
+    <!-- 파티션명은 SQL 식별자이므로 ${ } 사용 -->
+    <update id="dropPartition">
+        ALTER TABLE system_logs DROP PARTITION ${partitionName}
+    </update>
+
+</mapper>
