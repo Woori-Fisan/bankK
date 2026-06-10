@@ -17,8 +17,8 @@ public interface AccountMapper {
     Optional<Account> findByIdForUpdate(Long id);
     Optional<Account> findByAccountNoPlain(String accountNo);
     /**
-     * 낙관적 락을 적용한 잔액 업데이트 (증액/차감 공용)
-     * @return 수정된 행 수 (0이면 버전 불일치)
+     * 업데이트 (증액/차감 공용)
+     * @return 수정된 행 수
      */
     int updateBalance(
             @Param("id") Long id,
