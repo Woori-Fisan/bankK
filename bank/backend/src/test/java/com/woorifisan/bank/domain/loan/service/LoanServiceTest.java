@@ -438,7 +438,7 @@ class LoanServiceTest {
             given(loanProductMapper.findByProductId(1L)).willReturn(Optional.of(testProduct()));
             given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
             Account locked = Account.builder()
-                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("LOCKED").version(1).build();
+                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("LOCKED").build();
             given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(locked));
 
             assertThatThrownBy(() -> loanService.executeLoan(defaultExecuteRequest()))
@@ -456,7 +456,7 @@ class LoanServiceTest {
             given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
             Account differentAccount = Account.builder()
                     .id(1L).customerId(10L).accountNo("110-999-999999")
-                    .status("NORMAL").version(1).build();
+                    .status("NORMAL").build();
             given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(differentAccount));
 
             assertThatThrownBy(() -> loanService.executeLoan(defaultExecuteRequest()))
@@ -474,38 +474,13 @@ class LoanServiceTest {
             given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
             Account account = Account.builder()
                     .id(1L).customerId(10L).accountNo(ACCOUNT_NO)
-                    .password(HASHED_PW).status("NORMAL").version(1).balance(BigDecimal.ZERO).build();
+                    .password(HASHED_PW).status("NORMAL").balance(BigDecimal.ZERO).build();
             given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(account));
             given(passwordEncoder.matches("9999", HASHED_PW)).willReturn(false);
 
             assertThatThrownBy(() -> loanService.executeLoan(defaultExecuteRequest()))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.LOAN_ACCOUNT_PASSWORD_MISMATCH);
-        }
-
-        @Test
-        @DisplayName("실패 - 잔액 업데이트 버전 충돌 → CONCURRENT_MODIFICATION")
-        void 실패_동시수정() {
-            mockExecuteDecrypt(ACCOUNT_NO, "1234");
-            given(loanLedgerMapper.findByLoanNo(LOAN_NO))
-                    .willReturn(Optional.of(approvedLedger(new BigDecimal("50000000"))));
-            given(loanProductMapper.findByProductId(1L)).willReturn(Optional.of(testProduct()));
-            given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
-            Account account = Account.builder()
-                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO)
-                    .password(HASHED_PW).status("NORMAL").version(1).balance(BigDecimal.ZERO).build();
-            given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(account));
-            given(passwordEncoder.matches("1234", HASHED_PW)).willReturn(true);
-            given(customerMapper.findById(10L)).willReturn(
-                    Optional.of(Customer.builder().id(10L).customerName(CUSTOMER_NAME).build()));
-            given(loanReviewAsyncService.calculateMonthlyPayment(
-                    any(BigDecimal.class), any(BigDecimal.class), anyInt()))
-                    .willReturn(new BigDecimal("897000"));
-            given(accountMapper.updateBalance(eq(1L), any(BigDecimal.class), eq(1))).willReturn(0);
-
-            assertThatThrownBy(() -> loanService.executeLoan(defaultExecuteRequest()))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CONCURRENT_MODIFICATION);
         }
 
         @Test
@@ -518,10 +493,10 @@ class LoanServiceTest {
             given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
             Account account = Account.builder()
                     .id(1L).customerId(10L).accountNo(ACCOUNT_NO)
-                    .password(HASHED_PW).status("NORMAL").version(1).balance(new BigDecimal("1000000")).build();
+                    .password(HASHED_PW).status("NORMAL").balance(new BigDecimal("1000000")).build();
             given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(account));
             given(passwordEncoder.matches("1234", HASHED_PW)).willReturn(true);
-            given(accountMapper.updateBalance(eq(1L), any(BigDecimal.class), eq(1))).willReturn(1);
+            given(accountMapper.updateBalance(eq(1L), any(BigDecimal.class))).willReturn(1);
             given(customerMapper.findById(10L)).willReturn(
                     Optional.of(Customer.builder().id(10L).customerName(CUSTOMER_NAME).build()));
             given(loanReviewAsyncService.calculateMonthlyPayment(

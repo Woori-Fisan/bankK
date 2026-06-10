@@ -2,7 +2,6 @@ package com.woorifisan.bank.domain.account.service;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -93,7 +92,6 @@ class WithdrawalServiceLockTest {
                     .balance(new BigDecimal("5000")) // 요청 금액 10000보다 작음
                     .accountType("DEPOSIT")
                     .status("NORMAL")
-                    .version(1)
                     .build();
 
             given(accountMapper.findByAccountNoPlain("acc-123")).willReturn(Optional.of(account));
@@ -105,32 +103,5 @@ class WithdrawalServiceLockTest {
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INSUFFICIENT_BALANCE);
         }
 
-        @Test
-        @DisplayName("실패: 잔액은 충분하지만 낙관적 락 버전 불일치 시 CONCURRENT_MODIFICATION 예외가 발생해야 한다")
-        void 출금_실패_업데이트시_버전불일치_구분() {
-            // given
-            mockDecrypt("acc-123", "900101", "password");
-
-            Account account = Account.builder()
-                    .id(1L)
-                    .customerId(10L)
-                    .accountNo("acc-123")
-                    .password("encoded-password")
-                    .balance(new BigDecimal("20000"))
-                    .accountType("DEPOSIT")
-                    .status("NORMAL")
-                    .version(1)
-                    .build();
-
-            given(accountMapper.findByAccountNoPlain("acc-123")).willReturn(Optional.of(account));
-            given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(account));
-            given(passwordEncoder.matches(anyString(), anyString())).willReturn(true);
-            given(accountMapper.updateBalance(anyLong(), any(BigDecimal.class), anyInt())).willReturn(0);
-
-            // when & then
-            assertThatThrownBy(() -> withdrawalService.withdraw(requestOf(new BigDecimal("10000"))))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CONCURRENT_MODIFICATION);
-        }
     }
 }

@@ -85,7 +85,6 @@ class TransferServiceTest {
                 .balance(new BigDecimal("100000"))
                 .password("hashedPassword")
                 .status("NORMAL")
-                .version(1)
                 .build();
 
         senderCustomer = Customer.builder()

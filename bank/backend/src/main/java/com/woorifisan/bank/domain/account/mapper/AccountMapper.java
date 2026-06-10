@@ -22,8 +22,7 @@ public interface AccountMapper {
      */
     int updateBalance(
             @Param("id") Long id,
-            @Param("amount") BigDecimal amount,
-            @Param("version") Integer version
+            @Param("amount") BigDecimal amount
     );
 
     /**

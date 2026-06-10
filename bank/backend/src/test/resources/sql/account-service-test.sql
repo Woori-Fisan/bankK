@@ -9,7 +9,7 @@ VALUES (
            1
        );
 
-INSERT INTO account (id, customer_id, account_no, password, account_type, balance, status, version)
+INSERT INTO account (id, customer_id, account_no, password, account_type, balance, status)
 VALUES (
            10,
            10,
@@ -17,8 +17,7 @@ VALUES (
            'service-test-pw',
            'SAVINGS',
            150000.00,
-           'NORMAL',
-           0
+           'NORMAL'
        );
 
 INSERT INTO transaction_ledger (tx_id, account_id, tx_type, amount, balance_after, target_bank_code, target_account, description, status, transacted_at)

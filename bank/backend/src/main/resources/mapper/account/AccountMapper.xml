@@ -20,10 +20,8 @@
     <update id="updateBalance">
         UPDATE account
         SET balance = balance + #{amount},
-            version = version + 1,
             updated_at = NOW()
         WHERE id = #{id}
-          AND version = #{version}
     </update>
 
     <select id="findByAccountNoAndRrnPrefix" resultType="Account">

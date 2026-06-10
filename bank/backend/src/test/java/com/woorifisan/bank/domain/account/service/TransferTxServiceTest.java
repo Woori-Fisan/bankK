@@ -68,7 +68,6 @@ class TransferTxServiceTest {
                 .balance(new BigDecimal("100000"))
                 .password("hashedPassword")
                 .status("NORMAL")
-                .version(1)
                 .build();
 
         senderCustomer = Customer.builder()
@@ -102,7 +101,7 @@ class TransferTxServiceTest {
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000").negate(), sender.getVersion())).willReturn(1);
+        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000").negate())).willReturn(1);
         given(securityService.encryptResponse(any(), any())).willReturn("encrypted-res");
 
         // when
@@ -112,7 +111,7 @@ class TransferTxServiceTest {
         assertNotNull(response);
         assertEquals(new BigDecimal("90000"), response.getBalanceAfter());
         assertEquals("encrypted-res", response.getResPayload());
-        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate(), sender.getVersion());
+        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate());
         verify(transactionLedgerMapper).insert(any());
     }
 
@@ -135,7 +134,7 @@ class TransferTxServiceTest {
 
         given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
-        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000"), sender.getVersion())).willReturn(1);
+        given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000"))).willReturn(1);
 
         // when
         TransferResponse response = transferTxService.refundTransfer(request, originalData);
@@ -143,7 +142,7 @@ class TransferTxServiceTest {
         // then
         assertNotNull(response);
         assertEquals(new BigDecimal("110000"), response.getBalanceAfter());
-        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000"), sender.getVersion());
+        verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000"));
         verify(transactionLedgerMapper).insert(any());
     }
 }
