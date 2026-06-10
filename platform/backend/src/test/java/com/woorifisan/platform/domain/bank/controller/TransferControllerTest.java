@@ -108,7 +108,7 @@ class TransferControllerTest {
                 .build();
 
         given(transferService.getRecipient(any(), eq("bank-key-id")))
-                .willThrow(new BusinessException(ErrorCode.BANK_NOT_FOUND, "존재하지 않는 계좌입니다."));
+                .willThrow(new BusinessException(ErrorCode.INQUIRY_ACCOUNT_NOTFOUND, "존재하지 않는 계좌입니다."));
 
         // when & then
         mockMvc.perform(post("/api/v1/bank/transfer/recipient")
@@ -116,7 +116,7 @@ class TransferControllerTest {
                         .header("x-bank-key-id", "bank-key-id")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.message").value("존재하지 않는 계좌입니다."))
                 .andDo(print());
@@ -189,7 +189,7 @@ class TransferControllerTest {
         request.setDepositReqPayload("enc-deposit-payload");
         request.setWithdrawalBankCode("020");
         request.setDepositBankCode("004");
-        request.setAmount(new BigDecimal("-500")); // 음수
+        request.setAmount(BigDecimal.ZERO); // 경계값인 0 이하 검증
 
         // when & then
         mockMvc.perform(post("/api/v1/bank/transfer")
