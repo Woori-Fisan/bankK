@@ -57,6 +57,7 @@ public enum ErrorCode {
     LOAN_STORAGE_ERROR("LOAN_015", "서류 파일 저장에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     LOAN_DUPLICATE_PENDING("LOAN_016", "이미 접수된 대출 신청 건이 있습니다.", HttpStatus.CONFLICT),
     LOAN_INVALID_FILE("LOAN_017", "PDF 파일만 업로드할 수 있습니다.", HttpStatus.BAD_REQUEST),
+    LOAN_ACCOUNT_INVALID_TYPE("LOAN_018", "입금 계좌는 입출금(DEPOSIT) 계좌만 허용됩니다.", HttpStatus.UNPROCESSABLE_ENTITY),
 
     //조회
     INQUIRY_ACCOUNT_NOTFOUND("INQUIRY_001", "계좌 정보를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
