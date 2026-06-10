@@ -139,7 +139,8 @@ class AccountConcurrencyTest {
                 });
             }
 
-            ready.await();
+            assertThat(ready.await(10, TimeUnit.SECONDS))
+                    .as("스레드 준비 타임아웃: 10초 내에 모든 스레드가 준비되지 않았습니다").isTrue();
             start.countDown(); // 모든 스레드 동시 출발
             done.await(10, TimeUnit.SECONDS);
             executor.shutdown();
@@ -200,7 +201,8 @@ class AccountConcurrencyTest {
                 });
             }
 
-            ready.await();
+            assertThat(ready.await(10, TimeUnit.SECONDS))
+                    .as("스레드 준비 타임아웃: 10초 내에 모든 스레드가 준비되지 않았습니다").isTrue();
             start.countDown();
             done.await(10, TimeUnit.SECONDS);
             executor.shutdown();
@@ -268,7 +270,8 @@ class AccountConcurrencyTest {
                 });
             }
 
-            ready.await();
+            assertThat(ready.await(10, TimeUnit.SECONDS))
+                    .as("스레드 준비 타임아웃: 10초 내에 모든 스레드가 준비되지 않았습니다").isTrue();
             start.countDown();
             done.await(10, TimeUnit.SECONDS);
             executor.shutdown();
@@ -334,9 +337,17 @@ class AccountConcurrencyTest {
                         bothRead.countDown(); // "나도 읽었다" 신호
 
                         try {
-                            startUpdate.await(5, TimeUnit.SECONDS); // 상대방도 읽을 때까지 대기
+                            boolean signaled = startUpdate.await(5, TimeUnit.SECONDS);
+                            if (!signaled) {
+                                // 타임아웃: 동기화가 실패했으므로 트랜잭션을 중단
+                                status.setRollbackOnly();
+                                return null;
+                            }
                         } catch (InterruptedException e) {
+                            // 인터럽트: 즉시 중단
                             Thread.currentThread().interrupt();
+                            status.setRollbackOnly();
+                            return null;
                         }
 
                         // 2단계: 둘 다 잔액을 10,000으로 읽었으므로 둘 다 "충분" 판단 → 차감
