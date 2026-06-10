@@ -9,7 +9,7 @@ VALUES (
         1
        );
 
-INSERT INTO account (id, customer_id, account_no, password, account_type, balance, status, version)
+INSERT INTO account (id, customer_id, account_no, password, account_type, balance, status)
 VALUES (
         1,
         1,
@@ -17,6 +17,5 @@ VALUES (
         '$2a$10$ogtsOcJPvUgaIYq..uFjzurjS3fsp5/7nNOOMfC/DSZyvhO48x/bm', -- bcrypt '1234'
         'CHECKING',
         5000000.00,
-        'NORMAL',
-        0
+        'NORMAL'
        );

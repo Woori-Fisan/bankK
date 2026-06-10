@@ -96,7 +96,6 @@ class TransferServiceTest {
                 .password("hashedPassword")
                 .accountType("DEPOSIT")
                 .status("NORMAL")
-                .version(1)
                 .build();
 
         senderCustomer = Customer.builder()

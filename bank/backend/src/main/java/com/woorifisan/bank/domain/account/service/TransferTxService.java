@@ -86,10 +86,7 @@ public class TransferTxService {
         }
 
         BigDecimal newBalance = sender.getBalance().subtract(request.getAmount());
-        int updatedCount = accountMapper.updateBalance(sender.getId(), request.getAmount().negate(), sender.getVersion());
-        if (updatedCount == 0) {
-            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
-        }
+        accountMapper.updateBalance(sender.getId(), request.getAmount().negate());
 
         // 3. 원장 기록 (최초 상태는 PENDING)
         String txId = UUID.randomUUID().toString();
@@ -138,10 +135,7 @@ public class TransferTxService {
 
         // 2. 잔액 복구 (입금)
         BigDecimal newBalance = account.getBalance().add(request.getAmount());
-        int updatedCount = accountMapper.updateBalance(account.getId(), request.getAmount(), account.getVersion());
-        if (updatedCount == 0) {
-            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
-        }
+        accountMapper.updateBalance(account.getId(), request.getAmount());
 
         // 3. 원장 기록 및 원래 원장 상태 업데이트
         if (originalTxId != null) {
@@ -205,10 +199,7 @@ public class TransferTxService {
         }
 
         BigDecimal newBalance = receiver.getBalance().add(amount);
-        int updatedCount = accountMapper.updateBalance(receiver.getId(), amount, receiver.getVersion());
-        if (updatedCount == 0) {
-            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION);
-        }
+        accountMapper.updateBalance(receiver.getId(), amount);
 
         String effectiveTxId = (txId != null && !txId.trim().isEmpty()) ? txId : UUID.randomUUID().toString();
         transactionLedgerMapper.insert(TransactionLedger.of(
