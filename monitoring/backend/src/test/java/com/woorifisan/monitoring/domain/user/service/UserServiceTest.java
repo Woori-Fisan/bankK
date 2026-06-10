@@ -47,7 +47,6 @@ class UserServiceTest {
         ReflectionTestUtils.setField(request, "loginId", "admin");
         ReflectionTestUtils.setField(request, "password", "securePassword123!");
 
-        // User는 Builder가 제공되므로 reflection 대신 builder를 사용합니다.
         User user = User.builder()
                 .id(1L)
                 .loginId("admin")
@@ -236,6 +235,42 @@ class UserServiceTest {
 
         // then
         verify(jwtProvider, times(1)).deleteRefreshToken(userId);
+        verify(jwtProvider, times(1)).addToBlacklist(accessToken);
+    }
+
+    @Test
+    @DisplayName("로그아웃_사용자ID가_없고_리프레시토큰이_존재하면_토큰에서_ID를_추출하여_세션을_무효화한다")
+    void logout_noUserIdButValidRefreshToken_extractsIdAndInvalidates() {
+        // given
+        String refreshToken = "valid_refresh_token";
+        String accessToken = "access_token";
+
+        Claims claims = mock(Claims.class);
+        given(claims.getSubject()).willReturn("100");
+        given(jwtProvider.getClaims(refreshToken)).willReturn(claims);
+
+        // when
+        userService.logout(null, refreshToken, accessToken);
+
+        // then
+        verify(jwtProvider, times(1)).deleteRefreshToken(100L);
+        verify(jwtProvider, times(1)).addToBlacklist(accessToken);
+    }
+
+    @Test
+    @DisplayName("로그아웃_사용자ID가_없고_유효하지_않은_리프레시토큰이면_세션무효화를_스킵하고_액세스토큰만_블랙리스트에_등록한다")
+    void logout_noUserIdAndInvalidRefreshToken_skipsInvalidationAndBlacklistsAccess() {
+        // given
+        String refreshToken = "invalid_refresh_token";
+        String accessToken = "access_token";
+
+        given(jwtProvider.getClaims(refreshToken)).willThrow(new BusinessException(ErrorCode.INVALID_TOKEN));
+
+        // when
+        userService.logout(null, refreshToken, accessToken);
+
+        // then
+        verify(jwtProvider, never()).deleteRefreshToken(anyLong());
         verify(jwtProvider, times(1)).addToBlacklist(accessToken);
     }
 }

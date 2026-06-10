@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
@@ -34,27 +35,31 @@ class PartitionMaintenanceServiceTest {
     @DisplayName("파티션관리_파티션이_존재하지_않으면_추가하고_만료파티션은_삭제한다")
     void maintain_partitionsDoNotExistAndExpiredExists_createsAndDropsPartitions() {
         // given
-        LocalDate today = LocalDate.now(KST);
-        
-        String p0 = "p" + today.plusDays(0).format(NAME_FMT);
-        String p1 = "p" + today.plusDays(1).format(NAME_FMT);
-        String p2 = "p" + today.plusDays(2).format(NAME_FMT);
-        
-        String pExpired = "p" + today.minusDays(10).format(NAME_FMT);
+        LocalDate fixedToday = LocalDate.of(2026, 6, 10);
 
-        given(partitionMapper.partitionExists(p0)).willReturn(false);
-        given(partitionMapper.partitionExists(p1)).willReturn(false);
-        given(partitionMapper.partitionExists(p2)).willReturn(false);
-        given(partitionMapper.partitionExists(pExpired)).willReturn(true);
+        try (MockedStatic<LocalDate> mockedLocalDate = mockStatic(LocalDate.class,
+                CALLS_REAL_METHODS)) {
+            mockedLocalDate.when(() -> LocalDate.now(KST)).thenReturn(fixedToday);
 
-        // when
-        partitionMaintenanceService.maintain();
+            String p0 = "p20260610";
+            String p1 = "p20260611";
+            String p2 = "p20260612";
+            String pExpired = "p20260531"; // 10일 전
 
-        // then
-        verify(partitionMapper, times(1)).addDailyPartition(p0, today.plusDays(1).format(DATE_FMT));
-        verify(partitionMapper, times(1)).addDailyPartition(p1, today.plusDays(2).format(DATE_FMT));
-        verify(partitionMapper, times(1)).addDailyPartition(p2, today.plusDays(3).format(DATE_FMT));
-        verify(partitionMapper, times(1)).dropPartition(pExpired);
+            given(partitionMapper.partitionExists(p0)).willReturn(false);
+            given(partitionMapper.partitionExists(p1)).willReturn(false);
+            given(partitionMapper.partitionExists(p2)).willReturn(false);
+            given(partitionMapper.partitionExists(pExpired)).willReturn(true);
+
+            // when
+            partitionMaintenanceService.maintain();
+
+            // then
+            verify(partitionMapper, times(1)).addDailyPartition(p0, "2026-06-11");
+            verify(partitionMapper, times(1)).addDailyPartition(p1, "2026-06-12");
+            verify(partitionMapper, times(1)).addDailyPartition(p2, "2026-06-13");
+            verify(partitionMapper, times(1)).dropPartition(pExpired);
+        }
     }
 
     @Test
