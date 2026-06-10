@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import com.woorifisan.platform.global.config.BankNetworkConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ByteArrayResource;
@@ -29,53 +30,48 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 @Component
 public class BankLoanClient {
 
-    // URI는 application.yml bank.core.endpoints 에서 주입 — 코드 변경 없이 경로 수정 가능
-    @Value("${bank.core.endpoints.evaluation-terms}")
-    private String evaluationTermsUri;
-
-    @Value("${bank.core.endpoints.evaluation}")
-    private String evaluationUri;
-
-    @Value("${bank.core.endpoints.contract-terms}")
-    private String contractTermsUriPrefix;
-
-    @Value("${bank.core.endpoints.execution}")
-    private String executionUri;
-
     private final WebClient bankWebClient;
+    private final BankNetworkConfig bankNetworkConfig;
     private final ObjectMapper objectMapper;
+
+    private static final String DEFAULT_BANK_CODE = "020";
 
     public BankLoanClient(WebClient webClient,
                           ObjectMapper objectMapper,
-                          @Value("${bank.core.url}") String bankCoreUrl) {
-        this.bankWebClient = webClient.mutate().baseUrl(bankCoreUrl).build();
+                          BankNetworkConfig bankNetworkConfig) {
+        this.bankWebClient = webClient;
+        this.bankNetworkConfig = bankNetworkConfig;
         this.objectMapper  = objectMapper;
     }
 
     // GET /api/v1/loan/evaluation/terms
     public List<Map<String, Object>> getEvaluationTerms() {
-        return getRequest(evaluationTermsUri,
+        String uri = bankNetworkConfig.getBankProperty(DEFAULT_BANK_CODE).getUrl("evaluation-terms");
+        return getRequest(uri,
                 new ParameterizedTypeReference<ApiResponse<List<Map<String, Object>>>>() {});
     }
 
     // POST /api/v1/loan/evaluation (multipart: data 파트 JSON + files 파트)
     public Map<String, Object> submitEvaluation(BankLoanEvaluateRequest data, List<MultipartFile> files) {
+        String uri = bankNetworkConfig.getBankProperty(DEFAULT_BANK_CODE).getUrl("evaluation");
         MultipartBodyBuilder builder = buildMultipart(data, files);
-        return postMultipartRequest(evaluationUri, builder,
+        return postMultipartRequest(uri, builder,
                 new ParameterizedTypeReference<ApiResponse<Map<String, Object>>>() {},
                 Duration.ofSeconds(10));
     }
 
     // GET /api/v1/loan/contract/terms/{productId}/{loanNo}
     public List<Map<String, Object>> getContractTerms(String productId, String loanNo) {
-        String uri = contractTermsUriPrefix + "/" + productId + "/" + loanNo;
+        String uriPrefix = bankNetworkConfig.getBankProperty(DEFAULT_BANK_CODE).getUrl("contract-terms");
+        String uri = uriPrefix + "/" + productId + "/" + loanNo;
         return getRequest(uri,
                 new ParameterizedTypeReference<ApiResponse<List<Map<String, Object>>>>() {});
     }
 
     // POST /api/v1/loan/execution
     public Map<String, Object> executeLoan(BankLoanExecuteRequest request) {
-        return postRequest(executionUri, request,
+        String uri = bankNetworkConfig.getBankProperty(DEFAULT_BANK_CODE).getUrl("execution");
+        return postRequest(uri, request,
                 new ParameterizedTypeReference<ApiResponse<Map<String, Object>>>() {},
                 Duration.ofSeconds(5));
     }
