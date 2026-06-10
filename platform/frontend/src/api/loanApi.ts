@@ -105,9 +105,9 @@ export interface ExecutionResponse {
   executedAt?: string;   // 대출 실행 일시 (UTC ISO 8601)
 }
 
-export const fetchReviewDocuments = async (): Promise<ReviewDocumentsResponse> => {
+export const fetchReviewDocuments = async (bankCode: string): Promise<ReviewDocumentsResponse> => {
   const { data } = await axiosInstance.get<ApiResponse<ReviewDocumentsResponse>>(
-    '/loan/review/documents',
+    `/loan/review/documents?bankCode=${bankCode}`,
   );
   return data.data!;
 };
@@ -133,11 +133,12 @@ export const submitLoanEvaluation = async (
 };
 
 export const fetchContractDocuments = async (
+  bankCode: string,
   loanProductCode: string,
   loanNo: string,
 ): Promise<ContractDocumentsResponse> => {
   const { data } = await axiosInstance.get<ApiResponse<ContractDocumentsResponse>>(
-    `/loan/contract/documents/${loanProductCode}/${loanNo}`,
+    `/loan/contract/documents/${loanProductCode}/${loanNo}?bankCode=${bankCode}`,
   );
   return data.data!;
 };
