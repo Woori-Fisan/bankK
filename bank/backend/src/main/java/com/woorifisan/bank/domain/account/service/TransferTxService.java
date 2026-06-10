@@ -57,6 +57,14 @@ public class TransferTxService {
             throw new BusinessException(ErrorCode.BANK_PW_ERROR);
         }
 
+        if (!"DEPOSIT".equals(sender.getAccountType())) {
+            throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
+        }
+
+        if (!"NORMAL".equals(sender.getStatus())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
+        }
+
         if (sender.getBalance().compareTo(request.getAmount()) < 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
@@ -64,6 +72,14 @@ public class TransferTxService {
         // 2. 잔액 업데이트 (비관적 락 적용을 위해 다시 조회)
         sender = accountMapper.findByIdForUpdate(sender.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+        
+        if (!"DEPOSIT".equals(sender.getAccountType())) {
+            throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
+        }
+        
+        if (!"NORMAL".equals(sender.getStatus())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
+        }
         
         if (sender.getBalance().compareTo(request.getAmount()) < 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
@@ -177,8 +193,16 @@ public class TransferTxService {
         Account receiver = accountMapper.findByAccountNoPlain(depositAccountNo)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         
+        if (!"NORMAL".equals(receiver.getStatus())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
+        }
+
         receiver = accountMapper.findByIdForUpdate(receiver.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+        
+        if (!"NORMAL".equals(receiver.getStatus())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
+        }
 
         BigDecimal newBalance = receiver.getBalance().add(amount);
         int updatedCount = accountMapper.updateBalance(receiver.getId(), amount, receiver.getVersion());
