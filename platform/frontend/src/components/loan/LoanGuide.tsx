@@ -8,7 +8,7 @@ interface LoanGuideProps {
 }
 
 const LoanGuide: React.FC<LoanGuideProps> = ({ onNext }) => {
-    const { data, isLoading, error } = useReviewDocuments();
+    const { data, isLoading, error } = useReviewDocuments("020");
 
     const mandatoryDocs = data?.documents.filter((d) => d.isMandatory) ?? [];
     const optionalDocs = data?.documents.filter((d) => !d.isMandatory) ?? [];

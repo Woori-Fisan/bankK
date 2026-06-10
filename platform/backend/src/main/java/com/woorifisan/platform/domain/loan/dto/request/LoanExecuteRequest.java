@@ -22,6 +22,10 @@ import java.math.BigDecimal;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class LoanExecuteRequest extends SecureRequest {
 
+    /** 심사 및 실행을 요청할 은행 코드 */
+    @NotBlank(message = "은행 코드는 필수입니다.")
+    private String bankCode;
+
     /** 은행이 발급한 대출 계약번호 */
     @NotBlank(message = "대출 계약번호는 필수입니다.")
     private String loanNo;
