@@ -53,9 +53,12 @@ class PartitionMaintenanceServiceTest {
             String pExpired = "p20260531"; // 10일 전: 2026-05-31
 
             given(partitionMapper.partitionExists(p0)).willReturn(false);
+            given(partitionMapper.partitionExists(p1)).willReturn(false);
+            given(partitionMapper.partitionExists(p2)).willReturn(false);
+            given(partitionMapper.partitionExists(pExpired)).willReturn(true);
 
             // when
-            partitionMaintenanceService.maintain();
+            partitionMaintenanceService.maintain(); // 로직 시작
 
             // then
             verify(partitionMapper, times(1)).addDailyPartition(p0, "2026-06-11");
