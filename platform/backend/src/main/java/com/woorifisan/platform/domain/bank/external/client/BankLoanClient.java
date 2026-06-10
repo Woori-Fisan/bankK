@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import com.woorifisan.platform.global.config.BankNetworkConfig;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
@@ -33,8 +32,6 @@ public class BankLoanClient {
     private final WebClient bankWebClient;
     private final BankNetworkConfig bankNetworkConfig;
     private final ObjectMapper objectMapper;
-
-    private static final String DEFAULT_BANK_CODE = "020";
 
     public BankLoanClient(WebClient webClient,
                           ObjectMapper objectMapper,
