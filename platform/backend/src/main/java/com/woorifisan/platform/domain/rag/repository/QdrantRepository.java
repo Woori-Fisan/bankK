@@ -17,6 +17,7 @@ import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.qdrant.client.ConditionFactory.matchKeyword;
 
@@ -35,6 +36,8 @@ public class QdrantRepository {
     private static final String COLLECTION_NAME = "agency-docs";
     private static final int SEARCH_RESULT_LIMIT = 3;
 
+    private final AtomicBoolean collectionExists = new AtomicBoolean(false);
+
     private final TokenTextSplitter tokenTextSplitter = TokenTextSplitter.builder()
             .withChunkSize(800)
             .withMinChunkSizeChars(100)
@@ -42,6 +45,7 @@ public class QdrantRepository {
             .build();
 
     private void ensureCollectionExists() throws Exception {
+        if (collectionExists.get()) return;
         List<String> names = qdrantClient.listCollectionsAsync().get();
         if (!names.contains(COLLECTION_NAME)) {
             qdrantClient.createCollectionAsync(COLLECTION_NAME,
@@ -51,6 +55,7 @@ public class QdrantRepository {
                             .build()).get();
             log.info("[QdrantRepository] 컬렉션 '{}' 생성 완료", COLLECTION_NAME);
         }
+        collectionExists.set(true);
     }
 
     public void saveDocuments(String documentId, String text, Map<String, Object> metadata) {
@@ -73,8 +78,9 @@ public class QdrantRepository {
             Document chunk = chunks.get(i);
             float[] embedding = embeddingModel.embed(chunk);
             
+            UUID pointId = UUID.nameUUIDFromBytes((documentId + "-" + i).getBytes(java.nio.charset.StandardCharsets.UTF_8));
             points.add(PointStruct.newBuilder()
-                    .setId(id(UUID.randomUUID()))
+                    .setId(id(pointId))
                     .setVectors(vectors(toFloatList(embedding)))
                     .putAllPayload(buildPayload(chunk, documentId, i))
                     .build());
