@@ -114,7 +114,7 @@ class TransferTxServiceTest {
 
         // then
         assertNotNull(response);
-        assertEquals(new BigDecimal("90000"), response.getBalanceAfter());
+        assertEquals(0, new BigDecimal("90000").compareTo(response.getBalanceAfter()));
         assertEquals("encrypted-res", response.getResPayload());
         verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000").negate(), sender.getVersion());
         verify(transactionLedgerMapper).insert(any());
@@ -206,6 +206,36 @@ class TransferTxServiceTest {
     }
 
     @Test
+    @DisplayName("출금 이체 시 출금 계좌의 상태가 NORMAL이 아니면 예외가 발생한다")
+    void withdrawTransfer_invalidAccountStatus() {
+        // given
+        TransferRequest request = TransferRequest.builder().amount(new BigDecimal("10000")).build();
+        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
+                .withdrawalAccountNo("111-111")
+                .withdrawalPassword("1234")
+                .build();
+
+        Account abnormalSender = Account.builder()
+                .id(1L)
+                .customerId(10L)
+                .accountNo("111-111")
+                .balance(new BigDecimal("100000"))
+                .password("hashedPassword")
+                .accountType("DEPOSIT")
+                .status("LOCKED") // NORMAL이 아님
+                .version(1)
+                .build();
+
+        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(abnormalSender));
+        given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
+
+        // when & then
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                transferTxService.withdrawTransfer(request, decryptedData, TEST_CEK));
+        assertEquals(ErrorCode.ACCOUNT_NOT_NORMAL, ex.getErrorCode());
+    }
+
+    @Test
     @DisplayName("출금 이체 시 최초 조회 잔액이 부족하면 예외가 발생한다")
     void withdrawTransfer_insufficientBalance() {
         // given
@@ -273,6 +303,37 @@ class TransferTxServiceTest {
         BusinessException ex = assertThrows(BusinessException.class, () ->
                 transferTxService.withdrawTransfer(request, decryptedData, TEST_CEK));
         assertEquals(ErrorCode.INVALID_ACCOUNT_TYPE, ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("출금 이체 시 비관적 락 조회 후 계좌 상태가 NORMAL이 아니면 예외가 발생한다")
+    void withdrawTransfer_lockInvalidAccountStatus() {
+        // given
+        TransferRequest request = TransferRequest.builder().amount(new BigDecimal("10000")).build();
+        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
+                .withdrawalAccountNo("111-111")
+                .withdrawalPassword("1234")
+                .build();
+
+        Account abnormalSender = Account.builder()
+                .id(1L)
+                .customerId(10L)
+                .accountNo("111-111")
+                .balance(new BigDecimal("100000"))
+                .password("hashedPassword")
+                .accountType("DEPOSIT")
+                .status("LOCKED") // NORMAL이 아님
+                .version(1)
+                .build();
+
+        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
+        given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(abnormalSender));
+
+        // when & then
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                transferTxService.withdrawTransfer(request, decryptedData, TEST_CEK));
+        assertEquals(ErrorCode.ACCOUNT_NOT_NORMAL, ex.getErrorCode());
     }
 
     @Test
@@ -353,7 +414,7 @@ class TransferTxServiceTest {
 
         // then
         assertNotNull(response);
-        assertEquals(new BigDecimal("110000"), response.getBalanceAfter());
+        assertEquals(0, new BigDecimal("110000").compareTo(response.getBalanceAfter()));
         verify(accountMapper).updateBalance(sender.getId(), new BigDecimal("10000"), sender.getVersion());
         verify(transactionLedgerMapper).insert(any());
     }
@@ -448,7 +509,7 @@ class TransferTxServiceTest {
 
         // then
         assertNotNull(response);
-        assertEquals(new BigDecimal("70000"), response.getBalanceAfter());
+        assertEquals(0, new BigDecimal("70000").compareTo(response.getBalanceAfter()));
         verify(transactionLedgerMapper).insert(any());
     }
 
@@ -469,6 +530,33 @@ class TransferTxServiceTest {
     }
 
     @Test
+    @DisplayName("내부 입금 시 입금받을 계좌의 상태가 NORMAL이 아니면 예외가 발생한다")
+    void internalDeposit_invalidAccountStatus() {
+        // given
+        InternalDepositRequest request = InternalDepositRequest.builder()
+                .depositAccountNo("222-222")
+                .build();
+
+        Account abnormalReceiver = Account.builder()
+                .id(2L)
+                .customerId(20L)
+                .accountNo("222-222")
+                .balance(new BigDecimal("50000"))
+                .password("hashedPassword2")
+                .accountType("DEPOSIT")
+                .status("LOCKED") // NORMAL이 아님
+                .version(1)
+                .build();
+
+        given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(abnormalReceiver));
+
+        // when & then
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                transferTxService.internalDeposit(request));
+        assertEquals(ErrorCode.ACCOUNT_NOT_NORMAL, ex.getErrorCode());
+    }
+
+    @Test
     @DisplayName("내부 입금 시 비관적 락으로 조회한 계좌가 존재하지 않으면 예외가 발생한다")
     void internalDeposit_lockAccountNotFound() {
         // given
@@ -483,6 +571,34 @@ class TransferTxServiceTest {
         BusinessException ex = assertThrows(BusinessException.class, () ->
                 transferTxService.internalDeposit(request));
         assertEquals(ErrorCode.BANK_NOT_FOUND, ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("내부 입금 시 비관적 락 조회 후 계좌 상태가 NORMAL이 아니면 예외가 발생한다")
+    void internalDeposit_lockInvalidAccountStatus() {
+        // given
+        InternalDepositRequest request = InternalDepositRequest.builder()
+                .depositAccountNo("222-222")
+                .build();
+
+        Account abnormalReceiver = Account.builder()
+                .id(2L)
+                .customerId(20L)
+                .accountNo("222-222")
+                .balance(new BigDecimal("50000"))
+                .password("hashedPassword2")
+                .accountType("DEPOSIT")
+                .status("LOCKED") // NORMAL이 아님
+                .version(1)
+                .build();
+
+        given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(receiver));
+        given(accountMapper.findByIdForUpdate(2L)).willReturn(Optional.of(abnormalReceiver));
+
+        // when & then
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                transferTxService.internalDeposit(request));
+        assertEquals(ErrorCode.ACCOUNT_NOT_NORMAL, ex.getErrorCode());
     }
 
     @Test

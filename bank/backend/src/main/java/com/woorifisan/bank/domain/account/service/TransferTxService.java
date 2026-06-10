@@ -61,6 +61,10 @@ public class TransferTxService {
             throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
         }
 
+        if (!"NORMAL".equals(sender.getStatus())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
+        }
+
         if (sender.getBalance().compareTo(request.getAmount()) < 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
@@ -71,6 +75,10 @@ public class TransferTxService {
         
         if (!"DEPOSIT".equals(sender.getAccountType())) {
             throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
+        }
+        
+        if (!"NORMAL".equals(sender.getStatus())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
         }
         
         if (sender.getBalance().compareTo(request.getAmount()) < 0) {
@@ -185,8 +193,16 @@ public class TransferTxService {
         Account receiver = accountMapper.findByAccountNoPlain(depositAccountNo)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         
+        if (!"NORMAL".equals(receiver.getStatus())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
+        }
+
         receiver = accountMapper.findByIdForUpdate(receiver.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
+        
+        if (!"NORMAL".equals(receiver.getStatus())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
+        }
 
         BigDecimal newBalance = receiver.getBalance().add(amount);
         int updatedCount = accountMapper.updateBalance(receiver.getId(), amount, receiver.getVersion());
