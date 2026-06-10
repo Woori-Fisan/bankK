@@ -1,0 +1,70 @@
+service:
+  flush: 3
+  daemon: false
+  log_level: info
+  storage.type: filesystem
+  storage.path: /fluent-bit/storage
+  # 메모리에 유지할 최대 로그 크기
+  # 이를 넘어서면 디스크 버퍼로 전환 -> Fluent Bit의 OOM 완벽하게 방지
+  storage.backlog.mem_limit: 100MB
+  storage.metrics: on
+
+parsers:
+  - name: json_log
+    format: json
+    time_key: "@timestamp"
+    time_format: "%Y-%m-%dT%H:%M:%S.%L%z"
+    time_keep: true
+
+pipeline:
+  inputs:
+    - name: tail
+      path: /var/log/app/*.log
+      # 디스크 버퍼 활성화 - 읽어온 로그 데이터 임시 보관
+      # 전송 성공할 때까지 디스크 버퍼에 지우지 않고 대기
+      storage.type: filesystem
+      parser: json_log
+      db: /fluent-bit/db/tail-db.db # 전송 성공한 위치 기록
+      db.sync: Normal
+      tag: platform.backend
+      read_from_head: true
+      refresh_interval: 5
+      mem_buf_limit: 5MB
+      skip_long_lines: true
+      # 임계치를 넘으면 새 로그 읽기를 멈춤
+      storage.pause_on_chunks_overlimit: on
+
+  filters:
+    - name: record_modifier
+      match: "platform.backend"
+      remove_key: log
+
+    # BIZ 로그에 별도 태그 복사 (keep=true → 원본 platform.backend 태그 유지)
+    # platform.backend     → 전체 로그 (Loki 행)
+    # platform.backend.biz → BIZ 로그만 (모니터링 WAS 행)
+    - name: rewrite_tag
+      match: "platform.backend"
+      rule: "$http['logType'] ^(CONTROLLER_REQ|CONTROLLER_RES|CONTROLLER_ERR|BANK_REQ|BANK_RES|BANK_ERR)$ platform.backend.biz true"
+      emitter_name: biz_emitter
+      emitter_storage.type: filesystem # 새 태그를 발행하는 이미터에도 디스크 버퍼를 연동해 무유실 보장
+
+  outputs:
+    # 전체 로그 → Loki
+    - name: loki
+      match: "platform.backend"
+      host: ${MONITORING_SERVER_IP}
+      port: ${LOKI_PORT}
+      labels: job=platform-backend
+      retry_limit: False # 무한 재시도
+      # 임계치를 넘으면 해당 Output에 대한 디스크 버퍼 입력을 동결
+      storage.total_limit_size: 500M
+
+    # 비즈니스 로그 → 모니터링 WAS
+    - name: http
+      match: "platform.backend.biz"
+      host: ${MONITORING_SERVER_IP}
+      port: ${MONITORING_SERVER_PORT}
+      uri: /api/v1/logs/biz
+      format: json
+      retry_limit: False
+      storage.total_limit_size: 200M

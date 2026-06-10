@@ -1,0 +1,83 @@
+package com.woorifisan.platform.global.config.swagger;
+
+import com.woorifisan.platform.global.response.ErrorCode;
+import java.util.List;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+/**
+ * Swagger에 표시할 에러 응답들을 그룹화한 Enum
+ */
+@Getter
+@RequiredArgsConstructor
+public enum SwaggerResponseDescription {
+
+    AUTH_LOGIN(List.of(
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.INVALID_CREDENTIALS,
+            ErrorCode.ACCOUNT_LOCKED,
+            ErrorCode.ACCOUNT_DELETED
+    )),
+
+    AUTH_REFRESH(List.of(
+            ErrorCode.INVALID_TOKEN,
+            ErrorCode.EXPIRED_TOKEN,
+            ErrorCode.USER_NOT_FOUND
+    )),
+
+    BANK_TRANSFER(List.of(
+            ErrorCode.BANK_NOT_FOUND,
+            ErrorCode.BANK_API_ERROR,
+            ErrorCode.DUPLICATE_REQUEST
+    )),
+
+    BANK_INQUIRY(List.of(
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.BANK_NOT_FOUND,
+            ErrorCode.BANK_API_ERROR,
+            ErrorCode.INQUIRY_ACCOUNT_NOTFOUND,
+            ErrorCode.INQUIRY_INVALID_DATE_RANGE
+    )),
+
+    BANK_WITHDRAW(List.of(
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.INTERNAL_SERVER_ERROR,
+            ErrorCode.UNAUTHORIZED,
+            ErrorCode.INVALID_TOKEN,
+            ErrorCode.EXPIRED_TOKEN,
+            ErrorCode.BANK_API_ERROR,
+            ErrorCode.BANK_PW_ERROR,
+            ErrorCode.TRANSFER_WITHDRAW_ACCOUNT_FAULT,
+            ErrorCode.TRANSFER_WITHDRAW_ACCOUNT_STATUS_FAULT,
+            ErrorCode.TRANSFER_INSERT_FAULT,
+            ErrorCode.DUPLICATE_REQUEST,
+            ErrorCode.WITHDRAW_AMOUNT_FAULT
+    )),
+
+    BANK_BALANCE(List.of(
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.BANK_NOT_FOUND,
+            ErrorCode.BANK_API_ERROR,
+            ErrorCode.INQUIRY_ACCOUNT_NOTFOUND,
+            ErrorCode.INTERNAL_SERVER_ERROR
+    )),
+
+    USER_MANAGEMENT(List.of(
+            ErrorCode.USER_NOT_FOUND,
+            ErrorCode.USER_ALREADY_EXISTS
+    )),
+
+    BANK_LOAN(List.of(
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.BANK_NOT_FOUND,
+            ErrorCode.BANK_API_ERROR,
+            ErrorCode.LOAN_BANK_ROUTING_ERROR,
+            ErrorCode.LOAN_EVALUATION_NOT_FOUND,
+            ErrorCode.LOAN_PRODUCT_NOT_FOUND,
+            ErrorCode.LOAN_ALREADY_EXECUTED,
+            ErrorCode.LOAN_EVALUATION_REJECTED,
+            ErrorCode.LOAN_TERMS_NOT_AGREED
+    ));
+
+    private final List<ErrorCode> errorCodes;
+}

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- 로그 저장 경로 -->
+    <springProperty scope="context"
+                    name="LOG_PATH"
+                    source="logging.file.path"
+                    defaultValue="${LOGGING_PATH:./logs}"/>
+
+    <property name="LOG_FILE"
+              value="${LOG_PATH}/application.log"/>
+
+    <!-- 콘솔 로그 -->
+    <appender name="CONSOLE"
+              class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>
+                %d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} [%thread] %-5level %logger{36}
+                [traceId=%X{traceId}, staffId=%X{staffId}] - %msg%n
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- JSON 파일 로그 -->
+    <appender name="JSON_FILE"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <file>${LOG_FILE}</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+        <fileNamePattern>
+                ${LOG_PATH}/application.%d{yyyy-MM-dd}.%i.log
+            </fileNamePattern>
+            <maxHistory>14</maxHistory>
+            <maxFileSize>700MB</maxFileSize>    <!-- 파일 하나 최대 크기 -->
+            <totalSizeCap>10GB</totalSizeCap>  <!-- 전체 로그 디스크 한도 -->
+        </rollingPolicy>
+
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <timeZone>Asia/Seoul</timeZone>
+            <includeContext>false</includeContext>
+
+            <fieldNames>
+                <version>[ignore]</version>
+                <levelValue>[ignore]</levelValue>
+                <logger>[ignore]</logger>
+                <thread>[ignore]</thread>
+            </fieldNames>
+
+            <includeMdc>true</includeMdc>
+            <excludeMdcKeyName>password</excludeMdcKeyName>
+            <excludeMdcKeyName>token</excludeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <!-- 비동기 파일 로그 -->
+    <appender name="ASYNC_FILE_LOG"
+              class="ch.qos.logback.classic.AsyncAppender">
+
+        <appender-ref ref="JSON_FILE"/>
+
+        <queueSize>512</queueSize>
+        <discardingThreshold>20</discardingThreshold>
+        <maxFlushTime>1000</maxFlushTime>
+    </appender>
+
+    <!-- local -->
+    <springProfile name="local">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_LOG"/>
+        </root>
+
+        <logger name="com.woorifisan.platform"
+                level="DEBUG"/>
+    </springProfile>
+
+    <!-- dev -->
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE_LOG"/>
+        </root>
+
+        <logger name="com.woorifisan.platform"
+                level="DEBUG"/>
+    </springProfile>
+
+    <!-- prod -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_FILE_LOG"/>
+        </root>
+    </springProfile>
+
+</configuration>

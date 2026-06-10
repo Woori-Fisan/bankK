@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.woorifisan.monitoring.domain.log.mapper.LogMapper">
+
+    <sql id="logSearchCondition">
+        <where>
+            <if test="level != null and level != ''">
+                AND level = #{level}
+            </if>
+            <if test="agencyCode != null and agencyCode != ''">
+                AND agency_code = #{agencyCode}
+            </if>
+            <if test="bankCode != null and bankCode != ''">
+                AND bank_code = #{bankCode}
+            </if>
+            <if test="staffId != null and staffId != ''">
+                AND staff_id = #{staffId}
+            </if>
+            <if test="traceId != null and traceId != ''">
+                AND trace_id = #{traceId}
+            </if>
+            <if test="logType != null and logType != ''">
+                AND log_type = #{logType}
+            </if>
+            <if test="httpStatus != null and httpStatus != ''">
+                AND http_status = #{httpStatus}
+            </if>
+            <if test="errorCode != null and errorCode != ''">
+                AND error_code = #{errorCode}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND created_at &gt;= #{startDate}
+            </if>
+            <if test="endDateUpperBound != null and endDateUpperBound != ''">
+                AND created_at &lt; #{endDateUpperBound}
+            </if>
+        </where>
+    </sql>
+
+    <!-- 목록 조회용: 대용량 텍스트 필드(body_data) 및 상세 전용 필드 제외 -->
+    <select id="findLogList" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogRequest"
+            resultType="com.woorifisan.monitoring.domain.log.dto.LogListDTO">
+        SELECT
+            log_id as logId,
+            created_at as createdAt,
+            level,
+            log_type as logType,
+            trace_id as traceId,
+            staff_id as staffId,
+            bank_code as bankCode,
+            target_code as targetCode,
+            agency_code as agencyCode,
+            http_method as httpMethod,
+            http_status as httpStatus,
+            elapsed_ms as elapsedMs,
+            http_uri as httpUri,
+            error_code as errorCode
+        FROM system_logs
+        <include refid="logSearchCondition" />
+        ORDER BY created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countLogList" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogRequest" resultType="long">
+        SELECT COUNT(*)
+        FROM system_logs
+        <include refid="logSearchCondition" />
+    </select>
+
+    <!-- 통계 요약 조회: 총 건수, 에러 건수, 평균 응답시간 집계 -->
+    <select id="findLogSummary" parameterType="com.woorifisan.monitoring.domain.log.dto.request.LogSummaryRequest" resultType="map">
+        SELECT
+            COUNT(*) as totalCount,
+            COUNT(CASE WHEN level = 'ERROR' THEN 1 END) as errorCount,
+            IFNULL(AVG(elapsed_ms), 0) as avgElapsedMs
+        FROM system_logs
+        <include refid="logSearchCondition" />
+    </select>
+
+    <!-- 단건 상세 조회용: 암호화 페이로드(body_data) 등 모든 필드 포함 -->
+    <select id="findByLogId" parameterType="String"
+            resultType="com.woorifisan.monitoring.domain.log.dto.LogDetailDTO">
+        SELECT
+            log_id as logId,
+            created_at as createdAt,
+            level,
+            log_type as logType,
+            trace_id as traceId,
+            staff_id as staffId,
+            bank_code as bankCode,
+            target_code as targetCode,
+            agency_code as agencyCode,
+            bank_key_id as bankKeyId,
+            http_method as httpMethod,
+            http_uri as httpUri,
+            http_status as httpStatus,
+            elapsed_ms as elapsedMs,
+            client_ip as clientIp,
+            body_data as bodyData,
+            error_code as errorCode,
+            error_message as errorMessage
+        FROM system_logs
+        WHERE log_id = #{logId}
+    </select>
+
+
+    <insert id="insertBizLogs" parameterType="java.util.List">
+        INSERT IGNORE INTO system_logs (
+            created_at, log_id,
+            level, log_type, trace_id, staff_id, agency_code,
+            bank_code, target_code, bank_key_id,
+            http_method, http_uri, http_status,
+            elapsed_ms, client_ip,
+            body_data, error_code, error_message
+        ) VALUES
+        <foreach collection="list" item="dto" separator=",">
+            (
+                #{dto.timestamp}, #{dto.logId},
+                #{dto.level}, #{dto.logType}, #{dto.traceId}, #{dto.staffId}, #{dto.agencyCode},
+                #{dto.bankCode}, #{dto.targetCode}, #{dto.bankKeyId},
+                #{dto.httpMethod}, #{dto.httpUri}, #{dto.httpStatus},
+                #{dto.elapsedMs}, #{dto.clientIp},
+                #{dto.bodyData}, #{dto.errorCode}, #{dto.errorMessage}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

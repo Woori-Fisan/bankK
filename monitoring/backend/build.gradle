@@ -1,0 +1,174 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.14'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.google.cloud.tools.jib' version '3.4.1'
+
+	// SonarQube
+	id 'org.sonarqube' version '6.1.0.5360'
+
+	// Coverage
+	id 'jacoco'
+}
+
+group = 'com.woorifisan'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('datasourceMicrometerVersion', "1.4.1")
+}
+
+/*
+|--------------------------------------------------------------------------
+| Docker Image Strategy
+|--------------------------------------------------------------------------
+*/
+
+def buildNumber =
+		project.findProperty("buildNumber")
+				?: System.getenv("BUILD_NUMBER")
+				?: "latest"
+
+jib {
+
+	from {
+		image = 'eclipse-temurin:17-jre-alpine'
+	}
+
+	to {
+		image = 'jeeneep/monitoring-backend'
+
+		tags = [buildNumber, 'latest'].unique()
+	}
+
+	container {
+
+		ports = ['8080']
+
+		jvmFlags = [
+				'-Xms512m',
+				'-Xmx512m'
+		]
+	}
+}
+
+/*
+|--------------------------------------------------------------------------
+| SonarQube
+|--------------------------------------------------------------------------
+*/
+
+sonar {
+
+	properties {
+
+		property "sonar.projectKey", "Monitoring-Backend"
+
+		property "sonar.projectName", "Monitoring-Backend"
+
+		property "sonar.coverage.jacoco.xmlReportPaths",
+				"${project.buildDir}/reports/jacoco/test/jacocoTestReport.xml"
+	}
+}
+
+dependencies {
+
+	// Web & Security
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+	// MyBatis + MySQL
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.5'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	// JWT
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+	// Redis
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// Actuator + Prometheus + DB Metrics
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+	implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot'
+
+	// Logback JSON
+    // Redis
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// Logback JSON (Fluent Bit parsing 대상)
+	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+
+	// Swagger
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
+
+	// dotenv
+	implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
+	// Lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	// Test
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.5'
+	testImplementation 'org.springframework.security:spring-security-test'
+
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testRuntimeOnly 'com.h2database:h2'
+}
+
+dependencyManagement {
+
+	imports {
+
+		mavenBom "net.ttddyy.observation:datasource-micrometer-bom:${datasourceMicrometerVersion}"
+	}
+}
+
+/*
+|--------------------------------------------------------------------------
+| Test
+|--------------------------------------------------------------------------
+*/
+
+tasks.named('test') {
+
+	useJUnitPlatform()
+
+	finalizedBy jacocoTestReport
+}
+
+/*
+|--------------------------------------------------------------------------
+| JaCoCo Coverage
+|--------------------------------------------------------------------------
+*/
+
+jacocoTestReport {
+
+	dependsOn test
+
+	reports {
+
+		xml.required = true
+		html.required = true
+		csv.required = false
+	}
+}
