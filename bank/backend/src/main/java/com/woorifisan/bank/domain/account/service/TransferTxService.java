@@ -12,6 +12,7 @@ import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,6 +38,7 @@ public class TransferTxService {
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final PasswordEncoder passwordEncoder;
     private final SecurityService securityService;
+    private final CryptoUtil cryptoUtil;
 
     /**
      * 출금 이체 실행 (독립 트랜잭션)
@@ -48,7 +50,7 @@ public class TransferTxService {
                 request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
 
         // 1. 계좌 조회 및 검증
-        Account sender = accountMapper.findByAccountNoPlain(decryptedData.getWithdrawalAccountNo())
+        Account sender = accountMapper.findByAccountNoHash(cryptoUtil.hash(decryptedData.getWithdrawalAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         
         customerService.verifyCustomerIdentification(sender.getCustomerId(), decryptedData.getCustomerRrnPrefix(), decryptedData.getCustomerName());
@@ -127,7 +129,7 @@ public class TransferTxService {
                 request.getDepositBankCode(), request.getAmount(), originalTxId);
 
         // 1. 원래 출금 계좌(환불받을 계좌) 조회
-        Account account = accountMapper.findByAccountNoPlain(originalWithdrawData.getWithdrawalAccountNo())
+        Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(originalWithdrawData.getWithdrawalAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         
         account = accountMapper.findByIdForUpdate(account.getId())
@@ -184,7 +186,7 @@ public class TransferTxService {
      */
     private TransferResponse depositInternal(String depositAccountNo, BigDecimal amount, 
                                             String withdrawBankCode, String withdrawAccountNo, String txId) {
-        Account receiver = accountMapper.findByAccountNoPlain(depositAccountNo)
+        Account receiver = accountMapper.findByAccountNoHash(cryptoUtil.hash(depositAccountNo))
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         
         if (!"NORMAL".equals(receiver.getStatus())) {

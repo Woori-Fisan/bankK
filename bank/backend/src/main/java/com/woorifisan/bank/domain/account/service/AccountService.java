@@ -16,6 +16,7 @@ import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -42,6 +43,7 @@ public class AccountService {
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final CustomerService customerService;
     private final SecurityService securityService;
+    private final CryptoUtil cryptoUtil;
 
     /**
      * 잔액 조회 (E2EE 적용)
@@ -57,7 +59,7 @@ public class AccountService {
         DecryptedInquiryData decryptedData = decryptionResult.getData();
 
         // 2. 계좌 및 고객 정보 검증 쿼리 호출 (복호화된 평문 계좌번호 사용)
-        Account account = accountMapper.findByAccountNoPlain(decryptedData.getAccountNo())
+        Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(decryptedData.getAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
 
         // 3. 소유주 확인
@@ -92,7 +94,7 @@ public class AccountService {
         DecryptedInquiryData decryptedData = decryptionResult.getData();
 
         // 3. 계좌 조회 (복호화된 평문 계좌번호 사용)
-        Account account = accountMapper.findByAccountNoPlain(decryptedData.getAccountNo())
+        Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(decryptedData.getAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.INQUIRY_ACCOUNT_NOTFOUND));
 
         // 4. 계좌 소유주 일치 확인

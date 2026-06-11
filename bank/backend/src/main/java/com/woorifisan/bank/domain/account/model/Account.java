@@ -13,6 +13,8 @@ public class Account {
     private Long id;
     private Long customerId;
     private String accountNo;
+    private String accountNoEnc;
+    private String accountNoHash;
     private String password;
     private String accountType;
     private BigDecimal balance;

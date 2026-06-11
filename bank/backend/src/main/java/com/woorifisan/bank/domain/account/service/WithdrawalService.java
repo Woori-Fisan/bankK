@@ -11,6 +11,7 @@ import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -33,6 +34,7 @@ public class WithdrawalService {
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final PasswordEncoder passwordEncoder;
     private final SecurityService securityService;
+    private final CryptoUtil cryptoUtil;
 
     @Transactional
     public WithdrawalResponse withdraw(WithdrawalRequest request) {
@@ -45,7 +47,7 @@ public class WithdrawalService {
         DecryptedWithdrawData decryptedData = decryptionResult.getData();
 
         // 2. 계좌 및 고객 정보 검증 (복호화된 데이터 사용)
-        Account account = accountMapper.findByAccountNoPlain(decryptedData.getWithdrawalAccountNo())
+        Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(decryptedData.getWithdrawalAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
 
         customerService.verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix(), decryptedData.getCustomerName());
@@ -94,7 +96,7 @@ public class WithdrawalService {
         
         String resPayload = securityService.encryptResponse(sensitiveData, decryptionResult.getCek());
 
-        log.info("출금 완료: 거래ID={}, 계좌={}, 금액={}, 잔액={}", txId, account.getAccountNo(), request.getAmount(), balanceAfter);
+        log.info("출금 완료: 거래ID={}, 계좌ID={}, 금액={}, 잔액={}", txId, account.getId(), request.getAmount(), balanceAfter);
 
         return WithdrawalResponse.of(
                 txId, 

@@ -16,6 +16,7 @@ import com.woorifisan.bank.domain.customer.model.Customer;
 import com.woorifisan.bank.global.config.BankNetworkConfig;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import com.woorifisan.bank.global.response.ErrorCode;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -45,9 +46,10 @@ public class TransferService {
     private final CustomerMapper customerMapper;
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final SecurityService securityService;
+    private final CryptoUtil cryptoUtil;
     private final BankNetworkConfig bankNetworkConfig;
     private final RestTemplate restTemplate;
-    
+
     // 개별 트랜잭션 처리를 담당하는 서브 서비스 주입
     private final TransferTxService transferTxService;
 
@@ -77,8 +79,8 @@ public class TransferService {
         
         DecryptedRecipientData decryptedData = decryptionResult.getData();
 
-        // 2. 계좌 조회 (복호화된 계좌번호 사용)
-        Account account = accountMapper.findByAccountNoPlain(decryptedData.getDepositAccountNo())
+        // 2. 계좌 조회
+        Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(decryptedData.getDepositAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
 
         // 3. 고객 조회
@@ -88,7 +90,7 @@ public class TransferService {
         // 4. 민감 데이터(성명, 계좌번호) 암호화
         RecipientResponse.SensitiveData sensitiveData = RecipientResponse.SensitiveData.builder()
                 .depositorName(customer.getCustomerName())
-                .depositAccountNo(account.getAccountNo())
+                .depositAccountNo(cryptoUtil.decrypt(account.getAccountNoEnc()))
                 .build();
         
         String resPayload = securityService.encryptResponse(sensitiveData, decryptionResult.getCek());

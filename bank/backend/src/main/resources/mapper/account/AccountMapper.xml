@@ -5,16 +5,20 @@
         SELECT * FROM account WHERE id = #{id}
     </select>
 
-    <select id="findByAccountNo" resultType="Account">
-        SELECT * FROM account WHERE account_no = #{accountNo}
-    </select>
-
     <select id="findByIdForUpdate" resultType="Account">
         SELECT * FROM account WHERE id = #{id} FOR UPDATE
     </select>
 
-    <select id="findByAccountNoPlain" resultType="Account">
-        SELECT * FROM account WHERE account_no = #{accountNo}
+    <select id="findByAccountNoHash" resultType="Account">
+        SELECT * FROM account WHERE account_no_hash = #{accountNoHash}
+    </select>
+
+    <select id="findByAccountNoHashAndRrnPrefix" resultType="Account">
+        SELECT a.*
+        FROM account a
+        INNER JOIN customer c ON a.customer_id = c.id
+        WHERE a.account_no_hash = #{accountNoHash}
+          AND c.rrn_prefix = #{rrnPrefix}
     </select>
 
     <update id="updateBalance">
@@ -23,14 +27,5 @@
             updated_at = NOW()
         WHERE id = #{id}
     </update>
-
-    <select id="findByAccountNoAndRrnPrefix" resultType="Account">
-        SELECT
-            a.*
-        FROM account a
-        INNER JOIN customer c ON a.customer_id = c.id
-        WHERE a.account_no = #{accountNo}
-          AND c.rrn_prefix = #{rrnPrefix}
-    </select>
 
 </mapper>

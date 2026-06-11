@@ -26,6 +26,7 @@ import com.woorifisan.bank.domain.terms.mapper.BankTermsMapper;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -68,6 +69,7 @@ public class LoanService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final LoanReviewAsyncService loanReviewAsyncService;
     private final SecurityService securityService;
+    private final CryptoUtil cryptoUtil;
 
     // 심사 약관 조회
     @Transactional(readOnly = true)
@@ -125,7 +127,7 @@ public class LoanService {
         }
 
         // 4. 입금 계좌 조회 및 상태 확인
-        Account account = accountMapper.findByAccountNoPlain(decrypted.getDepositAccountNo())
+        Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(decrypted.getDepositAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
         if ("LOCKED".equals(account.getStatus())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_LOCKED);
@@ -335,7 +337,7 @@ public class LoanService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
 
         // 복호화된 계좌번호와 원장의 연결 계좌번호 일치 확인
-        if (!account.getAccountNo().equals(decrypted.getDepositAccountNo())) {
+        if (!account.getAccountNoHash().equals(cryptoUtil.hash(decrypted.getDepositAccountNo()))) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND);
         }
 

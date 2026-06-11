@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -34,6 +35,7 @@ import com.woorifisan.bank.domain.terms.model.BankTerms;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.List;
@@ -49,6 +51,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -56,6 +60,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class LoanServiceTest {
 
     @InjectMocks private LoanService loanService;
@@ -70,6 +75,7 @@ class LoanServiceTest {
     @Mock private BCryptPasswordEncoder passwordEncoder;
     @Mock private LoanReviewAsyncService loanReviewAsyncService;
     @Mock private TransactionLedgerMapper transactionLedgerMapper;
+    @Mock private CryptoUtil cryptoUtil;
 
     @TempDir
     Path tempDir;
@@ -83,6 +89,7 @@ class LoanServiceTest {
     void setUp() {
         ReflectionTestUtils.setField(loanService, "bankCode", BANK_CODE);
         ReflectionTestUtils.setField(loanService, "documentStoragePath", tempDir.toString());
+        given(cryptoUtil.hash(anyString())).willReturn("test-hash");
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -215,7 +222,7 @@ class LoanServiceTest {
         @DisplayName("실패 - 입금 계좌 미존재 → LOAN_ACCOUNT_NOT_FOUND")
         void 실패_입금계좌_미존재() {
             mockEvaluateDecrypt(RRN_PREFIX, CUSTOMER_NAME);
-            given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.empty());
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> loanService.acceptLoan(defaultEvaluateRequest(), validFiles()))
                     .isInstanceOf(BusinessException.class)
@@ -228,7 +235,7 @@ class LoanServiceTest {
             mockEvaluateDecrypt(RRN_PREFIX, CUSTOMER_NAME);
             Account locked = Account.builder()
                     .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("LOCKED").build();
-            given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.of(locked));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(locked));
 
             assertThatThrownBy(() -> loanService.acceptLoan(defaultEvaluateRequest(), validFiles()))
                     .isInstanceOf(BusinessException.class)
@@ -241,7 +248,7 @@ class LoanServiceTest {
             mockEvaluateDecrypt(RRN_PREFIX, CUSTOMER_NAME);
             Account closed = Account.builder()
                     .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("CLOSED").build();
-            given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.of(closed));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(closed));
 
             assertThatThrownBy(() -> loanService.acceptLoan(defaultEvaluateRequest(), validFiles()))
                     .isInstanceOf(BusinessException.class)
@@ -254,7 +261,7 @@ class LoanServiceTest {
             mockEvaluateDecrypt(RRN_PREFIX, CUSTOMER_NAME);
             Account account = Account.builder()
                     .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").accountType("LOAN").build();
-            given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.of(account));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(account));
 
             assertThatThrownBy(() -> loanService.acceptLoan(defaultEvaluateRequest(), validFiles()))
                     .isInstanceOf(BusinessException.class)
@@ -269,7 +276,7 @@ class LoanServiceTest {
                     .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").accountType("DEPOSIT").build();
             Customer customer = Customer.builder()
                     .id(10L).rrnPrefix(RRN_PREFIX).customerName(CUSTOMER_NAME).build();
-            given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.of(normal));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(normal));
             given(customerMapper.findById(10L)).willReturn(Optional.of(customer));
 
             assertThatThrownBy(() -> loanService.acceptLoan(defaultEvaluateRequest(), validFiles()))
@@ -285,7 +292,7 @@ class LoanServiceTest {
                     .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").accountType("DEPOSIT").build();
             Customer customer = Customer.builder()
                     .id(10L).rrnPrefix(RRN_PREFIX).customerName(CUSTOMER_NAME).build();
-            given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.of(normal));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(normal));
             given(customerMapper.findById(10L)).willReturn(Optional.of(customer));
 
             assertThatThrownBy(() -> loanService.acceptLoan(defaultEvaluateRequest(), validFiles()))
@@ -301,7 +308,7 @@ class LoanServiceTest {
                     .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").accountType("DEPOSIT").build();
             Customer customer = Customer.builder()
                     .id(10L).rrnPrefix(RRN_PREFIX).customerName(CUSTOMER_NAME).build();
-            given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.of(normal));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(normal));
             given(customerMapper.findById(10L)).willReturn(Optional.of(customer));
             given(loanLedgerMapper.existsPendingByCustomerId(10L)).willReturn(true);
 
@@ -318,7 +325,7 @@ class LoanServiceTest {
                     .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("NORMAL").accountType("DEPOSIT").build();
             Customer customer = Customer.builder()
                     .id(10L).rrnPrefix(RRN_PREFIX).customerName(CUSTOMER_NAME).build();
-            given(accountMapper.findByAccountNoPlain(ACCOUNT_NO)).willReturn(Optional.of(normal));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(normal));
             given(customerMapper.findById(10L)).willReturn(Optional.of(customer));
             given(loanLedgerMapper.existsPendingByCustomerId(10L)).willReturn(false);
             // PDF 매직바이트(%PDF-) 반환 → saveFiles() 내 매직바이트 검사 통과
@@ -451,7 +458,7 @@ class LoanServiceTest {
             given(loanProductMapper.findByProductId(1L)).willReturn(Optional.of(testProduct()));
             given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
             Account locked = Account.builder()
-                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO).status("LOCKED").build();
+                    .id(1L).customerId(10L).accountNoHash("test-hash").status("LOCKED").build();
             given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(locked));
 
             assertThatThrownBy(() -> loanService.executeLoan(defaultExecuteRequest()))
@@ -468,7 +475,7 @@ class LoanServiceTest {
             given(loanProductMapper.findByProductId(1L)).willReturn(Optional.of(testProduct()));
             given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
             Account account = Account.builder()
-                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO)
+                    .id(1L).customerId(10L).accountNoHash("test-hash")
                     .status("NORMAL").accountType("SAVINGS").build();
             given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(account));
 
@@ -486,7 +493,7 @@ class LoanServiceTest {
             given(loanProductMapper.findByProductId(1L)).willReturn(Optional.of(testProduct()));
             given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
             Account differentAccount = Account.builder()
-                    .id(1L).customerId(10L).accountNo("110-999-999999")
+                    .id(1L).customerId(10L).accountNoHash("different-hash")
                     .status("NORMAL").build();
             given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(differentAccount));
 
@@ -504,7 +511,7 @@ class LoanServiceTest {
             given(loanProductMapper.findByProductId(1L)).willReturn(Optional.of(testProduct()));
             given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
             Account account = Account.builder()
-                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO)
+                    .id(1L).customerId(10L).accountNoHash("test-hash")
                     .password(HASHED_PW).status("NORMAL").accountType("DEPOSIT").balance(BigDecimal.ZERO).build();
             given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(account));
             given(passwordEncoder.matches("9999", HASHED_PW)).willReturn(false);
@@ -523,7 +530,7 @@ class LoanServiceTest {
             given(loanProductMapper.findByProductId(1L)).willReturn(Optional.of(testProduct()));
             given(loanLedgerMapper.existsRecentActiveByCustomerAndProduct(10L, 1L)).willReturn(false);
             Account account = Account.builder()
-                    .id(1L).customerId(10L).accountNo(ACCOUNT_NO)
+                    .id(1L).customerId(10L).accountNoHash("test-hash")
                     .password(HASHED_PW).status("NORMAL").accountType("DEPOSIT").balance(new BigDecimal("1000000")).build();
             given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(account));
             given(passwordEncoder.matches("1234", HASHED_PW)).willReturn(true);

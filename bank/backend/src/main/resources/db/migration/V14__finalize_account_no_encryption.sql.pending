@@ -1,0 +1,6 @@
+ALTER TABLE account
+    MODIFY COLUMN account_no_enc  VARCHAR(500) NOT NULL,
+    MODIFY COLUMN account_no_hash VARCHAR(64)  NOT NULL,
+    DROP COLUMN account_no;
+
+ALTER TABLE account ADD UNIQUE INDEX idx_account_no_hash (account_no_hash);

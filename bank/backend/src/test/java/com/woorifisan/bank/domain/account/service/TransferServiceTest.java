@@ -30,6 +30,7 @@ import com.woorifisan.bank.global.config.BankNetworkConfig;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -76,6 +77,9 @@ class TransferServiceTest {
     @Mock
     private TransferTxService transferTxService;
 
+    @Mock
+    private CryptoUtil cryptoUtil;
+
     private Account sender;
     private Customer senderCustomer;
 
@@ -119,7 +123,8 @@ class TransferServiceTest {
 
         given(securityService.decryptWithKey(eq(request), eq(DecryptedRecipientData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decrypted, TEST_CEK));
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(cryptoUtil.hash("111-111")).willReturn("test-hash");
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
         given(securityService.encryptResponse(any(), eq(TEST_CEK))).willReturn("encrypted-payload");
 
@@ -160,7 +165,8 @@ class TransferServiceTest {
 
         given(securityService.decryptWithKey(eq(request), eq(DecryptedRecipientData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decrypted, TEST_CEK));
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.empty());
+        given(cryptoUtil.hash("111-111")).willReturn("test-hash");
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.empty());
 
         // when & then
         BusinessException ex = assertThrows(BusinessException.class, () ->
@@ -181,7 +187,8 @@ class TransferServiceTest {
 
         given(securityService.decryptWithKey(eq(request), eq(DecryptedRecipientData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decrypted, TEST_CEK));
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(cryptoUtil.hash("111-111")).willReturn("test-hash");
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(customerMapper.findById(10L)).willReturn(Optional.empty());
 
         // when & then
