@@ -90,10 +90,9 @@ public class BankExternalClient {
      */
     public BalanceInquiryResponse fetchBalance(String bankCode, BankBalanceInquiryRequest request) {
         BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
-        // if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+        if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
 
         String url = bankProperty.getUrl("balance");
-        log.info(url);
 
         return postRequest(url, request, new ParameterizedTypeReference<ApiResponse<BalanceInquiryResponse>>() {}, bankCode);
     }

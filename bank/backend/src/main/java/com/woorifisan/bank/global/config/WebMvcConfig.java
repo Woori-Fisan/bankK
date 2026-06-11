@@ -65,7 +65,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
             // 5. RestTemplate 생성
             JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
-            // setReadTimeout은 Spring 6.1+ 에서 지원, 그 전에는 HttpClient 레벨에서 제어 권장
+            factory.setReadTimeout(Duration.ofSeconds(5)); // 읽기 타임아웃 5초 설정
             
             return new RestTemplate(factory);
         } catch (Exception e) {
