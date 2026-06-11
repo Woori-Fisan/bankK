@@ -145,7 +145,7 @@ class AccountConcurrencyTest {
             done.await(10, TimeUnit.SECONDS);
             executor.shutdown();
 
-            Account account = accountMapper.findByAccountNoPlain("acc-201").get();
+            Account account = accountMapper.findByAccountNoHash("z6WqOwwE4LPXhNZUCpL1S3gNsIrF3Y24jiH3TbwO83o=").get();
             log.info("[더블스펜딩 방지] 성공: {}건, 잔액부족: {}건, 최종잔액: {}",
                     successCount.get(), insufficientCount.get(), account.getBalance());
 
@@ -207,7 +207,7 @@ class AccountConcurrencyTest {
             done.await(10, TimeUnit.SECONDS);
             executor.shutdown();
 
-            Account account = accountMapper.findByAccountNoPlain("acc-202").get();
+            Account account = accountMapper.findByAccountNoHash("6A44Lj1izOV2FDYXR5AShmI0M7/ImETykLz97728N3E=").get();
             BigDecimal expectedBalance = initialBalance
                     .subtract(withdrawAmount.multiply(BigDecimal.valueOf(successCount.get())));
 
@@ -276,7 +276,7 @@ class AccountConcurrencyTest {
             done.await(10, TimeUnit.SECONDS);
             executor.shutdown();
 
-            Account account = accountMapper.findByAccountNoPlain("acc-201").get();
+            Account account = accountMapper.findByAccountNoHash("z6WqOwwE4LPXhNZUCpL1S3gNsIrF3Y24jiH3TbwO83o=").get();
             BigDecimal expectedBalance = initialBalance
                     .subtract(withdrawAmount.multiply(BigDecimal.valueOf(successCount.get())));
 

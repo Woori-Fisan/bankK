@@ -16,6 +16,7 @@ import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -42,6 +43,7 @@ public class AccountService {
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final CustomerService customerService;
     private final SecurityService securityService;
+    private final CryptoUtil cryptoUtil;
 
     /**
      * 잔액 조회 (E2EE 적용)
@@ -50,20 +52,27 @@ public class AccountService {
     public BalanceInquiryResponse getBalance(BalanceInquiryRequest request) {
         log.info("은행 서버 잔액 조회 요청 수신 - 키ID: {}", request.getBankKeyId());
 
-        // 1. 복호화 및 CEK 추출
+        // 1. 복호화 및 CEK(Content Encryption Key) 추출
+        // RSA 개인키로 세션키를 복호화하고, 세션키로 페이로드를 복호화합니다.
         SecurityService.DecryptionResult<DecryptedInquiryData> decryptionResult = 
                 securityService.decryptWithKey(request, DecryptedInquiryData.class);
         
         DecryptedInquiryData decryptedData = decryptionResult.getData();
 
-        // 2. 계좌 및 고객 정보 검증 쿼리 호출 (복호화된 평문 계좌번호 사용)
-        Account account = accountMapper.findByAccountNoPlain(decryptedData.getAccountNo())
+        // 2. 계좌 조회 (Blind Index 활용)
+        // 평문 계좌번호를 해싱하여 DB의 account_no_hash 컬럼과 매칭합니다.
+        if (decryptedData.getAccountNo() == null || decryptedData.getAccountNo().isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+        Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(decryptedData.getAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
 
         // 3. 소유주 확인
+        // 계좌 소유자의 고객 정보와 요청 데이터(이름, 주민번호 앞자리)가 일치하는지 검증합니다.
         customerService.verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix(), decryptedData.getCustomerName());
 
         // 4. 응답 데이터 암호화 (추출된 CEK 사용)
+        // 민감 정보(잔액)를 세션키로 암호화하여 응답 페이로드를 생성합니다.
         BalanceInquiryResponse.SensitiveData sensitiveData = BalanceInquiryResponse.SensitiveData.builder()
                 .balance(account.getBalance())
                 .build();
@@ -82,30 +91,30 @@ public class AccountService {
         log.info("은행 서버 거래내역 조회 요청 수신 - 키ID: {}, 기간: {} ~ {}",
                 request.getBankKeyId(), request.getStartDate(), request.getEndDate());
 
-        // 1. 날짜 검증
+        // 1. 조회 기간 유효성 검증
         validateInquiryPeriod(request.getStartDate(), request.getEndDate());
 
-        // 2. 복호화 및 CEK 추출
+        // 2. E2EE 복호화 및 세션키 추출
         SecurityService.DecryptionResult<DecryptedInquiryData> decryptionResult = 
                 securityService.decryptWithKey(request, DecryptedInquiryData.class);
         
         DecryptedInquiryData decryptedData = decryptionResult.getData();
 
-        // 3. 계좌 조회 (복호화된 평문 계좌번호 사용)
-        Account account = accountMapper.findByAccountNoPlain(decryptedData.getAccountNo())
+        // 3. 계좌 조회 (Blind Index 활용)
+        Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(decryptedData.getAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.INQUIRY_ACCOUNT_NOTFOUND));
 
         // 4. 계좌 소유주 일치 확인
         customerService.verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix(), decryptedData.getCustomerName());
 
-        // 5. 전체 건수 조회
+        // 5. 전체 거래 건수 조회
         int totalCount = transactionLedgerMapper.countHistory(
                 account.getId(),
                 request.getStartDate(),
                 request.getEndDate()
         );
 
-        // 6. 페이징된 목록 조회
+        // 6. 페이징 처리된 거래 목록 조회
         int offset = request.getPage() * request.getSize();
         List<TransactionLedger> ledgerList = transactionLedgerMapper.findHistoryList(
                 account.getId(),
@@ -116,6 +125,7 @@ public class AccountService {
         );
 
         // 7. 거래 내역 리스트 생성 및 암호화
+        // 거래 내역 전체를 응답 페이로드로 구성하여 세션키로 암호화합니다.
         List<TransactionHistoryDto> historyItems = ledgerList.stream()
                 .map(ledger -> TransactionHistoryDto.builder()
                         .txId(ledger.getTxId())
@@ -134,7 +144,7 @@ public class AccountService {
         
         String resPayload = securityService.encryptResponse(sensitiveData, decryptionResult.getCek());
 
-        // 8. DTO 변환 및 반환
+        // 8. DTO 변환 및 최종 응답 반환
         int totalPages = (int) Math.ceil((double) totalCount / request.getSize());
         boolean hasNext = request.getPage() < totalPages - 1;
 

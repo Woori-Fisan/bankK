@@ -16,6 +16,7 @@ import com.woorifisan.bank.domain.customer.model.Customer;
 import com.woorifisan.bank.global.config.BankNetworkConfig;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import com.woorifisan.bank.global.response.ErrorCode;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -45,9 +46,10 @@ public class TransferService {
     private final CustomerMapper customerMapper;
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final SecurityService securityService;
+    private final CryptoUtil cryptoUtil;
     private final BankNetworkConfig bankNetworkConfig;
     private final RestTemplate restTemplate;
-    
+
     // 개별 트랜잭션 처리를 담당하는 서브 서비스 주입
     private final TransferTxService transferTxService;
 
@@ -77,8 +79,8 @@ public class TransferService {
         
         DecryptedRecipientData decryptedData = decryptionResult.getData();
 
-        // 2. 계좌 조회 (복호화된 계좌번호 사용)
-        Account account = accountMapper.findByAccountNoPlain(decryptedData.getDepositAccountNo())
+        // 2. 계좌 조회
+        Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(decryptedData.getDepositAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
 
         // 3. 고객 조회
@@ -88,7 +90,7 @@ public class TransferService {
         // 4. 민감 데이터(성명, 계좌번호) 암호화
         RecipientResponse.SensitiveData sensitiveData = RecipientResponse.SensitiveData.builder()
                 .depositorName(customer.getCustomerName())
-                .depositAccountNo(account.getAccountNo())
+                .depositAccountNo(cryptoUtil.decrypt(account.getAccountNoEnc()))
                 .build();
         
         String resPayload = securityService.encryptResponse(sensitiveData, decryptionResult.getCek());
@@ -142,6 +144,7 @@ public class TransferService {
     /**
      * 통합 이체 실행 흐름 제어 (코디네이터)
      * - DB 커넥션 점유 시간을 최소화하기 위해 외부 API 호출은 비트랜잭션 구간에서 수행합니다.
+     * - Saga 패턴을 응용하여 각 단계를 독립된 트랜잭션으로 처리하고 실패 시 보상 트랜잭션을 실행합니다.
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public TransferResponse executeTransfer(TransferRequest request) {
@@ -154,11 +157,12 @@ public class TransferService {
         DecryptedWithdrawData decryptedData = decryptionResult.getData();
 
         // 1. 출금 처리 (독립 트랜잭션 - PENDING 상태로 시작)
+        // 출금 계좌에서 금액을 차감하고 '대기' 상태의 원장을 기록합니다.
         TransferResponse withdrawalResponse = transferTxService.withdrawTransfer(request, decryptedData, decryptionResult.getCek());
         String txId = withdrawalResponse.getTransactionId();
         log.info("통합 이체 Step 1: 출금 성공 (PENDING 상태) - 거래ID: {}", txId);
 
-        // 2. 당행/타행 여부 판단
+        // 2. 당행/타행 여부 판단 및 입금 처리
         if (CURRENT_BANK_CODE.equals(request.getDepositBankCode())) {
             // [당행 이체] 직접 입금 처리
             log.info("통합 이체 Step 2: 당행 이체 진행");
@@ -173,12 +177,13 @@ public class TransferService {
                         .txId(UUID.randomUUID().toString()) // 당행 이체는 동일 DB 내 PK 중복 방지를 위해 신규 ID 생성
                         .build());
                 
-                // 출금 원장의 상태를 SUCCESS로 업데이트
+                // 입금 성공 시 출금 원장의 상태를 SUCCESS로 업데이트
                 transferTxService.updateLedgerStatus(txId, "SUCCESS");
                 
                 return withdrawalResponse;
             } catch (Exception e) {
                 log.error("당행 입금 처리 중 오류 발생, 환불 처리를 시작합니다: {}", e.getMessage());
+                // 보상 트랜잭션: 이미 차감된 출금액을 다시 입금(환불) 처리
                 transferTxService.refundTransfer(request, decryptedData, txId);
                 throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH, "당행 입금 처리 중 오류가 발생하여 환불되었습니다.");
             }
@@ -187,7 +192,7 @@ public class TransferService {
             log.info("통합 이체 Step 2: 타행 이체 진행 (타행코드: {})", request.getDepositBankCode());
 
             try {
-                // 타행 입금 API 호출 (출금 거래 ID인 txId를 공유하여 전송)
+                // 타행 입금 API 호출 (출금 거래 ID인 txId를 공유하여 전송하여 멱등성 보장)
                 callExternalBankDeposit(request.getDepositBankCode(), InternalDepositRequest.builder()
                         .depositAccountNo(decryptedData.getDepositAccountNo())
                         .amount(request.getAmount())
@@ -203,7 +208,7 @@ public class TransferService {
             } catch (Exception e) {
                 log.error("타행 입금 호출 중 오류 발생. 상대측 거래 상태 확인을 진행합니다: {}", e.getMessage());
                 
-                // 이중 지급 방지를 위해 타행에 거래 상태 조회 API 호출
+                // 이중 지급 방지를 위해 타행에 거래 상태 조회 API 호출 (폴링 및 재시도)
                 boolean isAlreadyProcessed = checkExternalTransferStatus(request.getDepositBankCode(), txId);
                 
                 if (isAlreadyProcessed) {
@@ -212,7 +217,7 @@ public class TransferService {
                     return withdrawalResponse;
                 } else {
                     log.error("타행 거래 상태 조회 결과: 미처리 확인. 환불 처리를 시작합니다.");
-                    // 보상 트랜잭션: 환불
+                    // 보상 트랜잭션: 타행에서 미처리된 것이 확실하므로 환불 처리
                     transferTxService.refundTransfer(request, decryptedData, txId);
                     throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH, "타행 입금 처리 중 오류가 발생하여 환불되었습니다.");
                 }
