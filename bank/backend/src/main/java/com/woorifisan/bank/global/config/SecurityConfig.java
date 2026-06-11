@@ -1,8 +1,14 @@
 package com.woorifisan.bank.global.config;
 
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -10,9 +16,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -29,13 +36,7 @@ public class SecurityConfig {
             "/swagger-ui.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",
-            "/api/v1/baas/account/**",
-            "/api/v1/baas/withdrawals/**",
-            "/api/v1/baas/keys/**",
-            // 테스트 용 임시 통과 URL -> 플랫폼 개발 완료 시 삭제
-            // mTLS 구현 전 임시 개방 — mTLS 적용 후 제거
-            "/api/v1/loan/**",
-            "/api/v1/baas/transfer/**"
+            "/api/v1/baas/keys/**"
     };
 
     @Bean
@@ -48,10 +49,15 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 
+                // x509 클라이언트 인증 설정
+                .x509(x509 -> x509
+                        .subjectPrincipalRegex("CN=(.*?)(?:,|$)")
+                )
+
                 // 요청 경로별 권한 설정
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_URLS).permitAll() // 헬스체크, Swagger 등 허용
-                        .anyRequest().authenticated()             // 그 외 모든 요청은 인증 필요
+                        .anyRequest().authenticated()             // 그 외 모든 요청은 인증 필요 (mTLS 포함)
                 );
 
         return http.build();
@@ -69,7 +75,39 @@ public class SecurityConfig {
     }
 
     @Bean
-    public UserDetailsService userDetailsService() {
-        return new InMemoryUserDetailsManager();
+    public UserDetailsService userDetailsService(@Lazy BankNetworkConfig bankNetworkConfig) {
+        List<UserDetails> users = new ArrayList<>();
+        Set<String> usernames = new HashSet<>();
+
+        // mTLS용 더미 비밀번호를 한 번만 인코딩하여 재사용 (기동 성능 최적화)
+        String encodedPassword = passwordEncoder().encode("mtls-password");
+
+        // 1. 플랫폼 클라이언트 등록
+        String platformUser = "platformClient";
+        users.add(User.withUsername(platformUser)
+                .password(encodedPassword)
+                .roles("PLATFORM")
+                .build());
+        usernames.add(platformUser);
+
+        // 2. bank-network 설정에서 은행 IP(CN)들을 중복 없이 추출하여 등록
+        if (bankNetworkConfig != null && bankNetworkConfig.getBanks() != null) {
+            bankNetworkConfig.getBanks().forEach((code, property) -> {
+                try {
+                    String host = URI.create(property.getBaseUrl()).getHost();
+                    if (host != null && !usernames.contains(host)) {
+                        users.add(User.withUsername(host)
+                                .password(encodedPassword)
+                                .roles("BANK")
+                                .build());
+                        usernames.add(host); // 중복 등록 방지
+                    }
+                } catch (Exception e) {
+                    // 잘못된 URL 형식 무시
+                }
+            });
+        }
+
+        return new InMemoryUserDetailsManager(users);
     }
 }
