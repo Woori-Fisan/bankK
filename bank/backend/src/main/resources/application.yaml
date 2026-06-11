@@ -1,5 +1,24 @@
 server:
   port: ${BANK_BACKEND_PORT:8081} # 은행 코어 서버 포트
+  ssl:
+    enabled: true
+    client-auth: need # 클라이언트 인증서 필수 (mTLS)
+    key-store: ${SSL_SERVER_KEYSTORE_PATH}
+    key-store-password: ${SSL_SERVER_KEYSTORE_PASSWORD}
+    key-store-type: PKCS12
+    trust-store: ${SSL_TRUSTSTORE_PATH}
+    trust-store-password: ${SSL_TRUSTSTORE_PASSWORD}
+    trust-store-type: PKCS12
+
+# mTLS 커스텀 프로퍼티 (RestTemplate용)
+ssl:
+  server:
+    keystore:
+      path: ${SSL_SERVER_KEYSTORE_PATH}
+      password: ${SSL_SERVER_KEYSTORE_PASSWORD}
+  truststore:
+    path: ${SSL_TRUSTSTORE_PATH}
+    password: ${SSL_TRUSTSTORE_PASSWORD}
 
 bank:
   name: ${BANK_NAME:은행}
@@ -82,7 +101,11 @@ springdoc:
 # 은행 간 네트워크 설정
 bank-network:
   banks:
-    "088": # 신한은행 (예시)
-      base-url: http://localhost:9090
+    "020":
+      base-url: ${WOORI_BANK_URL:http://localhost:8081}
+    "088": # 신한은행
+      base-url: ${SHINHAN_BANK_URL:http://localhost:9090}
+    "004": # 국민은행
+      base-url: ${KB_BANK_URL:http://localhost:9091}
 
 

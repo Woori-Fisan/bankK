@@ -43,3 +43,6 @@ out/
 
 # 대출 파일
 loan-documents/
+
+# 인증서
+*.p12

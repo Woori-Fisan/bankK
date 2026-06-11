@@ -34,7 +34,7 @@ class AccountMapperTest {
         // then
         assertThat(result).isPresent();
         assertThat(result.get().getId()).isEqualTo(targetId);
-        System.out.println("조회된 계좌번호: " + result.get().getAccountNo());
+        System.out.println("계좌번호 해시: " + result.get().getAccountNoHash());
         System.out.println("비밀번호 해시: " + result.get().getPassword());
         System.out.println("현재 잔액: " + result.get().getBalance());
     }

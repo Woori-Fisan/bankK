@@ -50,9 +50,10 @@ public class LoanController {
     @CustomExceptionDescription(SwaggerResponseDescription.BANK_LOAN)
     @GetMapping("/review/documents")
     public ApiResponse<LoanRequiredDocumentsResponse> getRequiredDocuments(
+            @RequestParam("bankCode") @NotBlank(message = "은행 코드는 필수입니다.") String bankCode,
             // JWT 토큰에서 추출된 staffId — SecurityContext에서 자동 주입
             @AuthenticationPrincipal Long staffId) {
-        return ApiResponse.success(loanService.getRequiredDocuments(staffId));
+        return ApiResponse.success(loanService.getRequiredDocuments(bankCode, staffId));
     }
 
     // SSE 구독 (심사 신청보다 반드시 먼저 호출)
@@ -123,8 +124,9 @@ public class LoanController {
     public ApiResponse<LoanContractDocumentsResponse> getContractDocuments(
             @PathVariable @NotBlank(message = "상품 코드는 필수입니다.") String loanProductCode,
             @PathVariable @NotBlank(message = "대출 계약번호는 필수입니다.") String loanNo,
+            @RequestParam("bankCode") @NotBlank(message = "은행 코드는 필수입니다.") String bankCode,
             @AuthenticationPrincipal Long staffId) {
-        return ApiResponse.success(loanService.getContractDocuments(loanProductCode, loanNo, staffId));
+        return ApiResponse.success(loanService.getContractDocuments(bankCode, loanProductCode, loanNo, staffId));
     }
 
     // 대출 실행

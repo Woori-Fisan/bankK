@@ -11,6 +11,7 @@ import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -33,30 +34,32 @@ public class WithdrawalService {
     private final TransactionLedgerMapper transactionLedgerMapper;
     private final PasswordEncoder passwordEncoder;
     private final SecurityService securityService;
+    private final CryptoUtil cryptoUtil;
 
     @Transactional
     public WithdrawalResponse withdraw(WithdrawalRequest request) {
         log.info("현금 출금 요청 수신 - 키ID: {}", request.getBankKeyId());
 
-        // 1. 복호화 및 CEK 추출
+        // 1. E2EE 복호화 및 세션키(CEK) 추출
         SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
                 securityService.decryptWithKey(request, DecryptedWithdrawData.class);
         
         DecryptedWithdrawData decryptedData = decryptionResult.getData();
 
-        // 2. 계좌 및 고객 정보 검증 (복호화된 데이터 사용)
-        Account account = accountMapper.findByAccountNoPlain(decryptedData.getWithdrawalAccountNo())
+        // 2. 계좌 및 고객 정보 검증 (Blind Index 활용)
+        Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(decryptedData.getWithdrawalAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
 
         customerService.verifyCustomerIdentification(account.getCustomerId(), decryptedData.getCustomerRrnPrefix(), decryptedData.getCustomerName());
 
-        // 3. 출금 가능 여부 체크 — 비밀번호/상태/잔액 1차 확인
+        // 3. 출금 가능 여부 1차 체크 (비밀번호, 계좌 상태, 잔액)
         validateWithdrawal(account, decryptedData.getWithdrawalPassword(), request.getAmount());
 
-        // 4. 비관적 락으로 재조회 후 전체 출금 가능 여부 재검증 (동시 출금 race condition 방지)
-        // 락 획득 전 사이에 계좌 상태/유형/잔액이 변경됐을 수 있으므로 전체 재검증
+        // 4. 비관적 락(FOR UPDATE) 획득 후 재검증
+        // 동일 계좌에 대한 동시 출금 요청 시 Race Condition으로 인한 마이너스 잔액 발생을 방지합니다.
         account = accountMapper.findByIdForUpdate(account.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        
         if (!"DEPOSIT".equals(account.getAccountType())) {
             throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
         }
@@ -70,7 +73,7 @@ public class WithdrawalService {
         // 5. 잔액 업데이트
         accountMapper.updateBalance(account.getId(), request.getAmount().negate());
 
-        // 6. 거래 내역 생성 및 저장 (업데이트 성공 후 기록)
+        // 6. 거래 내역(원장) 생성 및 저장
         String txId = "TXW-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
         BigDecimal balanceAfter = account.getBalance().subtract(request.getAmount());
 
@@ -87,14 +90,14 @@ public class WithdrawalService {
         );
         transactionLedgerMapper.insert(ledger);
 
-        // 7. 결과 암호화
+        // 7. 결과 데이터 암호화 (추출된 세션키 사용)
         WithdrawalResponse.SensitiveData sensitiveData = WithdrawalResponse.SensitiveData.builder()
                 .balanceAfter(balanceAfter)
                 .build();
         
         String resPayload = securityService.encryptResponse(sensitiveData, decryptionResult.getCek());
 
-        log.info("출금 완료: 거래ID={}, 계좌={}, 금액={}, 잔액={}", txId, account.getAccountNo(), request.getAmount(), balanceAfter);
+        log.info("출금 완료: 거래ID={}, 계좌ID={}, 금액={}, 잔액={}", txId, account.getId(), request.getAmount(), balanceAfter);
 
         return WithdrawalResponse.of(
                 txId, 

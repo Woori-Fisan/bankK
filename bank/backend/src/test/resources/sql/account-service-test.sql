@@ -9,11 +9,12 @@ VALUES (
            1
        );
 
-INSERT INTO account (id, customer_id, account_no, password, account_type, balance, status)
+INSERT INTO account (id, customer_id, account_no_enc, account_no_hash, password, account_type, balance, status)
 VALUES (
            10,
            10,
-           '111-222-3333',
+           NULL,
+           'k8IvjMin9UEu7T2eAnGo9isyDeNzf1kRGozC98GkMtQ=',
            'service-test-pw',
            'SAVINGS',
            150000.00,

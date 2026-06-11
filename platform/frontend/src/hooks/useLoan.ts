@@ -12,10 +12,11 @@ export const extractApiError = (error: unknown): string => {
   return extractApiErrorMessage(error);
 };
 
-export const useReviewDocuments = () =>
+export const useReviewDocuments = (bankCode: string | null | undefined) =>
   useQuery({
-    queryKey: ['loan', 'review', 'documents'],
-    queryFn: fetchReviewDocuments,
+    queryKey: ['loan', 'review', 'documents', bankCode],
+    queryFn: () => fetchReviewDocuments(bankCode!),
+    enabled: !!bankCode,
   });
 
 export const useSubmitLoanEvaluation = () =>
@@ -32,13 +33,14 @@ export const useSubmitLoanEvaluation = () =>
   });
 
 export const useContractDocuments = (
+  bankCode: string | null | undefined,
   loanProductCode: string | null,
   loanNo: string | null,
 ) =>
   useQuery({
-    queryKey: ['loan', 'contract', 'documents', loanProductCode, loanNo],
-    queryFn: () => fetchContractDocuments(loanProductCode!, loanNo!),
-    enabled: !!loanProductCode && !!loanNo,
+    queryKey: ['loan', 'contract', 'documents', bankCode, loanProductCode, loanNo],
+    queryFn: () => fetchContractDocuments(bankCode!, loanProductCode!, loanNo!),
+    enabled: !!bankCode && !!loanProductCode && !!loanNo,
   });
 
 export const useExecuteLoan = () =>
