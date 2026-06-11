@@ -14,10 +14,10 @@ server:
 ssl:
   server:
     keystore:
-      path: ${SSL_SERVER_KEYSTORE_PATH}
+      path: file:${SSL_SERVER_KEYSTORE_PATH}
       password: ${SSL_SERVER_KEYSTORE_PASSWORD}
   truststore:
-    path: ${SSL_TRUSTSTORE_PATH}
+    path: file:${SSL_TRUSTSTORE_PATH}
     password: ${SSL_TRUSTSTORE_PASSWORD}
 
 bank:

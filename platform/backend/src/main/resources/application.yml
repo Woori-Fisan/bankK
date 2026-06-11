@@ -74,10 +74,10 @@ jwt:
 # mTLS 인증서 설정
 ssl:
   keystore:
-    path: ${SSL_KEYSTORE_PATH}
+    path: file:${SSL_KEYSTORE_PATH}
     password: ${SSL_KEYSTORE_PASSWORD}
   truststore:
-    path: ${SSL_TRUSTSTORE_PATH}
+    path: file:${SSL_TRUSTSTORE_PATH}
     password: ${SSL_TRUSTSTORE_PASSWORD}
 
 # Actuator / Prometheus

@@ -4,7 +4,6 @@ import io.netty.channel.ChannelOption;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.timeout.ReadTimeoutHandler;
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.security.KeyStore;
 import java.time.Duration;
@@ -14,6 +13,7 @@ import javax.net.ssl.TrustManagerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -27,13 +27,13 @@ import reactor.netty.http.client.HttpClient;
 public class WebClientConfig {
 
     @Value("${ssl.keystore.path}")
-    private String keystorePath;
+    private Resource keystoreResource;
 
     @Value("${ssl.keystore.password}")
     private String keystorePassword;
 
     @Value("${ssl.truststore.path}")
-    private String truststorePath;
+    private Resource truststoreResource;
 
     @Value("${ssl.truststore.password}")
     private String truststorePassword;
@@ -47,13 +47,13 @@ public class WebClientConfig {
         try {
             // 1. KeyStore 로드 (클라이언트 인증서)
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            try (InputStream is = new FileInputStream(keystorePath.replace("file:", ""))) {
+            try (InputStream is = keystoreResource.getInputStream()) {
                 keyStore.load(is, keystorePassword.toCharArray());
             }
 
             // 2. TrustStore 로드 (CA 인증서)
             KeyStore trustStore = KeyStore.getInstance("PKCS12");
-            try (InputStream is = new FileInputStream(truststorePath.replace("file:", ""))) {
+            try (InputStream is = truststoreResource.getInputStream()) {
                 trustStore.load(is, truststorePassword.toCharArray());
             }
 

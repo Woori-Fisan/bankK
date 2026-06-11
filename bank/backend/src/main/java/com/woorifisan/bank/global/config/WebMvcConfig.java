@@ -1,6 +1,5 @@
 package com.woorifisan.bank.global.config;
 
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.security.KeyStore;
 import java.security.SecureRandom;
@@ -12,6 +11,7 @@ import javax.net.ssl.TrustManagerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -21,13 +21,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     @Value("${ssl.server.keystore.path}")
-    private String keystorePath;
+    private Resource keystoreResource;
 
     @Value("${ssl.server.keystore.password}")
     private String keystorePassword;
 
     @Value("${ssl.truststore.path}")
-    private String truststorePath;
+    private Resource truststoreResource;
 
     @Value("${ssl.truststore.password}")
     private String truststorePassword;
@@ -37,13 +37,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
         try {
             // 1. KeyStore 로드 (클라이언트 인증서)
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            try (InputStream is = new FileInputStream(keystorePath.replace("file:", ""))) {
+            try (InputStream is = keystoreResource.getInputStream()) {
                 keyStore.load(is, keystorePassword.toCharArray());
             }
 
             // 2. TrustStore 로드 (CA 인증서)
             KeyStore trustStore = KeyStore.getInstance("PKCS12");
-            try (InputStream is = new FileInputStream(truststorePath.replace("file:", ""))) {
+            try (InputStream is = truststoreResource.getInputStream()) {
                 trustStore.load(is, truststorePassword.toCharArray());
             }
 
