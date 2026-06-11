@@ -3,6 +3,7 @@ package com.woorifisan.bank.domain.account.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -19,6 +20,7 @@ import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import java.math.BigDecimal;
 import java.util.Optional;
 import javax.crypto.spec.SecretKeySpec;
@@ -29,9 +31,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class TransferTxServiceTest {
 
     @InjectMocks
@@ -52,6 +57,9 @@ class TransferTxServiceTest {
     @Mock
     private SecurityService securityService;
 
+    @Mock
+    private CryptoUtil cryptoUtil;
+
     private Account sender;
     private Account receiver;
 
@@ -61,6 +69,8 @@ class TransferTxServiceTest {
 
     @BeforeEach
     void setUp() {
+        given(cryptoUtil.hash(anyString())).willReturn("test-hash");
+
         sender = Account.builder()
                 .id(1L)
                 .customerId(10L)
@@ -101,7 +111,8 @@ class TransferTxServiceTest {
                 .depositAccountNo("999-999")
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(cryptoUtil.hash("111-111")).willReturn("test-hash");
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
         given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000").negate())).willReturn(1);
@@ -125,7 +136,7 @@ class TransferTxServiceTest {
         TransferRequest request = TransferRequest.builder().amount(new BigDecimal("10000")).build();
         DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder().withdrawalAccountNo("111-111").build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.empty());
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.empty());
 
         // when & then
         BusinessException ex = assertThrows(BusinessException.class, () ->
@@ -144,7 +155,7 @@ class TransferTxServiceTest {
                 .customerName("김철수")
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         doThrow(new BusinessException(ErrorCode.IDENTIFICATION_ERROR))
                 .when(customerService).verifyCustomerIdentification(10L, "9001011", "김철수");
 
@@ -164,7 +175,7 @@ class TransferTxServiceTest {
                 .withdrawalPassword("wrongPassword")
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(passwordEncoder.matches("wrongPassword", "hashedPassword")).willReturn(false);
 
         // when & then
@@ -186,14 +197,14 @@ class TransferTxServiceTest {
         Account nonDepositSender = Account.builder()
                 .id(1L)
                 .customerId(10L)
-                .accountNo("111-111")
+                .accountNoHash("test-hash")
                 .balance(new BigDecimal("100000"))
                 .password("hashedPassword")
                 .accountType("LOAN") // DEPOSIT이 아님
                 .status("NORMAL")
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(nonDepositSender));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(nonDepositSender));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
 
         // when & then
@@ -215,14 +226,14 @@ class TransferTxServiceTest {
         Account abnormalSender = Account.builder()
                 .id(1L)
                 .customerId(10L)
-                .accountNo("111-111")
+                .accountNoHash("test-hash")
                 .balance(new BigDecimal("100000"))
                 .password("hashedPassword")
                 .accountType("DEPOSIT")
                 .status("LOCKED") // NORMAL이 아님
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(abnormalSender));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(abnormalSender));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
 
         // when & then
@@ -241,7 +252,7 @@ class TransferTxServiceTest {
                 .withdrawalPassword("1234")
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
 
         // when & then
@@ -260,7 +271,7 @@ class TransferTxServiceTest {
                 .withdrawalPassword("1234")
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
@@ -290,7 +301,7 @@ class TransferTxServiceTest {
                 .status("NORMAL")
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(nonDepositSender));
 
@@ -320,7 +331,7 @@ class TransferTxServiceTest {
                 .status("LOCKED") // NORMAL이 아님
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(abnormalSender));
 
@@ -350,7 +361,7 @@ class TransferTxServiceTest {
                 .status("NORMAL")
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(passwordEncoder.matches("1234", "hashedPassword")).willReturn(true);
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(poorSender));
 
@@ -377,7 +388,7 @@ class TransferTxServiceTest {
                 .depositAccountNo("999-999")
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
         given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000"))).willReturn(1);
 
@@ -399,7 +410,7 @@ class TransferTxServiceTest {
         DecryptedWithdrawData originalData = DecryptedWithdrawData.builder().withdrawalAccountNo("111-111").build();
         String originalTxId = "orig-tx-id";
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.of(sender));
         given(accountMapper.updateBalance(sender.getId(), new BigDecimal("10000"))).willReturn(1);
 
@@ -419,7 +430,7 @@ class TransferTxServiceTest {
         TransferRequest request = TransferRequest.builder().amount(new BigDecimal("10000")).build();
         DecryptedWithdrawData originalData = DecryptedWithdrawData.builder().withdrawalAccountNo("111-111").build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.empty());
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.empty());
 
         // when & then
         BusinessException ex = assertThrows(BusinessException.class, () ->
@@ -434,7 +445,7 @@ class TransferTxServiceTest {
         TransferRequest request = TransferRequest.builder().amount(new BigDecimal("10000")).build();
         DecryptedWithdrawData originalData = DecryptedWithdrawData.builder().withdrawalAccountNo("111-111").build();
 
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(accountMapper.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
         // when & then
@@ -455,7 +466,7 @@ class TransferTxServiceTest {
                 .txId("test-tx-id")
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(receiver));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(receiver));
         given(accountMapper.findByIdForUpdate(2L)).willReturn(Optional.of(receiver));
         given(accountMapper.updateBalance(receiver.getId(), new BigDecimal("20000"))).willReturn(1);
 
@@ -476,7 +487,7 @@ class TransferTxServiceTest {
                 .depositAccountNo("222-222")
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.empty());
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.empty());
 
         // when & then
         BusinessException ex = assertThrows(BusinessException.class, () ->
@@ -502,7 +513,7 @@ class TransferTxServiceTest {
                 .status("LOCKED") // NORMAL이 아님
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(abnormalReceiver));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(abnormalReceiver));
 
         // when & then
         BusinessException ex = assertThrows(BusinessException.class, () ->
@@ -518,7 +529,7 @@ class TransferTxServiceTest {
                 .depositAccountNo("222-222")
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(receiver));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(receiver));
         given(accountMapper.findByIdForUpdate(2L)).willReturn(Optional.empty());
 
         // when & then
@@ -545,7 +556,7 @@ class TransferTxServiceTest {
                 .status("LOCKED") // NORMAL이 아님
                 .build();
 
-        given(accountMapper.findByAccountNoPlain("222-222")).willReturn(Optional.of(receiver));
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(receiver));
         given(accountMapper.findByIdForUpdate(2L)).willReturn(Optional.of(abnormalReceiver));
 
         // when & then

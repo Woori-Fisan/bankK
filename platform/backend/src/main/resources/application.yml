@@ -71,12 +71,14 @@ jwt:
   access-expiration: 600000       # 10분 (ms)
   refresh-expiration: 3600000    # 1시간 (ms)
 
-# mTLS 인증서 경로
-#mtls:
-#  keystore-path: ${MTLS_KEYSTORE_PATH}
-#  keystore-password: ${MTLS_KEYSTORE_PASSWORD}
-#  truststore-path: ${MTLS_TRUSTSTORE_PATH}
-#  truststore-password: ${MTLS_TRUSTSTORE_PASSWORD}
+# mTLS 인증서 설정
+ssl:
+  keystore:
+    path: file:${SSL_KEYSTORE_PATH}
+    password: ${SSL_KEYSTORE_PASSWORD}
+  truststore:
+    path: file:${SSL_TRUSTSTORE_PATH}
+    password: ${SSL_TRUSTSTORE_PASSWORD}
 
 # Actuator / Prometheus
 management:

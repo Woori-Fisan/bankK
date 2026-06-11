@@ -19,14 +19,16 @@ CREATE TABLE IF NOT EXISTS customer (
 CREATE TABLE IF NOT EXISTS account (
     id               BIGINT AUTO_INCREMENT PRIMARY KEY,
     customer_id      BIGINT NOT NULL,
-    account_no       VARCHAR(30)  NOT NULL,
+    account_no_enc   VARCHAR(500),
+    account_no_hash  VARCHAR(64)  NOT NULL,
     password         VARCHAR(255) NOT NULL,
     account_type     VARCHAR(50)  NOT NULL,
     balance          DECIMAL(18,2) NOT NULL DEFAULT 0,
     status           VARCHAR(20)  NOT NULL DEFAULT 'NORMAL',
     created_at       TIMESTAMP DEFAULT NOW(),
     updated_at       TIMESTAMP DEFAULT NOW(),
-    CONSTRAINT fk_account_customer FOREIGN KEY (customer_id) REFERENCES customer(id)
+    CONSTRAINT fk_account_customer FOREIGN KEY (customer_id) REFERENCES customer(id),
+    CONSTRAINT uq_account_no_hash UNIQUE (account_no_hash)
 );
 
 -- ==========================================

@@ -30,6 +30,7 @@ import com.woorifisan.bank.global.config.BankNetworkConfig;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -49,6 +50,10 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+/**
+ * 통합 이체 서비스(TransferService) 단위 테스트
+ * - 이체 흐름 제어(코디네이터) 및 보상 트랜잭션(환불) 로직을 검증합니다.
+ */
 @ExtendWith(MockitoExtension.class)
 class TransferServiceTest {
 
@@ -75,6 +80,9 @@ class TransferServiceTest {
 
     @Mock
     private TransferTxService transferTxService;
+
+    @Mock
+    private CryptoUtil cryptoUtil;
 
     private Account sender;
     private Customer senderCustomer;
@@ -119,7 +127,8 @@ class TransferServiceTest {
 
         given(securityService.decryptWithKey(eq(request), eq(DecryptedRecipientData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decrypted, TEST_CEK));
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(cryptoUtil.hash("111-111")).willReturn("test-hash");
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(customerMapper.findById(10L)).willReturn(Optional.of(senderCustomer));
         given(securityService.encryptResponse(any(), eq(TEST_CEK))).willReturn("encrypted-payload");
 
@@ -160,7 +169,8 @@ class TransferServiceTest {
 
         given(securityService.decryptWithKey(eq(request), eq(DecryptedRecipientData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decrypted, TEST_CEK));
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.empty());
+        given(cryptoUtil.hash("111-111")).willReturn("test-hash");
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.empty());
 
         // when & then
         BusinessException ex = assertThrows(BusinessException.class, () ->
@@ -181,7 +191,8 @@ class TransferServiceTest {
 
         given(securityService.decryptWithKey(eq(request), eq(DecryptedRecipientData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decrypted, TEST_CEK));
-        given(accountMapper.findByAccountNoPlain("111-111")).willReturn(Optional.of(sender));
+        given(cryptoUtil.hash("111-111")).willReturn("test-hash");
+        given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(sender));
         given(customerMapper.findById(10L)).willReturn(Optional.empty());
 
         // when & then

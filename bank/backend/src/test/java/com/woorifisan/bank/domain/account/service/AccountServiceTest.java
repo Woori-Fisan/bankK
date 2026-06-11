@@ -23,6 +23,7 @@ import com.woorifisan.bank.domain.customer.service.CustomerService;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 
 import java.math.BigDecimal;
 import java.time.format.DateTimeParseException;
@@ -55,6 +56,9 @@ class AccountServiceTest {
     @Mock
     private SecurityService securityService;
 
+    @Mock
+    private CryptoUtil cryptoUtil;
+
     /**
      * 복호화 성공 결과를 강제로 반환하는 Helper 메서드 (이름 파라미터 추가)
      */
@@ -67,6 +71,7 @@ class AccountServiceTest {
                 new SecurityService.DecryptionResult<>(data, mock(SecretKey.class));
         given(securityService.decryptWithKey(any(), eq(DecryptedInquiryData.class)))
                 .willReturn(result);
+        given(cryptoUtil.hash(anyString())).willReturn("test-hash");
     }
 
     /**
@@ -104,7 +109,7 @@ class AccountServiceTest {
                     .status("NORMAL")
                     .build();
 
-            given(accountMapper.findByAccountNoPlain(accountNo)).willReturn(Optional.of(account));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(account));
 
             BalanceInquiryRequest request = BalanceInquiryRequest.builder()
                     .reqPayload("dummy-jwe")
@@ -126,7 +131,7 @@ class AccountServiceTest {
             // given
             String accountNo = "invalid-acc";
             mockDecrypt(accountNo, "900101", "홍길동");
-            given(accountMapper.findByAccountNoPlain(accountNo)).willReturn(Optional.empty());
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.empty());
 
             BalanceInquiryRequest request = BalanceInquiryRequest.builder()
                     .reqPayload("dummy-jwe")
@@ -151,7 +156,7 @@ class AccountServiceTest {
                     .customerId(10L)
                     .build();
 
-            given(accountMapper.findByAccountNoPlain(accountNo)).willReturn(Optional.of(account));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(account));
             willThrow(new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND))
                     .given(customerService).verifyCustomerIdentification(anyLong(), eq("800101"), eq("홍길동"));
 
@@ -178,7 +183,7 @@ class AccountServiceTest {
                     .customerId(10L)
                     .build();
 
-            given(accountMapper.findByAccountNoPlain(accountNo)).willReturn(Optional.of(account));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(account));
             willThrow(new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND))
                     .given(customerService).verifyCustomerIdentification(anyLong(), eq("900101"), eq("이순신"));
 
@@ -212,7 +217,7 @@ class AccountServiceTest {
                     .accountNo("acc-123")
                     .build();
 
-            given(accountMapper.findByAccountNoPlain("acc-123")).willReturn(Optional.of(account));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(account));
             given(transactionLedgerMapper.countHistory(anyLong(), anyString(), anyString())).willReturn(5);
             given(transactionLedgerMapper.findHistoryList(anyLong(), anyString(), anyString(), anyInt(), anyInt()))
                     .willReturn(List.of());
@@ -241,7 +246,7 @@ class AccountServiceTest {
                     .accountNo("acc-123")
                     .build();
 
-            given(accountMapper.findByAccountNoPlain("acc-123")).willReturn(Optional.of(account));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(account));
             given(transactionLedgerMapper.countHistory(anyLong(), anyString(), anyString())).willReturn(0);
             given(transactionLedgerMapper.findHistoryList(anyLong(), anyString(), anyString(), anyInt(), anyInt()))
                     .willReturn(List.of());
@@ -316,7 +321,7 @@ class AccountServiceTest {
         void 실패_계좌미존재() {
             // given
             mockDecrypt("invalid-acc", "900101", "홍길동");
-            given(accountMapper.findByAccountNoPlain("invalid-acc")).willReturn(Optional.empty());
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> accountService.getTransactionHistoryList(
@@ -336,7 +341,7 @@ class AccountServiceTest {
                     .customerId(10L)
                     .build();
 
-            given(accountMapper.findByAccountNoPlain("acc-123")).willReturn(Optional.of(account));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(account));
             willThrow(new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND))
                     .given(customerService).verifyCustomerIdentification(anyLong(), eq("800101"), eq("홍길동"));
 
@@ -358,7 +363,7 @@ class AccountServiceTest {
                     .customerId(10L)
                     .build();
 
-            given(accountMapper.findByAccountNoPlain("acc-123")).willReturn(Optional.of(account));
+            given(accountMapper.findByAccountNoHash("test-hash")).willReturn(Optional.of(account));
             willThrow(new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND))
                     .given(customerService).verifyCustomerIdentification(anyLong(), eq("900101"), eq("이순신"));
 
