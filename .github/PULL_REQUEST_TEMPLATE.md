@@ -1,5 +1,5 @@
 ## 🌋 관련 이슈
-closes #
+- closes #
 
 ##  변경 모듈
 - [ ] platform
