@@ -3,10 +3,10 @@ server:
   ssl:
     enabled: true
     client-auth: need # 클라이언트 인증서 필수 (mTLS)
-    key-store: file:${SSL_SERVER_KEYSTORE_PATH}
+    key-store: ${SSL_SERVER_KEYSTORE_PATH}
     key-store-password: ${SSL_SERVER_KEYSTORE_PASSWORD}
     key-store-type: PKCS12
-    trust-store: file:${SSL_TRUSTSTORE_PATH}
+    trust-store: ${SSL_TRUSTSTORE_PATH}
     trust-store-password: ${SSL_TRUSTSTORE_PASSWORD}
     trust-store-type: PKCS12
 
@@ -14,10 +14,10 @@ server:
 ssl:
   server:
     keystore:
-      path: file:${SSL_SERVER_KEYSTORE_PATH}
+      path: ${SSL_SERVER_KEYSTORE_PATH}
       password: ${SSL_SERVER_KEYSTORE_PASSWORD}
   truststore:
-    path: file:${SSL_TRUSTSTORE_PATH}
+    path: ${SSL_TRUSTSTORE_PATH}
     password: ${SSL_TRUSTSTORE_PASSWORD}
 
 bank:
