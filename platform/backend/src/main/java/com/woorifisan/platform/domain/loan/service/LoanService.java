@@ -102,8 +102,8 @@ public class LoanService {
     }
 
     // 심사 서류 조회
-    public LoanRequiredDocumentsResponse getRequiredDocuments(Long staffId) {
-        List<TermsDocumentDto> documents = bankLoanClient.getEvaluationTerms().stream()
+    public LoanRequiredDocumentsResponse getRequiredDocuments(String bankCode, Long staffId) {
+        List<TermsDocumentDto> documents = bankLoanClient.getEvaluationTerms(bankCode).stream()
                 .map(terms -> TermsDocumentDto.builder()
                         .documentType(Objects.toString(terms.get("termsCode"), null))
                         .documentName(Objects.toString(terms.get("title"), null))
@@ -148,7 +148,7 @@ public class LoanService {
         // 4. Bank API 호출 (multipart pass-through)
         // 중복 방지는 IdempotencyFilter(X-Idempotency-Key 키 선점)와
         // Bank 코어의 existsPendingByCustomerId 체크가 담당
-        Map<String, Object> data = bankLoanClient.submitEvaluation(bankData, files);
+        Map<String, Object> data = bankLoanClient.submitEvaluation(bank.getBankCode(), bankData, files);
         String loanNo = Objects.toString(data.get("loanNo"), null);
         String status = Objects.toString(data.get("status"), "SUBMITTED");
         String resPayload = Objects.toString(data.get("resPayload"), null);
@@ -229,10 +229,11 @@ public class LoanService {
     }
 
     // 계약 서류 조회
-    public LoanContractDocumentsResponse getContractDocuments(String loanProductCode,
+    public LoanContractDocumentsResponse getContractDocuments(String bankCode,
+                                                               String loanProductCode,
                                                                String loanNo,
                                                                Long staffId) {
-        List<TermsDocumentDto> documents = bankLoanClient.getContractTerms(loanProductCode, loanNo).stream()
+        List<TermsDocumentDto> documents = bankLoanClient.getContractTerms(bankCode, loanProductCode, loanNo).stream()
                 .map(terms -> TermsDocumentDto.builder()
                         .documentType(Objects.toString(terms.get("termsCode"), null))
                         .documentName(Objects.toString(terms.get("title"), null))
@@ -261,7 +262,7 @@ public class LoanService {
                 .repaymentType(request.getRepaymentType())
                 .build();
 
-        Map<String, Object> data = bankLoanClient.executeLoan(bankRequest);
+        Map<String, Object> data = bankLoanClient.executeLoan(request.getBankCode(), bankRequest);
 
         // Bank 응답 → Platform 응답 DTO 변환 (Pass-through)
         return LoanExecuteResponse.builder()

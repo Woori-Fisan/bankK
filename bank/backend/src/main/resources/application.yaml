@@ -82,7 +82,11 @@ springdoc:
 # 은행 간 네트워크 설정
 bank-network:
   banks:
-    "088": # 신한은행 (예시)
-      base-url: http://localhost:9090
+    "020":
+      base-url: ${WOORI_BANK_URL:http://localhost:8081}
+    "088": # 신한은행
+      base-url: ${SHINHAN_BANK_URL:http://localhost:9090}
+    "004": # 국민은행
+      base-url: ${KB_BANK_URL:http://localhost:9091}
 
 

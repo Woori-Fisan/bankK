@@ -78,10 +78,10 @@ class LoanControllerTest {
                 .documents(List.of(doc))
                 .build();
 
-        given(loanService.getRequiredDocuments(any())).willReturn(response);
+        given(loanService.getRequiredDocuments(anyString(), any())).willReturn(response);
 
         // when & then
-        mockMvc.perform(get("/api/v1/loan/review/documents"))
+        mockMvc.perform(get("/api/v1/loan/review/documents?bankCode=020"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.documents[0].documentType").value("CREDIT_INFO_AGREE"))
@@ -218,10 +218,10 @@ class LoanControllerTest {
                 .documents(List.of(doc))
                 .build();
 
-        given(loanService.getContractDocuments(anyString(), anyString(), any())).willReturn(response);
+        given(loanService.getContractDocuments(anyString(), anyString(), anyString(), any())).willReturn(response);
 
         // when & then
-        mockMvc.perform(get("/api/v1/loan/contract/documents/{productCode}/{loanNo}",
+        mockMvc.perform(get("/api/v1/loan/contract/documents/{productCode}/{loanNo}?bankCode=020",
                         "100", "LOAN-2026-001"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -239,6 +239,7 @@ class LoanControllerTest {
     void 대출_실행_성공() throws Exception {
         // given
         LoanExecuteRequest request = LoanExecuteRequest.builder()
+                .bankCode("020")
                 .loanNo("LOAN-2026-001")
                 .productId(1L)
                 .executeAmount(new BigDecimal("30000000"))
@@ -289,6 +290,7 @@ class LoanControllerTest {
     void 대출_실행_실패_은행API_오류() throws Exception {
         // given
         LoanExecuteRequest request = LoanExecuteRequest.builder()
+                .bankCode("020")
                 .loanNo("LOAN-2026-001")
                 .productId(1L)
                 .executeAmount(new BigDecimal("30000000"))

@@ -50,16 +50,21 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
     const [viewedDocs, setViewedDocs] = useState<Set<string>>(new Set());
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-    const { data: docsData, isLoading: isDocsLoading } = useReviewDocuments();
+    const { data: docsData, isLoading: isDocsLoading } = useReviewDocuments(formData.bankCode);
     const { data: bankList } = useBankList();
     const submitMutation = useSubmitLoanEvaluation();
 
+    // bankCode가 바뀌면 이전 약관 동의 상태 리셋
     useEffect(() => {
-        // 이미 데이터가 초기화된 경우(agreedDocs.length > 0) 재설정 방지
-        if (docsData?.documents && agreedDocs.length === 0) {
+        setAgreedDocs([]);
+        setViewedDocs(new Set());
+    }, [formData.bankCode]);
+
+    useEffect(() => {
+        if (docsData?.documents) {
             setAgreedDocs(docsData.documents.map((d) => ({ ...d, agreed: false })));
         }
-    }, [docsData, agreedDocs.length]);
+    }, [docsData]);
 
     const handleTermToggle = (documentType: string) => {
         setAgreedDocs((prev) =>

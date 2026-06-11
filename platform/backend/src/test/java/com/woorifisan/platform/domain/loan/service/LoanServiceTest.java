@@ -106,9 +106,9 @@ class LoanServiceTest {
         termsMap.put("termsContent", "<html>동의서 내용</html>");
         termsMap.put("isMandatory", true);
 
-        when(bankLoanClient.getEvaluationTerms()).thenReturn(List.of(termsMap));
+        when(bankLoanClient.getEvaluationTerms("020")).thenReturn(List.of(termsMap));
 
-        LoanRequiredDocumentsResponse response = loanService.getRequiredDocuments(1L);
+        LoanRequiredDocumentsResponse response = loanService.getRequiredDocuments("020", 1L);
 
         assertThat(response.getDocuments()).hasSize(1);
         assertThat(response.getDocuments().get(0).getDocumentType()).isEqualTo("CREDIT_INFO_AGREE");
@@ -119,9 +119,9 @@ class LoanServiceTest {
     @Test
     @DisplayName("심사 서류 조회 - Bank API가 빈 목록 반환 시 빈 리스트 응답")
     void 심사_서류_조회_빈_목록() {
-        when(bankLoanClient.getEvaluationTerms()).thenReturn(List.of());
+        when(bankLoanClient.getEvaluationTerms("020")).thenReturn(List.of());
 
-        LoanRequiredDocumentsResponse response = loanService.getRequiredDocuments(1L);
+        LoanRequiredDocumentsResponse response = loanService.getRequiredDocuments("020", 1L);
 
         assertThat(response.getDocuments()).isEmpty();
     }
@@ -135,7 +135,7 @@ class LoanServiceTest {
     void 심사_신청_성공() {
         Bank activeBank = Bank.builder().bankCode("020").bankName("우리은행").isActive(true).build();
         when(bankMapper.findByBankCode("020")).thenReturn(Optional.of(activeBank));
-        when(bankLoanClient.submitEvaluation(any(), anyList()))
+        when(bankLoanClient.submitEvaluation(anyString(), any(), anyList()))
                 .thenReturn(Map.of("loanNo", "LOAN-2026-001", "status", "SUBMITTED"));
 
         LoanEvaluateResponse response = loanService.evaluateLoan(defaultEvaluateRequest().build(), List.of(), 1L);
@@ -149,7 +149,7 @@ class LoanServiceTest {
     void 심사_신청_성공_금액기간_null_시_기본값_적용() {
         Bank activeBank = Bank.builder().bankCode("020").bankName("우리은행").isActive(true).build();
         when(bankMapper.findByBankCode("020")).thenReturn(Optional.of(activeBank));
-        when(bankLoanClient.submitEvaluation(any(), anyList()))
+        when(bankLoanClient.submitEvaluation(anyString(), any(), anyList()))
                 .thenReturn(Map.of("loanNo", "LOAN-2026-001", "status", "SUBMITTED"));
 
         LoanEvaluateRequest request = defaultEvaluateRequest()
@@ -160,7 +160,7 @@ class LoanServiceTest {
         loanService.evaluateLoan(request, List.of(), 1L);
 
         ArgumentCaptor<BankLoanEvaluateRequest> captor = ArgumentCaptor.forClass(BankLoanEvaluateRequest.class);
-        verify(bankLoanClient).submitEvaluation(captor.capture(), anyList());
+        verify(bankLoanClient).submitEvaluation(eq("020"), captor.capture(), anyList());
         assertThat(captor.getValue().getRequestedAmount()).isEqualByComparingTo(new BigDecimal("100000000"));
         assertThat(captor.getValue().getRequestedPeriod()).isEqualTo(60);
     }
@@ -299,9 +299,9 @@ class LoanServiceTest {
         termsMap.put("title", "대출거래약정서");
         termsMap.put("isMandatory", true);
 
-        when(bankLoanClient.getContractTerms("100", "LOAN-001")).thenReturn(List.of(termsMap));
+        when(bankLoanClient.getContractTerms("020", "100", "LOAN-001")).thenReturn(List.of(termsMap));
 
-        LoanContractDocumentsResponse response = loanService.getContractDocuments("100", "LOAN-001", 1L);
+        LoanContractDocumentsResponse response = loanService.getContractDocuments("020", "100", "LOAN-001", 1L);
 
         assertThat(response.getLoanProductCode()).isEqualTo("100");
         assertThat(response.getDocuments()).hasSize(1);
@@ -316,7 +316,7 @@ class LoanServiceTest {
     @Test
     @DisplayName("대출 실행 실패 - 은행이 비밀번호 오류를 반환하면 그대로 전파 (시나리오 5a)")
     void 대출_실행_실패_비밀번호오류() {
-        when(bankLoanClient.executeLoan(any(BankLoanExecuteRequest.class)))
+        when(bankLoanClient.executeLoan(anyString(), any()))
                 .thenThrow(new BusinessException(ErrorCode.BANK_PW_ERROR));
 
         assertThatThrownBy(() -> loanService.executeLoan(defaultExecuteRequest(), 1L))
@@ -336,7 +336,7 @@ class LoanServiceTest {
         bankResponse.put("startDate", "2026-07-15");
         bankResponse.put("endDate", "2029-06-15");
 
-        when(bankLoanClient.executeLoan(any(BankLoanExecuteRequest.class))).thenReturn(bankResponse);
+        when(bankLoanClient.executeLoan(anyString(), any())).thenReturn(bankResponse);
 
         LoanExecuteResponse response = loanService.executeLoan(defaultExecuteRequest(), 1L);
 
@@ -407,6 +407,7 @@ class LoanServiceTest {
 
     private LoanExecuteRequest defaultExecuteRequest() {
         return LoanExecuteRequest.builder()
+                .bankCode("020")
                 .loanNo("LOAN-2026-001")
                 .productId(100L)
                 .executeAmount(new BigDecimal("30000000"))
