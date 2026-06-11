@@ -79,10 +79,13 @@ public class SecurityConfig {
         List<UserDetails> users = new ArrayList<>();
         Set<String> usernames = new HashSet<>();
 
+        // mTLS용 더미 비밀번호를 한 번만 인코딩하여 재사용 (기동 성능 최적화)
+        String encodedPassword = passwordEncoder().encode("mtls-password");
+
         // 1. 플랫폼 클라이언트 등록
         String platformUser = "platformClient";
         users.add(User.withUsername(platformUser)
-                .password(passwordEncoder().encode("mtls-password"))
+                .password(encodedPassword)
                 .roles("PLATFORM")
                 .build());
         usernames.add(platformUser);
@@ -94,13 +97,13 @@ public class SecurityConfig {
                     String host = URI.create(property.getBaseUrl()).getHost();
                     if (host != null && !usernames.contains(host)) {
                         users.add(User.withUsername(host)
-                                .password(passwordEncoder().encode("mtls-password"))
+                                .password(encodedPassword)
                                 .roles("BANK")
                                 .build());
                         usernames.add(host); // 중복 등록 방지
                     }
                 } catch (Exception e) {
-                    // 잘못된 URL 형식은 무시
+                    // 잘못된 URL 형식 무시
                 }
             });
         }
