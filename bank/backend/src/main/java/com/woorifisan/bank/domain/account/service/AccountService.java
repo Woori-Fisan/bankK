@@ -61,6 +61,9 @@ public class AccountService {
 
         // 2. 계좌 조회 (Blind Index 활용)
         // 평문 계좌번호를 해싱하여 DB의 account_no_hash 컬럼과 매칭합니다.
+        if (decryptedData.getAccountNo() == null || decryptedData.getAccountNo().isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
         Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(decryptedData.getAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
 

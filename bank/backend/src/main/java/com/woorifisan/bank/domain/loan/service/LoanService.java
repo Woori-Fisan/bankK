@@ -125,10 +125,18 @@ public class LoanService {
         }
 
         // 4. 입금 대상 계좌 조회 및 상태 확인 (Blind Index 활용)
+        if (decrypted.getDepositAccountNo() == null || decrypted.getDepositAccountNo().isBlank()) {
+            throw new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND);
+        }
         Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(decrypted.getDepositAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
-        if (!"NORMAL".equals(account.getStatus())) {
+        if ("LOCKED".equals(account.getStatus())) {
+            throw new BusinessException(ErrorCode.LOAN_ACCOUNT_LOCKED);
+        } else if (!"NORMAL".equals(account.getStatus())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_ABNORMAL);
+        }
+        if (!"DEPOSIT".equals(account.getAccountType())) {
+            throw new BusinessException(ErrorCode.LOAN_ACCOUNT_INVALID_TYPE);
         }
 
         // 5. 계좌 소유자와 신청 고객 정보 일치 여부 확인 (본인 확인)
@@ -328,6 +336,9 @@ public class LoanService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
 
         // 복호화된 계좌번호와 원장의 연결 계좌번호 일치 확인
+        if (decrypted.getDepositAccountNo() == null || decrypted.getDepositAccountNo().isBlank()) {
+            throw new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND);
+        }
         if (!account.getAccountNoHash().equals(cryptoUtil.hash(decrypted.getDepositAccountNo()))) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND);
         }

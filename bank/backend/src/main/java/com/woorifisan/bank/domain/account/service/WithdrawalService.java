@@ -60,6 +60,9 @@ public class WithdrawalService {
         account = accountMapper.findByIdForUpdate(account.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
         
+        if (!"DEPOSIT".equals(account.getAccountType())) {
+            throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
+        }
         if (!"NORMAL".equals(account.getStatus())) {
             throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
         }

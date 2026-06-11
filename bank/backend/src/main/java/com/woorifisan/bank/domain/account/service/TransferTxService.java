@@ -78,6 +78,9 @@ public class TransferTxService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         
         // 락 획득 후 상태 재검증 (Double-Check)
+        if (!"DEPOSIT".equals(sender.getAccountType())) {
+            throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
+        }
         if (!"NORMAL".equals(sender.getStatus())) {
             throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
         }
