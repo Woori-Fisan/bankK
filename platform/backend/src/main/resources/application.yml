@@ -57,26 +57,6 @@ spring:
       initialize-schema: always   # 운영 전환 시 never로 변경
       baseline-on-migrate: true
 
-  # Spring AI — Gemini (Vertex AI)
-#  ai:
-#    vertex:
-#      ai:
-#        gemini:
-#          project-id: ${GCP_PROJECT_ID}
-#          location: us-central1
-#          chat:
-#            options:
-#              model: gemini-1.5-pro
-#          embedding:
-#            options:
-#              model: text-embedding-004
-#    vectorstore:
-#      qdrant:
-#        host: ${QDRANT_HOST:localhost}
-#        port: ${QDRANT_PORT:6334}
-#        collection-name: agency-docs
-#        initialize-schema: true
-
 # MyBatis
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
@@ -91,12 +71,14 @@ jwt:
   access-expiration: 600000       # 10분 (ms)
   refresh-expiration: 3600000    # 1시간 (ms)
 
-# mTLS 인증서 경로
-#mtls:
-#  keystore-path: ${MTLS_KEYSTORE_PATH}
-#  keystore-password: ${MTLS_KEYSTORE_PASSWORD}
-#  truststore-path: ${MTLS_TRUSTSTORE_PATH}
-#  truststore-password: ${MTLS_TRUSTSTORE_PASSWORD}
+# mTLS 인증서 설정
+ssl:
+  keystore:
+    path: file:${SSL_KEYSTORE_PATH}
+    password: ${SSL_KEYSTORE_PASSWORD}
+  truststore:
+    path: file:${SSL_TRUSTSTORE_PATH}
+    password: ${SSL_TRUSTSTORE_PASSWORD}
 
 # Actuator / Prometheus
 management:
@@ -133,41 +115,59 @@ logging:
     path: ${LOGGING_PATH:./logs}
 
 bank:
-  core:
-    url: ${BANK_SERVER_URL:http://localhost:8081}
-    endpoints:
-      evaluation-terms: "/api/v1/loan/evaluation/terms"
-      evaluation: "/api/v1/loan/evaluation"
-      contract-terms: "/api/v1/loan/contract/terms"
-      execution: "/api/v1/loan/execution"
   webhook:
     # [신규] Bank → Platform 콜백 요청 헤더(X-Webhook-Secret)의 인증 비밀키.
     # Bank와 Platform 양쪽에서 동일한 WEBHOOK_SECRET 환경변수를 설정해야 검증이 통과된다.
     secret: ${WEBHOOK_SECRET:dev-secret}
   urls:
     "020":
-      base-url: ${WOORI_BASE_URL:http://localhost:8081/api/v1/baas}
+      base-url: ${WOORI_BASE_URL}
       endpoints:
-        balance: "/account/balance"
-        history: "/account/transactions"
-        withdraw: "/transfer/withdraw"
-        withdrawal: "/transfer/withdrawal"
-        deposit: "/transfer/deposit"
-        recipient: "/transfer/recipient"
-        refund: "/transfer/refund"
-        execute: "/transfer/execute"
-        transfer: "/transfer"
-        public-key: "/keys/public"
-#    "088":
-#      base-url: http://localhost:9090/api/v1/baas
-#      endpoints:
-#        balance: "/account/balance"
-#        history: "/account/transactions"
-#        withdraw: "/transfer/withdraw"
-#        withdrawal: "/transfer/withdrawal"
-#        deposit: "/transfer/deposit"
-#        recipient: "/transfer/recipient"
-#        refund: "/transfer/refund"
-#        execute: "/transfer/execute"
-#        transfer: "/transfer"
-#        public-key: "/keys/public"
+        balance: "/baas/account/balance"
+        history: "/baas/account/transactions"
+        withdraw: "/baas/transfer/withdraw"
+        withdrawal: "/baas/transfer/withdrawal"
+        deposit: "/baas/transfer/deposit"
+        recipient: "/baas/transfer/recipient"
+        refund: "/baas/transfer/refund"
+        execute: "/baas/transfer/execute"
+        transfer: "/baas/transfer"
+        public-key: "/baas/keys/public"
+        evaluation-terms: "/loan/evaluation/terms"
+        evaluation: "/loan/evaluation"
+        contract-terms: "/loan/contract/terms"
+        execution: "/loan/execution"
+    "088":
+      base-url: ${SHINHAN_BASE_URL}
+      endpoints:
+        balance: "/baas/account/balance"
+        history: "/baas/account/transactions"
+        withdraw: "/baas/transfer/withdraw"
+        withdrawal: "/baas/transfer/withdrawal"
+        deposit: "/baas/transfer/deposit"
+        recipient: "/baas/transfer/recipient"
+        refund: "/baas/transfer/refund"
+        execute: "/baas/transfer/execute"
+        transfer: "/baas/transfer"
+        public-key: "/baas/keys/public"
+        evaluation-terms: "/loan/evaluation/terms"
+        evaluation: "/loan/evaluation"
+        contract-terms: "/loan/contract/terms"
+        execution: "/loan/execution"
+    "004":
+      base-url: ${KB_BASE_URL}
+      endpoints:
+        balance: "/baas/account/balance"
+        history: "/baas/account/transactions"
+        withdraw: "/baas/transfer/withdraw"
+        withdrawal: "/baas/transfer/withdrawal"
+        deposit: "/baas/transfer/deposit"
+        recipient: "/baas/transfer/recipient"
+        refund: "/baas/transfer/refund"
+        execute: "/baas/transfer/execute"
+        transfer: "/baas/transfer"
+        public-key: "/baas/keys/public"
+        evaluation-terms: "/loan/evaluation/terms"
+        evaluation: "/loan/evaluation"
+        contract-terms: "/loan/contract/terms"
+        execution: "/loan/execution"

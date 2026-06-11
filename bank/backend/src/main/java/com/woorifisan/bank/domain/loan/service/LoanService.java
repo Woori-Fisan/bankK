@@ -26,6 +26,7 @@ import com.woorifisan.bank.domain.terms.mapper.BankTermsMapper;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
+import com.woorifisan.bank.global.util.CryptoUtil;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -68,6 +69,7 @@ public class LoanService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final LoanReviewAsyncService loanReviewAsyncService;
     private final SecurityService securityService;
+    private final CryptoUtil cryptoUtil;
 
     // 심사 약관 조회
     @Transactional(readOnly = true)
@@ -94,38 +96,39 @@ public class LoanService {
     }
 
     // 대출 접수 (동기) + 비동기 심사 시작
-    // 이 메서드는 빠르게 반환하고 실제 심사는 processReview() 가 @Async 로 처리하기!
     @Transactional
     public LoanAcceptResponse acceptLoan(LoanEvaluateRequest request, List<MultipartFile> files) {
 
-        // 0. 복호화 및 민감 정보 획득 (CEK 추출 포함)
+        // 0. E2EE 복호화 및 세션키(CEK) 추출
         SecurityService.DecryptionResult<DecryptedLoanEvaluateRequest> result =
                 securityService.decryptWithKey(request, DecryptedLoanEvaluateRequest.class);
         DecryptedLoanEvaluateRequest decrypted = result.getData();
         final SecretKey cek = result.getCek();
 
-        // 1. 약관 동의 플래그 검증 — 세 가지 모두 true 여야 접수 가능
+        // 1. 약관 동의 여부 및 필수 입력값 검증
         if (!Boolean.TRUE.equals(request.getIsCreditInfoAgreed())
                 || !Boolean.TRUE.equals(request.getIsProductTermsAgreed())
                 || !Boolean.TRUE.equals(request.getIsDocumentCollected())) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
         
-        // 대출 기간 0 이하면 금융 계산(DSR, 월납입금)이 0으로 흘러 잘못된 승인이 날 수 있음
         if (request.getRequestedPeriod() == null || request.getRequestedPeriod() <= 0) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
-        // 2. 파일명 기반 서류 종류 검증 (신분증, 재직증명서, 원천징수, 건강보험)
+        // 2. 파일명 기반 필수 서류 누락 여부 검증
         validateFileNames(files);
 
-        // 3. 입금 계좌 은행이 이 Bank 인지 확인. 타행 계좌로는 입금 불가
+        // 3. 입금 계좌 은행 코드 확인 (당행 계좌만 가능)
         if (!Objects.equals(bankCode, request.getDepositBankCode())) {
             throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH);
         }
 
-        // 4. 입금 계좌 조회 및 상태 확인
-        Account account = accountMapper.findByAccountNoPlain(decrypted.getDepositAccountNo())
+        // 4. 입금 대상 계좌 조회 및 상태 확인 (Blind Index 활용)
+        if (decrypted.getDepositAccountNo() == null || decrypted.getDepositAccountNo().isBlank()) {
+            throw new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND);
+        }
+        Account account = accountMapper.findByAccountNoHash(cryptoUtil.hash(decrypted.getDepositAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
         if ("LOCKED".equals(account.getStatus())) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_LOCKED);
@@ -136,7 +139,7 @@ public class LoanService {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_INVALID_TYPE);
         }
 
-        // 5. 계좌 소유자와 요청 고객 정보 일치 여부 확인 (본인 확인)
+        // 5. 계좌 소유자와 신청 고객 정보 일치 여부 확인 (본인 확인)
         Customer customer = customerMapper.findById(account.getCustomerId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_CUSTOMER_NOT_FOUND));
         if (!customer.getRrnPrefix().equals(decrypted.getCustomerRrnPrefix())
@@ -144,17 +147,17 @@ public class LoanService {
             throw new BusinessException(ErrorCode.LOAN_CUSTOMER_IDENTITY_MISMATCH);
         }
 
-        // 6. 동일 고객의 SUBMITTED 건 존재 시 중복 신청 차단
+        // 6. 중복 신청 방지 (진행 중인 심사 건 확인)
         if (loanLedgerMapper.existsPendingByCustomerId(customer.getId())) {
             throw new BusinessException(ErrorCode.LOAN_DUPLICATE_PENDING);
         }
 
         String loanNo = generateLoanNo();
 
-        // 7. 파일을 on-premises 스토리지에 저장 (E2EE 복호화 포함). 실패 시 저장된 파일 cleanup 후 예외
+        // 7. 대출 증빙 서류 저장 (E2EE 복호화 및 파일 무결성 검사 포함)
         List<Path> savedPaths = saveFiles(loanNo, files, cek);
 
-        // 8. loan_ledger SUBMITTED 상태로 생성
+        // 8. 대출 원장(loan_ledger) 생성 (최초 상태: SUBMITTED)
         LoanLedger ledger = LoanLedger.builder()
                 .loanNo(loanNo)
                 .customerId(customer.getId())
@@ -168,7 +171,7 @@ public class LoanService {
                 .build();
         loanLedgerMapper.insert(ledger);
 
-        // 9. common_document 에 저장된 파일 경로 기록
+        // 9. 서류 메타데이터 기록
         for (int i = 0; i < files.size(); i++) {
             commonDocumentMapper.insertDocument(CommonDocument.ofLoan(
                     ledger.getId(),
@@ -179,10 +182,8 @@ public class LoanService {
 
         log.info("[접수] 대출 접수 완료 - loanNo: {}, requestKey: {}", loanNo, request.getRequestKey());
 
-        // 10. 트랜잭션 커밋 후 비동기 심사 시작.
-        // @Transactional 메서드 안에서 @Async를 바로 호출하면 커밋 전에 다른 스레드가 실행되어
-        // findByLoanNo 조회 시 아직 INSERT가 반영되지 않은 상태일 수 있음 (race condition).
-        // afterCommit()으로 DB에 loan_ledger가 확정된 뒤에 심사 스레드를 시작한다.
+        // 10. 트랜잭션 커밋 후 비동기 심사 프로세스 시작
+        // race condition 방지를 위해 TransactionSynchronizationManager를 사용하여 커밋 성공 시에만 심사 스레드를 실행합니다.
         final String finalLoanNo = loanNo;
         final String finalRequestKey = request.getRequestKey();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -198,8 +199,7 @@ public class LoanService {
                 .build();
     }
 
-    // 파일을 {documentStoragePath}/{loanNo}/ 경로에 저장
-    // 중간에 실패하면 이미 저장된 파일을 모두 삭제하고 예외 던지기
+    // 파일 저장 로직 (E2EE 복호화 및 보안 검사)
     private List<Path> saveFiles(String loanNo, List<MultipartFile> files, SecretKey cek) {
         List<Path> savedPaths = new ArrayList<>();
         Path loanDir = Paths.get(documentStoragePath, loanNo);
@@ -210,7 +210,7 @@ public class LoanService {
         }
 
         for (MultipartFile file : files) {
-            // Paths.get().getFileName()으로 경로 컴포넌트 제거 — Path Traversal(CWE-22) 방지
+            // Path Traversal 방지를 위한 파일명 정제
             String originalFilename = file.getOriginalFilename();
             String cleanFileName = (originalFilename != null)
                     ? Paths.get(originalFilename).getFileName().toString()
@@ -219,11 +219,12 @@ public class LoanService {
             Path target = loanDir.resolve(fileName);
 
             try {
-                // E2EE 복호화: MultipartFile에서 바이트 배열을 읽어 복호화 수행
+                // 1. 암호화된 파일 바이트 읽기
                 byte[] encryptedBytes = file.getBytes();
+                // 2. 세션키(CEK)로 파일 복호화
                 byte[] decryptedBytes = securityService.decryptFile(encryptedBytes, cek);
 
-                // 복호화 후 매직 바이트 검사: %PDF- (0x25 0x50 0x44 0x46 0x2D)
+                // 3. 파일 매직 바이트(Magic Byte) 검사 - PDF 형식(%PDF-) 여부 확인
                 if (decryptedBytes.length < 5
                         || decryptedBytes[0] != 0x25 || decryptedBytes[1] != 0x50
                         || decryptedBytes[2] != 0x44 || decryptedBytes[3] != 0x46
@@ -231,17 +232,17 @@ public class LoanService {
                     throw new BusinessException(ErrorCode.LOAN_INVALID_FILE);
                 }
 
-                // 복호화된 원본 데이터를 파일로 저장
+                // 4. 복호화된 원본 데이터를 내부 저장소에 기록
                 Files.write(target, decryptedBytes);
                 savedPaths.add(target);
             } catch (BusinessException e) {
+                // 실패 시 이미 저장된 파일들 cleanup
                 savedPaths.forEach(p -> {
                     try { Files.deleteIfExists(p); } catch (IOException ignored) {}
                 });
                 try { Files.deleteIfExists(loanDir); } catch (IOException ignored) {}
                 throw e;
             } catch (IOException | RuntimeException e) {
-                // 저장 성공한 파일들 전부 삭제 후 예외
                 savedPaths.forEach(p -> {
                     try { Files.deleteIfExists(p); } catch (IOException ignored) {}
                 });
@@ -335,7 +336,10 @@ public class LoanService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND));
 
         // 복호화된 계좌번호와 원장의 연결 계좌번호 일치 확인
-        if (!account.getAccountNo().equals(decrypted.getDepositAccountNo())) {
+        if (decrypted.getDepositAccountNo() == null || decrypted.getDepositAccountNo().isBlank()) {
+            throw new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND);
+        }
+        if (!account.getAccountNoHash().equals(cryptoUtil.hash(decrypted.getDepositAccountNo()))) {
             throw new BusinessException(ErrorCode.LOAN_ACCOUNT_NOT_FOUND);
         }
 

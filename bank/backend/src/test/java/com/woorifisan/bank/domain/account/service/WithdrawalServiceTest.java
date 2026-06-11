@@ -87,7 +87,7 @@ class WithdrawalServiceTest {
         assertThat(response.getBalanceAfter()).isEqualByComparingTo(new BigDecimal("70000.00"));
 
         // DB 잔액 확인
-        Account updatedAccount = accountMapper.findByAccountNoPlain("acc-100").get();
+        Account updatedAccount = accountMapper.findByAccountNoHash("3cd7whssUTnYWEce9xWeyhZnuUVcd+fukhzcEs3wOg0=").get();
         assertThat(updatedAccount.getBalance()).isEqualByComparingTo(new BigDecimal("70000.00"));
     }
 
