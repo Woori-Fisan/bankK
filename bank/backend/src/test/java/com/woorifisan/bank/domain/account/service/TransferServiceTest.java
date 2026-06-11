@@ -50,6 +50,10 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+/**
+ * 통합 이체 서비스(TransferService) 단위 테스트
+ * - 이체 흐름 제어(코디네이터) 및 보상 트랜잭션(환불) 로직을 검증합니다.
+ */
 @ExtendWith(MockitoExtension.class)
 class TransferServiceTest {
 

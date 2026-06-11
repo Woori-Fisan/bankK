@@ -1,18 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.woorifisan.bank.domain.account.mapper.AccountMapper">
+    <!-- ID로 계좌 단건 조회 -->
     <select id="findById" resultType="com.woorifisan.bank.domain.account.model.Account">
         SELECT * FROM account WHERE id = #{id}
     </select>
 
+    <!-- ID로 계좌 조회 (비관적 락 적용) -->
     <select id="findByIdForUpdate" resultType="Account">
         SELECT * FROM account WHERE id = #{id} FOR UPDATE
     </select>
 
+    <!-- 계좌번호 해시값으로 계좌 조회 (Blind Index) -->
     <select id="findByAccountNoHash" resultType="Account">
         SELECT * FROM account WHERE account_no_hash = #{accountNoHash}
     </select>
 
+    <!-- 계좌번호 해시와 주민번호 앞자리로 계좌 및 고객 정보 조인 조회 -->
     <select id="findByAccountNoHashAndRrnPrefix" resultType="Account">
         SELECT a.*
         FROM account a
@@ -21,6 +25,7 @@
           AND c.rrn_prefix = #{rrnPrefix}
     </select>
 
+    <!-- 잔액 업데이트 (원자적 연산) -->
     <update id="updateBalance">
         UPDATE account
         SET balance = balance + #{amount},

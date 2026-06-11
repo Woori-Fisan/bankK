@@ -42,47 +42,45 @@ public class TransferTxService {
 
     /**
      * 출금 이체 실행 (독립 트랜잭션)
-     * - 중복 복호화 방지를 위해 이미 복호화된 DecryptedWithdrawData와 cek를 직접 파라미터로 전달받습니다.
+     * - Propagation.REQUIRES_NEW를 통해 호출 측의 트랜잭션과 분리하여 즉시 커밋합니다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public TransferResponse withdrawTransfer(TransferRequest request, DecryptedWithdrawData decryptedData, javax.crypto.SecretKey cek) {
         log.info("출금 이체 실행 (독립 트랜잭션) - 출금은행: {}, 입금은행: {}, 금액: {}", 
                 request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
 
-        // 1. 계좌 조회 및 검증
+        // 1. 계좌 조회 및 검증 (Blind Index 활용)
         Account sender = accountMapper.findByAccountNoHash(cryptoUtil.hash(decryptedData.getWithdrawalAccountNo()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         
+        // 고객 식별 정보 확인
         customerService.verifyCustomerIdentification(sender.getCustomerId(), decryptedData.getCustomerRrnPrefix(), decryptedData.getCustomerName());
         
+        // 계좌 비밀번호(bcrypt) 검증
         if (!passwordEncoder.matches(decryptedData.getWithdrawalPassword(), sender.getPassword())) {
             throw new BusinessException(ErrorCode.BANK_PW_ERROR);
         }
 
+        // 계좌 유형 및 상태, 잔액 1차 확인
         if (!"DEPOSIT".equals(sender.getAccountType())) {
             throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
         }
-
         if (!"NORMAL".equals(sender.getStatus())) {
             throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
         }
-
         if (sender.getBalance().compareTo(request.getAmount()) < 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
-        // 2. 잔액 업데이트 (비관적 락 적용을 위해 다시 조회)
+        // 2. 잔액 업데이트 (비관적 락 적용 - FOR UPDATE)
+        // 실제 금액 차감 전 해당 레코드에 락을 획득하여 동시 수정을 방지합니다.
         sender = accountMapper.findByIdForUpdate(sender.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.BANK_NOT_FOUND));
         
-        if (!"DEPOSIT".equals(sender.getAccountType())) {
-            throw new BusinessException(ErrorCode.INVALID_ACCOUNT_TYPE);
-        }
-        
+        // 락 획득 후 상태 재검증 (Double-Check)
         if (!"NORMAL".equals(sender.getStatus())) {
             throw new BusinessException(ErrorCode.ACCOUNT_NOT_NORMAL);
         }
-        
         if (sender.getBalance().compareTo(request.getAmount()) < 0) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
@@ -104,7 +102,7 @@ public class TransferTxService {
                 "PENDING"
         ));
 
-        // 4. 결과 암호화
+        // 4. 결과 암호화 (추출된 CEK 사용)
         TransferResponse.SensitiveData sensitiveData = TransferResponse.SensitiveData.builder()
                 .balanceAfter(newBalance)
                 .build();
