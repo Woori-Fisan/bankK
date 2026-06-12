@@ -25,15 +25,6 @@ public class BizLogController {
     public ResponseEntity<Void> receiveBizLogs(@RequestBody List<BizLogRequest> logs) {
         logs.stream()
                 .filter(req -> req != null && req.getHttp() != null && req.getHttp().getLogType() != null)
-                .filter(req -> {
-                    String uri = req.getHttp().getHttpUri();
-                    if (uri == null) return true;
-                    return !(uri.startsWith("/api/v1/auth") ||
-                             uri.startsWith("/api/v1/banks") ||
-                             uri.startsWith("/api/v1/keys") ||
-                             uri.startsWith("/api/v1/rag") ||
-                             uri.contains("/keys/public")); // 은행 공개키 조회 연동 로그도 제외
-                })
                 .map(BizLogRequest::toInsertDTO)
                 .forEach(bizLogBuffer::offer);
         return ResponseEntity.ok().build();

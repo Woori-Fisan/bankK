@@ -47,7 +47,10 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 );
 
 const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
-    const isTransfer = log.httpUri?.toLowerCase().includes('transfer') ?? false;
+    const uri = log.httpUri?.toLowerCase() ?? '';
+    const isTransfer = uri.includes('transfer') && !uri.includes('recipient');
+    const isRequestLog = log.logType === 'CONTROLLER_REQ' || log.logType === 'BANK_REQ';
+    const isBankLog = log.logType === 'BANK_REQ' || log.logType === 'BANK_RES' || log.logType === 'BANK_ERR';
 
     const exportToPdf = () => {
         const doc = new jsPDF();
@@ -181,16 +184,20 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
 
                     <Section title="HTTP">
                         <Field label="메서드" value={log.httpMethod} />
-                        <Field
-                            label="상태 코드"
-                            value={
-                                <span className={`font-bold ${httpStatusColor(log.httpStatus)}`}>
-                                    {log.httpStatus}
-                                </span>
-                            }
-                        />
-                        <Field label="소요 시간" value={`${log.elapsedMs} ms`} />
-                        <Field label="클라이언트 IP" value={log.clientIp} mono />
+                        {!isRequestLog && (
+                            <Field
+                                label="상태 코드"
+                                value={
+                                    <span className={`font-bold ${httpStatusColor(log.httpStatus)}`}>
+                                        {log.httpStatus}
+                                    </span>
+                                }
+                            />
+                        )}
+                        {!isRequestLog && (
+                            <Field label="소요 시간" value={`${log.elapsedMs} ms`} />
+                        )}
+                        {!isBankLog && <Field label="클라이언트 IP" value={log.clientIp} mono />}
                         <Field label="요청 URI" value={log.httpUri} full mono />
                     </Section>
 
