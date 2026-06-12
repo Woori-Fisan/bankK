@@ -1,5 +1,5 @@
-import { AlertCircle } from 'lucide-react';
 import { isValidAccountNumber } from '../../utils/validator';
+import ErrorAlert from '../common/ErrorAlert';
 import { fetchBankList, type BankOption } from '../../api/loanApi';
 import PageHeader from '../common/PageHeader';
 import { useEffect, useState } from 'react';
@@ -100,12 +100,7 @@ const AccountInputStep: React.FC<AccountInputStepProps> = ({ onNext, apiError, c
                     description="조회하실 계좌의 정보를 정확히 입력해 주세요."
                 />
 
-                {apiError && (
-                    <div className="mb-6 flex items-center gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100 max-w-4xl mx-auto">
-                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                        <span className="text-sm font-bold">{apiError}</span>
-                    </div>
-                )}
+                <ErrorAlert message={apiError} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-8">

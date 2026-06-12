@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, ChevronLeft } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import BalanceSummary from '../components/account/BalanceSummary';
 import TransactionFilter from '../components/account/TransactionFilter';
 import type { FilterState } from '../components/account/TransactionFilter';
@@ -9,6 +9,7 @@ import AccountInputStep from '../components/account/AccountInputStep';
 import { fetchBalance, fetchTransactionHistory } from '../api/inquiry';
 import PageHeader from '../components/common/PageHeader';
 import { Button } from '../components/common/Button';
+import ErrorAlert from '../components/common/ErrorAlert';
 
 const AccountInquiry: React.FC = () => {
     // 1. 단계 관리 상태 (1: 정보 입력, 2: 조회 결과)
@@ -164,13 +165,7 @@ const AccountInquiry: React.FC = () => {
                 }
             />
 
-            {/* Step 2 에러 배너 추가 */}
-            {apiError && (
-                <div className="mb-6 flex items-center gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                    <span className="text-sm font-bold">{apiError}</span>
-                </div>
-            )}
+            <ErrorAlert message={apiError} />
 
             <BalanceSummary customBalance={balanceData?.balance} />
             

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { AlertCircle } from 'lucide-react';
 import type { WithdrawData } from '../../../types/withdraw';
 import { fetchBalance } from '../../../api/inquiry';
 import type { BankOption } from '../../../api/loanApi';
+import ErrorAlert from '../../common/ErrorAlert';
 
 // Sub-components
 import WithdrawCustomerSection from '../sections/WithdrawCustomerSection';
@@ -72,52 +72,48 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
 
     return (
         <div className="w-full space-y-6 animate-in fade-in duration-500">
-            {apiError && (
-                <div className="flex items-center gap-3 text-rose-500 bg-rose-50 p-5 rounded-2xl border border-rose-100 max-w-full">
-                    <AlertCircle className="w-6 h-6 flex-shrink-0" />
-                    <span className="text-base font-bold">{apiError}</span>
-                </div>
-            )}
-
+            <ErrorAlert message={apiError} />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
-                    <WithdrawCustomerSection
-                        userName={userName}
-                        onUserNameChange={(val) => { setUserName(val); setApiError(null); }}
-                        birthDate={birthDate}
-                        onRrnFrontChange={(val) => {
-                            // 앞자리 수정 시: 새 값(최대 6자) + 기존 뒷자리(있을 경우)
-                            const currentBack = birthDate.length >= 7 ? birthDate.charAt(6) : '';
-                            setBirthDate(val.slice(0, 6) + (val.length === 6 ? currentBack : ''));
-                            setSourceAccount(prev => ({ ...prev, balance: undefined }));
-                            setApiError(null);
-                        }}
-                        onRrnBackChange={(val) => {
-                            // 뒷자리 수정 시: 기존 앞자리(6자 유지) + 새 뒷자리(1자)
-                            const currentFront = birthDate.slice(0, 6);
-                            if (currentFront.length === 6) {
-                                setBirthDate(currentFront + val.slice(0, 1));
-                            } else {
-                                // 앞자리가 아직 완성되지 않은 경우에도 뒷자리 위치를 보존하기 위해 
-                                // 내부적으로만 6자 공간을 확보 (패딩 대신 슬라이싱 활용)
-                                setBirthDate(currentFront.padEnd(6, ' ').slice(0, 6) + val.slice(0, 1));
-                            }
-                            setSourceAccount(prev => ({ ...prev, balance: undefined }));
-                            setApiError(null);
-                        }}
-                        onBlur={handleCheckBalance}
-                        isCheckingBalance={isCheckingBalance}
-                        sourceAccount={sourceAccount}
-                        banks={banks}
-                        onBankChange={(name, code) => {
-                            setSourceAccount(prev => ({ ...prev, bankName: name, bankCode: code, balance: undefined }));
-                            setApiError(null);
-                        }}
-                        onAccountChange={(val) => {
-                            setSourceAccount(prev => ({ ...prev, accountNumber: val, balance: undefined }));
-                            setApiError(null);
-                        }}
-                    />
+                    <div>
+                        <WithdrawCustomerSection
+                            userName={userName}
+                            onUserNameChange={(val) => { setUserName(val); setApiError(null); }}
+                            birthDate={birthDate}
+                            onRrnFrontChange={(val) => {
+                                // 앞자리 수정 시: 새 값(최대 6자) + 기존 뒷자리(있을 경우)
+                                const currentBack = birthDate.length >= 7 ? birthDate.charAt(6) : '';
+                                setBirthDate(val.slice(0, 6) + (val.length === 6 ? currentBack : ''));
+                                setSourceAccount(prev => ({ ...prev, balance: undefined }));
+                                setApiError(null);
+                            }}
+                            onRrnBackChange={(val) => {
+                                // 뒷자리 수정 시: 기존 앞자리(6자 유지) + 새 뒷자리(1자)
+                                const currentFront = birthDate.slice(0, 6);
+                                if (currentFront.length === 6) {
+                                    setBirthDate(currentFront + val.slice(0, 1));
+                                } else {
+                                    // 앞자리가 아직 완성되지 않은 경우에도 뒷자리 위치를 보존하기 위해 
+                                    // 내부적으로만 6자 공간을 확보 (패딩 대신 슬라이싱 활용)
+                                    setBirthDate(currentFront.padEnd(6, ' ').slice(0, 6) + val.slice(0, 1));
+                                }
+                                setSourceAccount(prev => ({ ...prev, balance: undefined }));
+                                setApiError(null);
+                            }}
+                            onBlur={handleCheckBalance}
+                            isCheckingBalance={isCheckingBalance}
+                            sourceAccount={sourceAccount}
+                            banks={banks}
+                            onBankChange={(name, code) => {
+                                setSourceAccount(prev => ({ ...prev, bankName: name, bankCode: code, balance: undefined }));
+                                setApiError(null);
+                            }}
+                            onAccountChange={(val) => {
+                                setSourceAccount(prev => ({ ...prev, accountNumber: val, balance: undefined }));
+                                setApiError(null);
+                            }}
+                        />
+                    </div>
 
                     <div className="mt-10 pt-8 bg-white border border-slate-100 rounded-3xl p-8 shadow-sm">
                         <AmountInputSection 

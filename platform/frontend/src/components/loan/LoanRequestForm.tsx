@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { AlertCircle } from 'lucide-react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import type { LoanData } from '../../pages/LoanApplication';
 import { useReviewDocuments, useSubmitLoanEvaluation, useBankList, extractApiError } from '../../hooks/useLoan';
@@ -8,6 +7,7 @@ import { fetchLoanResult } from '../../api/loanApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { isValidAccountNumber } from '../../utils/validator';
 import { prepareSecureRequest, decryptBankResponse, encryptFileWithKey } from '../../utils/bankCrypto';
+import ErrorAlert from '../common/ErrorAlert';
 
 // Sub-components
 import LoanCustomerSection from './sections/LoanCustomerSection';
@@ -40,7 +40,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
         bankCode: '',
         accountNo: '',
     });
-    const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoanData | 'rrn' | 'submit'| 'fileUpload', string>>>({});
+    const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoanData | 'rrn' | 'submit'| 'fileUpload' | 'terms', string>>>({});
 
     const [isUploading, setIsUploading] = useState(false);
     const [files, setFiles] = useState<{ id: number; name: string; file: File }[]>([]);
@@ -50,14 +50,17 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
     const [viewedDocs, setViewedDocs] = useState<Set<string>>(new Set());
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-    const { data: docsData, isLoading: isDocsLoading } = useReviewDocuments(formData.bankCode);
+    const { data: docsData, isLoading: isDocsLoading, error: docsError } = useReviewDocuments(formData.bankCode);
     const { data: bankList } = useBankList();
     const submitMutation = useSubmitLoanEvaluation();
 
-    // bankCode가 바뀌면 이전 약관 동의 상태 리셋
+    const docsErrorMessage = docsError ? extractApiError(docsError) : null;
+
+    // bankCode가 바뀌면 이전 약관 동의 상태 및 에러 리셋
     useEffect(() => {
         setAgreedDocs([]);
         setViewedDocs(new Set());
+        setFieldErrors({});
     }, [formData.bankCode]);
 
     useEffect(() => {
@@ -70,6 +73,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
         setAgreedDocs((prev) =>
             prev.map((d) => (d.documentType === documentType ? { ...d, agreed: !d.agreed } : d)),
         );
+        setFieldErrors((prev) => ({ ...prev, terms: undefined }));
     };
 
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -144,6 +148,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
             return nextDocs;
         });
 
+        setFieldErrors((prev) => ({ ...prev, terms: undefined }));
         setIsModalOpen(false);
     };
 
@@ -171,7 +176,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
         );
         
         if (mandatoryNotAgreed.length > 0) {
-            errors.submit = '필수 약관에 모두 동의해주세요.';
+            errors.terms = '필수 약관에 모두 동의해주세요.';
         }
         setFieldErrors(errors);
         return Object.keys(errors).length === 0;
@@ -350,13 +355,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
 
     return (
         <div className="w-full">
-            {fieldErrors.submit && (
-                <div className="mb-6 flex items-center gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100 max-w-4xl mx-auto animate-in fade-in slide-in-from-top-2">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                    <span className="text-sm font-bold">{fieldErrors.submit}</span>
-                </div>
-            )}
-
+            <ErrorAlert message={fieldErrors.submit || fieldErrors.terms || fieldErrors.fileUpload || docsErrorMessage} />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
                     <LoanCustomerSection
@@ -381,16 +380,17 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
                         onFileSelect={handleFileSelect}
                         onFileDelete={handleFileDelete}
                         fileInputRef={fileInputRef}
-                        fileUploadError={fieldErrors.fileUpload}
                     />
 
-                    <LoanTermsSection
-                        agreedDocs={agreedDocs}
-                        onTermToggle={handleTermToggle}
-                        onOpenModal={openModal}
-                        viewedDocs={viewedDocs}
-                        isLoading={isDocsLoading}
-                    />
+                    <div>
+                        <LoanTermsSection
+                            agreedDocs={agreedDocs}
+                            onTermToggle={handleTermToggle}
+                            onOpenModal={openModal}
+                            viewedDocs={viewedDocs}
+                            isLoading={isDocsLoading}
+                        />
+                    </div>
                 </div>
 
                 <div className="lg:col-span-1">

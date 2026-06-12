@@ -198,7 +198,7 @@ public class BankExternalClient {
 
     private ErrorCode mapToInternalErrorCode(String bankErrorCode) {
         return switch (bankErrorCode) {
-            case "ACC_001" -> ErrorCode.INQUIRY_ACCOUNT_NOTFOUND;
+            case "ACC_001", "BANK_001", "USER_001" -> ErrorCode.INQUIRY_ACCOUNT_NOTFOUND;
             case "ACC_002" -> ErrorCode.TRANSFER_WITHDRAW_AMOUNT_FAULT;
             case "ACC_003" -> ErrorCode.TRANSFER_WITHDRAW_ACCOUNT_FAULT;
             case "ACC_004" -> ErrorCode.TRANSFER_WITHDRAW_ACCOUNT_STATUS_FAULT;
@@ -206,7 +206,6 @@ public class BankExternalClient {
             case "ACC_006" -> ErrorCode.BANK_PW_ERROR;
             case "ERR_001" -> ErrorCode.INVALID_INPUT;
             case "ERR_002" -> ErrorCode.INTERNAL_SERVER_ERROR;
-            case "USER_001" -> ErrorCode.USER_NOT_FOUND;
             default -> ErrorCode.BANK_API_ERROR;
         };
     }
