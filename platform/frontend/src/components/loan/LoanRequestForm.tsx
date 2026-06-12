@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import type { LoanData } from '../../pages/LoanApplication';
 import { useReviewDocuments, useSubmitLoanEvaluation, useBankList, extractApiError } from '../../hooks/useLoan';
@@ -355,7 +356,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
 
     return (
         <div className="w-full">
-            <ErrorAlert message={fieldErrors.submit || fieldErrors.terms || fieldErrors.fileUpload || docsErrorMessage} />
+            <ErrorAlert message={fieldErrors.submit || fieldErrors.terms || docsErrorMessage} />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
                     <LoanCustomerSection
@@ -381,6 +382,13 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
                         onFileDelete={handleFileDelete}
                         fileInputRef={fileInputRef}
                     />
+
+                    {fieldErrors.fileUpload && (
+                        <div className="flex items-start gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100 animate-in fade-in slide-in-from-top-2">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span className="text-xs font-bold whitespace-pre-line">{fieldErrors.fileUpload}</span>
+                        </div>
+                    )}
 
                     <div>
                         <LoanTermsSection
