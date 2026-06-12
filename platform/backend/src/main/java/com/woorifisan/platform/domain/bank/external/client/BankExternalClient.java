@@ -11,6 +11,7 @@ import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferWithdrawRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankWithdrawalRequest;
+import com.woorifisan.platform.global.aop.annotation.ExcludeLogging;
 import com.woorifisan.platform.global.config.BankNetworkConfig;
 import com.woorifisan.platform.global.config.BankNetworkConfig.BankProperty;
 import com.woorifisan.platform.global.exception.BankCoreException;
@@ -42,6 +43,7 @@ public class BankExternalClient {
     /**
      * 특정 은행의 RSA 공개키를 조회합니다.
      */
+    @ExcludeLogging
     public BankRsaKeyResponse fetchPublicKey(String bankCode) {
         BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
         if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);

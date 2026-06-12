@@ -179,7 +179,7 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
                         <Field label="은행 코드" value={log.bankCode} />
                         {isTransfer && <Field label="대상 기관 코드" value={log.targetCode} />}
                         <Field label="대행기관 코드" value={log.agencyCode} />
-                        <Field label="은행 키 ID" value={log.bankKeyId} mono />
+                        {log.httpMethod !== 'GET' && <Field label="은행 키 ID" value={log.bankKeyId} mono />}
                     </Section>
 
                     <Section title="HTTP">
@@ -211,8 +211,16 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
                     {/* 요청/응답 본문 */}
                     <div>
                         <p className="text-xs font-bold text-gray-500 mb-2 pb-1 border-b border-gray-100">본문 데이터</p>
-                        <pre className="text-[11px] font-mono text-gray-600 bg-gray-50 rounded-lg p-3 break-all whitespace-pre-wrap overflow-x-auto">
-                            {log.bodyData || '-'}
+                        <pre className="text-[11px] font-mono text-gray-600 bg-gray-50 rounded-lg p-3 whitespace-pre-wrap overflow-x-auto">
+                            {log.bodyData
+                                ? (() => {
+                                    try {
+                                        return JSON.stringify(JSON.parse(log.bodyData), null, 2);
+                                    } catch {
+                                        return log.bodyData;
+                                    }
+                                  })()
+                                : '-'}
                         </pre>
                     </div>
                 </div>
