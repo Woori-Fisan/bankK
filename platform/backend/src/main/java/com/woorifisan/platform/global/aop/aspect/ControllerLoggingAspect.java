@@ -184,7 +184,10 @@ public class ControllerLoggingAspect {
                 // withdrawalBankCode 없이 depositBankCode만 있으면 bankCode로 승격
                 if (bankCode == null && targetCode != null) { bankCode = targetCode; targetCode = null; }
                 if (bankCode   != null) httpContext.put("bankCode",   bankCode);
-                if (targetCode != null) httpContext.put("targetCode", targetCode);
+                if (targetCode != null) {
+                    httpContext.put("targetCode", targetCode);
+                    MDC.put("targetCode", targetCode);
+                }
                 if (bankCode != null || targetCode != null) return;
             } catch (Exception ignored) {}
         }
