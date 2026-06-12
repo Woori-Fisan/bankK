@@ -179,7 +179,7 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
                         <Field label="은행 코드" value={log.bankCode} />
                         {isTransfer && <Field label="대상 기관 코드" value={log.targetCode} />}
                         <Field label="대행기관 코드" value={log.agencyCode} />
-                        <Field label="은행 키 ID" value={log.bankKeyId} mono />
+                        {log.httpMethod !== 'GET' && <Field label="은행 키 ID" value={log.bankKeyId} mono />}
                     </Section>
 
                     <Section title="HTTP">
