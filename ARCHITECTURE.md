@@ -1,12 +1,12 @@
 # 아키텍처
 
-![BankBridge AWS Architecture](./docs/architecture.png)
+![BankK AWS Architecture](./docs/architecture.png)
 
 ---
 
 ## 전체 구성 개요
 
-BankBridge는 **AWS 클라우드(플랫폼·모니터링)** 와 **온프레미스 은행 망** 이 WireGuard VPN으로 연결된 하이브리드 아키텍처입니다.  
+BankK는 **AWS 클라우드(플랫폼·모니터링)** 와 **온프레미스 은행 망** 이 WireGuard VPN으로 연결된 하이브리드 아키텍처입니다.  
 멀티 AZ 구성으로 플랫폼 서버의 가용성을 확보하며, 모니터링과 데이터 레이어는 단일 AZ에 배치합니다.
 
 ### 통신 흐름
