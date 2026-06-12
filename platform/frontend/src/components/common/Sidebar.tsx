@@ -39,7 +39,7 @@ const Sidebar: React.FC = () => {
     return (
         <aside className="w-64 bg-slate-900 flex flex-col flex-shrink-0">
             <div className="p-6 pb-8">
-                <Link to="/" className="flex items-center gap-3 cursor-pointer group">
+                <Link to="/main" className="flex items-center gap-3 cursor-pointer group">
                     <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center transition-transform group-hover:scale-105">
                         <Landmark className="w-6 h-6 text-slate-900" />
                     </div>
@@ -51,7 +51,7 @@ const Sidebar: React.FC = () => {
             </div>
 
             <nav className="flex-1">
-                <SidebarItem icon={LayoutDashboard} label="대시보드" to="/" />
+                <SidebarItem icon={LayoutDashboard} label="대시보드" to="/main" />
                 <SidebarItem icon={ClipboardList} label="대출 관리" to="/loan" />
                 <SidebarItem icon={ArrowLeftRight} label="계좌 이체" to="/transfer" />
                 <SidebarItem icon={Banknote} label="출금 처리" to="/withdraw" />
