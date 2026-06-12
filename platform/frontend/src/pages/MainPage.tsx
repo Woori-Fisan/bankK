@@ -18,7 +18,7 @@ const MainPage: React.FC = () => {
         <div className="flex-1 overflow-y-auto bg-gray-50/50">
             <div className="max-w-7xl mx-auto px-10 py-12 w-full min-h-full flex flex-col">
                 <PageHeader
-                title={`안녕하세요, ${userId}님`}
+                title={`안녕하세요, ${userId}님 !`}
                 description="진행하실 금융 업무 또는 조회 서비스를 선택해 주세요."
             />
 
