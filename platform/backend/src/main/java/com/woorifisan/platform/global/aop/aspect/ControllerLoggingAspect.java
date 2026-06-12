@@ -120,6 +120,8 @@ public class ControllerLoggingAspect {
             httpContext.put("logId", LogIdGenerator.generate());
             log.error("[Error] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
             throw e;
+        } finally {
+            MDC.remove("targetCode");
         }
     }
 
