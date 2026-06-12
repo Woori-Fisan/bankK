@@ -1,6 +1,7 @@
 package com.woorifisan.bank.global.config;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -13,10 +14,23 @@ public class AsyncConfig {
     @Bean(name = "loanReviewExecutor")
     public Executor loanReviewExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5);      // 평소 대기 스레드 수
-        executor.setMaxPoolSize(20);      // 큐가 꽉 찼을 때 최대로 늘어날 수 있는 스레드 수
-        executor.setQueueCapacity(100);   // 스레드가 모두 바쁠 때 대기시킬 수 있는 작업 수
-        executor.setThreadNamePrefix("loan-review-"); // 로그에서 스레드 식별용
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(20);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("loan-review-");
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "transferCompensationExecutor")
+    public Executor transferCompensationExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("transfer-comp-");
+        // 큐 초과 시 호출 스레드에서 직접 실행 — 거래 보상이 유실되지 않도록 보장
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
         return executor;
     }
