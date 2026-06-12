@@ -32,8 +32,15 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Value("${ssl.truststore.password}")
     private String truststorePassword;
 
+    
+    @Value("${server.ssl.enabled:false}")
+    private boolean sslEnabled;
+
     @Bean
     public RestTemplate restTemplate() {
+        if (!sslEnabled) {
+            return new RestTemplate();
+        }
         try {
             // 1. KeyStore 로드 (클라이언트 인증서)
             KeyStore keyStore = KeyStore.getInstance("PKCS12");

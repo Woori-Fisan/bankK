@@ -128,13 +128,26 @@ jobs:
       # Deploy
       # --------------------------------------------------
 
-      - name: Deploy to Runtime Server
+      - name: Deploy to Runtime Servers
         run: |
-          ssh -o StrictHostKeyChecking=no \
-            -p ${{ secrets.BASTION_PORT }} \
-            -i key.pem \
-            ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }} \
-            "ssh -o StrictHostKeyChecking=no \
-            -i ~/.ssh/Bank-Key.pem \
-            ubuntu@${{ secrets.BANK_RUNTIME_HOST }} \
-            '/home/ubuntu/bank/deploy.sh'"
+          FAILED=0
+
+          for HOST in \
+            "${{ secrets.BANK_RUNTIME_HOST_WOORI }}" \
+            "${{ secrets.BANK_RUNTIME_HOST_SHINHAN }}" \
+            "${{ secrets.BANK_RUNTIME_HOST_KB }}"
+          do
+            echo "Deploying to ${HOST}..."
+
+            ssh -o StrictHostKeyChecking=no \
+              -p ${{ secrets.BASTION_PORT }} \
+              -i key.pem \
+              ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }} \
+              "ssh -o StrictHostKeyChecking=no \
+              -i ~/.ssh/Bank-Key.pem \
+              ubuntu@${HOST} \
+              '/home/ubuntu/bank/deploy.sh'" \
+            || FAILED=1
+          done
+
+          exit $FAILED
