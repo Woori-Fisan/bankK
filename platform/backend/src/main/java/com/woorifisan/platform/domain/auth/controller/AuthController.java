@@ -13,6 +13,7 @@ import com.woorifisan.platform.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import com.woorifisan.platform.global.aop.annotation.ExcludeLogging;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
+@ExcludeLogging
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor

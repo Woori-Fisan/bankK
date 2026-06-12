@@ -1,8 +1,8 @@
 package com.woorifisan.platform.domain.bank.controller;
 
 import com.woorifisan.platform.domain.bank.dto.request.TransferRecipientRequest;
-import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
 import com.woorifisan.platform.domain.bank.dto.request.TransferRequest;
+import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.service.TransferService;
 import com.woorifisan.platform.global.config.swagger.CustomExceptionDescription;
@@ -13,7 +13,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 이체 API 컨트롤러
@@ -45,7 +49,7 @@ public class TransferController {
     @PostMapping
     public ApiResponse<TransferResponse> executeTransfer(
             @RequestHeader("x-jws-signature") String jwsSignature,
-            @RequestHeader("x-withdraw-key-id") String withdrawKeyId,
+            @RequestHeader("x-bank-key-id") String withdrawKeyId,
             @RequestHeader("x-deposit-key-id") String depositKeyId,
             @RequestBody @Valid TransferRequest request) {
         TransferResponse response = transferService.executeTransfer(request, jwsSignature, withdrawKeyId, depositKeyId);
