@@ -240,7 +240,7 @@ export const prepareTransferSecureRequest = async (
             payload: combinedPayload,
             headers: { 
                 'x-jws-signature': jwsSignature, 
-                'x-withdraw-key-id': withdrawKeyId,
+                'x-bank-key-id': withdrawKeyId,
                 'x-deposit-key-id': depositKeyId 
             },
             withdrawAesKey: withdrawResult.aesKey,
