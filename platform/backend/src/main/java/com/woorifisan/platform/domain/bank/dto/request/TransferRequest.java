@@ -21,9 +21,6 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 public class TransferRequest extends SecureRequest {
 
-    @NotBlank(message = "출금 은행 암호화 페이로드는 필수입니다.")
-    private String reqPayload;
-
     @NotBlank(message = "출금 은행 코드는 필수입니다.")
     private String withdrawalBankCode;
 
@@ -33,5 +30,11 @@ public class TransferRequest extends SecureRequest {
     @NotNull(message = "이체 금액은 필수입니다.")
     @Positive(message = "이체 금액은 0보다 커야 합니다.")
     private BigDecimal amount;
+
+    @Override
+    @NotBlank(message = "출금 은행 암호화 페이로드는 필수입니다.")
+    public String getReqPayload() {
+        return super.getReqPayload();
+    }
 
 }

@@ -55,11 +55,10 @@ public class TransferService {
     /**
      * 이체 실행 (통합 API 연동)
      * @param request 이체 실행 요청 정보
-     * @param jwsSignature 단말기 JWS 서명
      * @param withdrawKeyId 출금 은행 키 ID
      * @return 이체 처리 결과
      */
-    public TransferResponse executeTransfer(TransferRequest request, String jwsSignature, String withdrawKeyId) {
+    public TransferResponse executeTransfer(TransferRequest request, String withdrawKeyId) {
         // 은행 측에서 통합 이체 로직을 처리하므로, 플랫폼은 출금 은행으로 단일 요청을 보냅니다.
         // E2EE 암호문은 출금 은행의 공개키로 암호화된 것을 사용합니다.
         BankTransferWithdrawRequest executeRequest = BankTransferWithdrawRequest.of(

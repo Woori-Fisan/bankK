@@ -139,7 +139,7 @@ class TransferControllerTest {
                 .resPayload("enc-res-payload")
                 .build();
 
-        given(transferService.executeTransfer(any(), eq("test-sig"), eq("w-key")))
+        given(transferService.executeTransfer(any(), eq("w-key")))
                 .willReturn(response);
 
         // when & then
@@ -207,7 +207,7 @@ class TransferControllerTest {
         request.setDepositBankCode("004");
         request.setAmount(new BigDecimal("10000"));
 
-        given(transferService.executeTransfer(any(), eq("test-sig"), eq("w-key")))
+        given(transferService.executeTransfer(any(), eq("w-key")))
                 .willThrow(new BusinessException(ErrorCode.TRANSFER_WITHDRAW_AMOUNT_FAULT, "잔액이 부족합니다."));
 
         // when & then

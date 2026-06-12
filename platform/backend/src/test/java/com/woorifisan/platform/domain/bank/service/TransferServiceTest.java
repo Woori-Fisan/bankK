@@ -95,7 +95,7 @@ class TransferServiceTest {
         given(bankExternalClient.fetchTransferExecute(eq("020"), any())).willReturn(mockTransferResponse);
 
         // when
-        TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key");
+        TransferResponse response = transferService.executeTransfer(request, "w-key");
 
         // then
         assertThat(response.getTransactionId()).isEqualTo(mockTransferResponse.getTransactionId());
@@ -125,7 +125,7 @@ class TransferServiceTest {
         String beforeExecution = LocalDateTime.now().format(DATE_FORMATTER);
 
         // when
-        TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key");
+        TransferResponse response = transferService.executeTransfer(request, "w-key");
 
         // then
         String afterExecution = LocalDateTime.now().format(DATE_FORMATTER);
@@ -156,7 +156,7 @@ class TransferServiceTest {
         String beforeExecution = LocalDateTime.now().format(DATE_FORMATTER);
 
         // when
-        TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key");
+        TransferResponse response = transferService.executeTransfer(request, "w-key");
 
         // then
         String afterExecution = LocalDateTime.now().format(DATE_FORMATTER);
@@ -177,7 +177,7 @@ class TransferServiceTest {
                 .willThrow(new RuntimeException("Connection timeout"));
 
         // when & then
-        assertThatThrownBy(() -> transferService.executeTransfer(request, "jws-sig", "w-key"))
+        assertThatThrownBy(() -> transferService.executeTransfer(request, "w-key"))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Connection timeout");
     }

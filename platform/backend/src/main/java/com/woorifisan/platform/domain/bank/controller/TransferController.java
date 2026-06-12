@@ -51,7 +51,7 @@ public class TransferController {
             @RequestHeader("x-jws-signature") String jwsSignature,
             @RequestHeader("x-bank-key-id") String withdrawKeyId,
             @RequestBody @Valid TransferRequest request) {
-        TransferResponse response = transferService.executeTransfer(request, jwsSignature, withdrawKeyId);
+        TransferResponse response = transferService.executeTransfer(request, withdrawKeyId);
         return ApiResponse.success(response);
     }
 
