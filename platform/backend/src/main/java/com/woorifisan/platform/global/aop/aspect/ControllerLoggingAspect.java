@@ -3,6 +3,7 @@ package com.woorifisan.platform.global.aop.aspect;
 import static net.logstash.logback.argument.StructuredArguments.entries;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woorifisan.platform.global.aop.annotation.ExcludeLogging;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import com.woorifisan.platform.global.util.LogIdGenerator;
@@ -58,7 +59,10 @@ public class ControllerLoggingAspect {
             org.springframework.web.context.request.WebRequest.class
     );
 
-    @Pointcut("@within(org.springframework.web.bind.annotation.RestController)")
+    @Pointcut("@within(org.springframework.web.bind.annotation.RestController) "
+            + "&& !within(org.springdoc..*) "
+            + "&& !@within(com.woorifisan.platform.global.aop.annotation.ExcludeLogging) "
+            + "&& !@annotation(com.woorifisan.platform.global.aop.annotation.ExcludeLogging)")
     public void controllerPointcut() {}
 
     @Around("controllerPointcut()")

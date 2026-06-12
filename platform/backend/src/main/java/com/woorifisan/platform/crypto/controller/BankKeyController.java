@@ -2,6 +2,7 @@ package com.woorifisan.platform.crypto.controller;
 
 import com.woorifisan.platform.crypto.dto.response.BankRsaKeyResponse;
 import com.woorifisan.platform.crypto.service.BankKeyService;
+import com.woorifisan.platform.global.aop.annotation.ExcludeLogging;
 import com.woorifisan.platform.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 은행 암호화 키 관련 API 컨트롤러
  */
 @Tag(name = "은행 암호화 키 (Bank Key)", description = "종단간 암호화(E2EE)를 위한 은행 공개키 조회 API")
+@ExcludeLogging
 @RestController
 @RequestMapping("/api/v1/keys")
 @RequiredArgsConstructor

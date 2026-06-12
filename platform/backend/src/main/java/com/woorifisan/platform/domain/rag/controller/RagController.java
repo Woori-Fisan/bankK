@@ -2,23 +2,29 @@ package com.woorifisan.platform.domain.rag.controller;
 
 import com.woorifisan.platform.domain.rag.dto.response.RagChatResponse;
 import com.woorifisan.platform.domain.rag.service.RagService;
+import com.woorifisan.platform.global.aop.annotation.ExcludeLogging;
 import com.woorifisan.platform.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/rag")
 @RequiredArgsConstructor
+@ExcludeLogging
 @Tag(name = "RAG", description = "문서 기반 질의응답(RAG) API")
 public class RagController {
 
