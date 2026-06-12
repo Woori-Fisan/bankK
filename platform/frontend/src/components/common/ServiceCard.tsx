@@ -4,7 +4,6 @@ import { ArrowRight } from 'lucide-react';
 
 interface ServiceCardProps {
     icon: React.ElementType;
-    bgIcon?: React.ElementType;
     title: string;
     description: string;
     to?: string;
