@@ -53,3 +53,10 @@ history/
 platform/backend/uploads/
 
 coverage/
+
+# --- Keys ---
+*.p12
+Keys/
+
+# --- Antigravity
+.antigravityignore

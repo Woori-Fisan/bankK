@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { AlertCircle, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Button } from '../../common/Button';
 import PinpadModal from '../../pinpad/PinpadModal';
 import { useTransferStore } from '../../../store/useTransferStore';
 import { executeTransfer } from '../../../api/transfer';
 import { formatAmount } from '../../../utils/formatter';
+import ErrorAlert from '../../common/ErrorAlert';
 
 const FinalConfirmForm: React.FC = () => {
     const { 
@@ -66,6 +67,8 @@ const FinalConfirmForm: React.FC = () => {
             </div>
 
             <div className="p-10 space-y-8">
+                <ErrorAlert message={error} />
+
                 <div className="bg-slate-50 rounded-3xl p-8 space-y-5 border border-slate-100">
                     {/* 받는 분 */}
                     <div className="flex justify-between items-start">
@@ -116,13 +119,6 @@ const FinalConfirmForm: React.FC = () => {
                         </div>
                     </div>
                 </div>
-
-                {error && (
-                    <div className="px-6 py-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-sm font-bold flex items-center gap-2">
-                        <AlertCircle className="w-5 h-5 shrink-0" />
-                        {error}
-                    </div>
-                )}
             </div>
 
             {/* 버튼 */}
