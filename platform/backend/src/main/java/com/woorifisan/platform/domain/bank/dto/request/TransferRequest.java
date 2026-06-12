@@ -9,19 +9,20 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 
+import com.woorifisan.platform.global.security.dto.SecureRequest;
+import lombok.experimental.SuperBuilder;
+
 /**
  * 이체 실행 요청 DTO
  */
 @Getter
 @Setter
+@SuperBuilder
 @NoArgsConstructor
-public class TransferRequest {
+public class TransferRequest extends SecureRequest {
 
     @NotBlank(message = "출금 은행 암호화 페이로드는 필수입니다.")
-    private String withdrawReqPayload;
-
-    @NotBlank(message = "입금 은행 암호화 페이로드는 필수입니다.")
-    private String depositReqPayload;
+    private String reqPayload;
 
     @NotBlank(message = "출금 은행 코드는 필수입니다.")
     private String withdrawalBankCode;

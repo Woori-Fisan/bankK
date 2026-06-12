@@ -83,8 +83,7 @@ class TransferServiceTest {
         request.setWithdrawalBankCode("020");
         request.setDepositBankCode("004");
         request.setAmount(new BigDecimal("10000"));
-        request.setWithdrawReqPayload("withdraw-jwe");
-        request.setDepositReqPayload("deposit-jwe");
+        request.setReqPayload("withdraw-jwe");
 
         BankTransferResponse mockTransferResponse = BankTransferResponse.builder()
                 .transactionId(UUID.randomUUID().toString())
@@ -96,7 +95,7 @@ class TransferServiceTest {
         given(bankExternalClient.fetchTransferExecute(eq("020"), any())).willReturn(mockTransferResponse);
 
         // when
-        TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key", "d-key");
+        TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key");
 
         // then
         assertThat(response.getTransactionId()).isEqualTo(mockTransferResponse.getTransactionId());
@@ -126,7 +125,7 @@ class TransferServiceTest {
         String beforeExecution = LocalDateTime.now().format(DATE_FORMATTER);
 
         // when
-        TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key", "d-key");
+        TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key");
 
         // then
         String afterExecution = LocalDateTime.now().format(DATE_FORMATTER);
@@ -157,7 +156,7 @@ class TransferServiceTest {
         String beforeExecution = LocalDateTime.now().format(DATE_FORMATTER);
 
         // when
-        TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key", "d-key");
+        TransferResponse response = transferService.executeTransfer(request, "jws-sig", "w-key");
 
         // then
         String afterExecution = LocalDateTime.now().format(DATE_FORMATTER);
@@ -178,7 +177,7 @@ class TransferServiceTest {
                 .willThrow(new RuntimeException("Connection timeout"));
 
         // when & then
-        assertThatThrownBy(() -> transferService.executeTransfer(request, "jws-sig", "w-key", "d-key"))
+        assertThatThrownBy(() -> transferService.executeTransfer(request, "jws-sig", "w-key"))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Connection timeout");
     }

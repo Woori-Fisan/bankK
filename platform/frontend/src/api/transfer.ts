@@ -1,5 +1,5 @@
 import axiosInstance from './axiosInstance';
-import { prepareSecureRequest, prepareTransferSecureRequest, decryptBankResponse } from '../utils/bankCrypto';
+import { prepareSecureRequest, decryptBankResponse } from '../utils/bankCrypto';
 import { extractApiErrorMessage } from '../utils/apiError';
 
 export interface ErrorResponse {
@@ -107,8 +107,8 @@ export const getRecipient = async (
 
 export const executeTransfer = async (request: TransferRequest): Promise<ApiResponse<TransferResponse>> => {
     try {
-        // 1. 보안 요청 준비 (출금/입금 은행 각각 암호화 및 통합 서명)
-        const secureRequest = await prepareTransferSecureRequest(
+        // 1. 보안 요청 준비 (공통 보안 요청 준비 유틸 사용)
+        const secureRequest = await prepareSecureRequest(
             { 
                 withdrawalAccountNo: request.withdrawalAccountNo,
                 withdrawalPassword: request.withdrawalPassword,
@@ -117,32 +117,29 @@ export const executeTransfer = async (request: TransferRequest): Promise<ApiResp
                 customerName: request.customerName
             },
             { 
-                depositAccountNo: request.depositAccountNo,
-                withdrawalAccountNo: request.withdrawalAccountNo // 입금 은행이 알 수 있도록 포함
-            },
-            { 
                 withdrawalBankCode: request.withdrawalBankCode,
                 depositBankCode: request.depositBankCode,
                 amount: request.amount
-            }
+            },
+            request.withdrawalBankCode
         );
 
         if (!secureRequest) {
             throw new Error('이체 보안 요청 준비 실패');
         }
 
-        const { payload, headers, withdrawAesKey } = secureRequest;
+        const { payload, headers, aesKey } = secureRequest;
 
         // 2. 요청 전송
         const response = await axiosInstance.post<ApiResponse<TransferResponse>>('/bank/transfer', payload, {
             headers: { ...headers, 'X-Idempotency-Key': crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}` }
         });
 
-        // 3. 응답 복호화 (출금 후 잔액 정보는 출금 은행의 응답이므로 withdrawAesKey 사용)
+        // 3. 응답 복호화 (출금 후 잔액 정보는 출금 은행의 응답이므로 aesKey 사용)
         if (response.data.success && (response.data.data as any)?.resPayload) {
             const decryptedData = await decryptBankResponse(
                 (response.data.data as any).resPayload,
-                withdrawAesKey
+                aesKey
             );
             return {
                 ...response.data,
