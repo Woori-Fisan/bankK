@@ -70,7 +70,7 @@ public class TransferService {
         // 0. 당행 요청 여부 확인
         if (!CURRENT_BANK_CODE.equals(request.getDepositBankCode())) {
             log.warn("타행 수취인 조회 요청 거절 - 요청된 코드: {}", request.getDepositBankCode());
-            throw new BusinessException(ErrorCode.INVALID_INPUT);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
         // 1. 공통 보안 서비스를 통해 복호화 및 CEK 추출

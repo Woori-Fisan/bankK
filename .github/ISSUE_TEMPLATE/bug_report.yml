@@ -6,7 +6,7 @@ body:
     id: module
     attributes:
       label: 모듈
-      options: [platform, bank, common]
+      options: [platform, bank, monitoring, common]
     validations:
       required: true
 
