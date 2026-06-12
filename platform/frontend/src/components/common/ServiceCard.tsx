@@ -1,30 +1,49 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 
 interface ServiceCardProps {
     icon: React.ElementType;
-    bgIcon: React.ElementType;
     title: string;
     description: string;
     to?: string;
+    iconBg?: string;
+    iconColor?: string;
+    arrowBg?: string;
+    arrowHoverBg?: string;
+    arrowColor?: string;
 }
 
-const ServiceCard: React.FC<ServiceCardProps> = ({ icon: Icon, bgIcon: BgIcon, title, description, to }) => {
+const ServiceCard: React.FC<ServiceCardProps> = ({
+    icon: Icon,
+    title,
+    description,
+    to,
+    iconBg = 'bg-gray-100',
+    iconColor = 'text-gray-600',
+    arrowBg = 'bg-gray-50',
+    arrowHoverBg = 'group-hover:bg-gray-100',
+    arrowColor = 'text-gray-400',
+}) => {
     const CardContent = (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 relative overflow-hidden hover:shadow-md transition-shadow cursor-pointer group h-full">
-            <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Icon className="w-6 h-6 text-gray-700" />
+        <div className="bg-white border border-gray-200 rounded-2xl p-8 flex items-center justify-between hover:shadow-lg transition-all cursor-pointer group h-full min-h-[160px]">
+            <div className="flex flex-col flex-1 min-w-0">
+                <div className={`w-14 h-14 ${iconBg} rounded-2xl flex items-center justify-center mb-5`}>
+                    <Icon className={`w-7 h-7 ${iconColor}`} />
                 </div>
-                <BgIcon className="w-12 h-12 text-gray-200 absolute top-6 right-6" strokeWidth={1.5} />
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-            <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
+            <div className="ml-6 flex-shrink-0">
+                <div className={`w-10 h-10 rounded-full ${arrowBg} ${arrowHoverBg} flex items-center justify-center transition-colors`}>
+                    <ArrowRight className={`w-5 h-5 ${arrowColor} group-hover:translate-x-0.5 transition-transform`} />
+                </div>
+            </div>
         </div>
     );
 
     if (to) {
-        return <Link to={to}>{CardContent}</Link>;
+        return <Link to={to} className="block h-full">{CardContent}</Link>;
     }
 
     return CardContent;
