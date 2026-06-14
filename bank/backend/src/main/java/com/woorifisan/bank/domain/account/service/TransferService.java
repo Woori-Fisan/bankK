@@ -14,6 +14,7 @@ import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.global.config.BankNetworkConfig;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
@@ -44,6 +45,7 @@ public class TransferService {
     private final CryptoUtil cryptoUtil;
     private final TransferTxService transferTxService;
     private final TransferCompensationService compensationService;
+    private final BankNetworkConfig bankNetworkConfig; // 타행 이체 전 입금 은행 설정 사전 검증용
 
     @Value("${bank.code}")
     private String CURRENT_BANK_CODE;
@@ -159,7 +161,12 @@ public class TransferService {
         log.info("통합 이체 실행 요청 수신 - 출금은행: {}, 입금은행: {}, 금액: {}",
                 request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
 
-        // 0. 복호화 단 한 번만 실행하여 CPU 오버헤드 최적화
+        // 0. 출금 전에 입금 은행 설정 존재 여부를 검증한다.
+        if (bankNetworkConfig.getBankProperty(request.getDepositBankCode()) == null) {
+            throw new BusinessException(ErrorCode.BANK_NOT_FOUND, "지원하지 않는 입금 은행입니다.");
+        }
+
+        // 1. 복호화 단 한 번만 실행하여 CPU 오버헤드 최적화
         SecurityService.DecryptionResult<DecryptedWithdrawData> decryptionResult = 
                 securityService.decryptWithKey(request, DecryptedWithdrawData.class);
         DecryptedWithdrawData decryptedData = decryptionResult.getData();

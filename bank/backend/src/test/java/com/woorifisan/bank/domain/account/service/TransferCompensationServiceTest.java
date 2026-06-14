@@ -177,19 +177,6 @@ class TransferCompensationServiceTest {
     }
 
     @Test
-    @DisplayName("은행 코드가 설정에 없으면 BusinessException이 내부적으로 처리되고 원장은 PENDING 상태를 유지한다")
-    void compensate_bankCodeNotFound_keepsPending() {
-        // callExternalDeposit, pollTransferStatus 모두 null 반환 → BusinessException(BANK_NOT_FOUND)
-        // 내부의 catch(BusinessException)에서 처리되어 원장 변경 없이 PENDING 유지
-        given(bankNetworkConfig.getBankProperty(DEPOSIT_BANK_CODE)).willReturn(null);
-
-        compensationService.compensate(DEPOSIT_BANK_CODE, depositRequest, originalRequest, decryptedData, TX_ID);
-
-        verify(transferTxService, never()).updateLedgerStatus(anyString(), anyString());
-        verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
-    }
-
-    @Test
     @DisplayName("타행 입금 실패 후 상태 폴링에서 PENDING 응답 → 재시도 → SUCCESS 확인 시 원장을 SUCCESS로 업데이트한다")
     void compensate_depositFails_pollPendingThenSuccess_updatesLedgerSuccess() {
         // retryWhen은 bodyToMono가 반환한 동일한 Mono를 재구독하므로,

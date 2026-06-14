@@ -25,6 +25,7 @@ import com.woorifisan.bank.domain.account.model.Account;
 import com.woorifisan.bank.domain.account.model.TransactionLedger;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
+import com.woorifisan.bank.global.config.BankNetworkConfig;
 import com.woorifisan.bank.global.exception.BusinessException;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
@@ -72,6 +73,9 @@ class TransferServiceTest {
 
     @Mock
     private CryptoUtil cryptoUtil;
+
+    @Mock
+    private BankNetworkConfig bankNetworkConfig;
 
     private Account sender;
     private Customer senderCustomer;
@@ -290,6 +294,10 @@ class TransferServiceTest {
                 .depositAccountNo("222-222")
                 .build();
 
+        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
+        bankProperty.setBaseUrl("http://our-bank");
+        given(bankNetworkConfig.getBankProperty(OUR_BANK_CODE)).willReturn(bankProperty);
+
         given(securityService.decryptWithKey(eq(request), eq(DecryptedWithdrawData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
 
@@ -320,6 +328,10 @@ class TransferServiceTest {
                 .withdrawalAccountNo("111-111")
                 .depositAccountNo("222-222")
                 .build();
+
+        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
+        bankProperty.setBaseUrl("http://our-bank");
+        given(bankNetworkConfig.getBankProperty(OUR_BANK_CODE)).willReturn(bankProperty);
 
         given(securityService.decryptWithKey(eq(request), eq(DecryptedWithdrawData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
@@ -352,6 +364,10 @@ class TransferServiceTest {
                 .depositAccountNo("999-999")
                 .build();
 
+        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
+        bankProperty.setBaseUrl("http://other-bank");
+        given(bankNetworkConfig.getBankProperty(OTHER_BANK_CODE)).willReturn(bankProperty);
+
         given(securityService.decryptWithKey(eq(request), eq(DecryptedWithdrawData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
 
@@ -371,6 +387,27 @@ class TransferServiceTest {
                 eq(decryptedData),
                 eq("mock-tx-id"));
         verify(transferTxService, never()).updateLedgerStatus(anyString(), anyString());
+        verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("이체 실행: 지원하지 않는 입금 은행 코드이면 출금 없이 BANK_NOT_FOUND 예외가 발생한다")
+    void executeTransfer_unknownDepositBankCode_throwsBeforeWithdrawal() {
+        // given
+        TransferRequest request = TransferRequest.builder()
+                .withdrawalBankCode(OUR_BANK_CODE)
+                .depositBankCode("999")
+                .amount(new BigDecimal("10000"))
+                .build();
+
+        given(bankNetworkConfig.getBankProperty("999")).willReturn(null);
+
+        // when & then
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> transferService.executeTransfer(request));
+
+        assertEquals(ErrorCode.BANK_NOT_FOUND, ex.getErrorCode());
+        verify(transferTxService, never()).withdrawTransfer(any(), any(), any());
         verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
     }
 
