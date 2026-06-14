@@ -10,6 +10,7 @@ import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.util.LogIdGenerator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -38,18 +39,30 @@ public class BankExternalApiAspect {
     private static final String MDC_BANK_CODE = "bankCode";
     private static final String MDC_API_TYPE  = "apiType";
 
-    /** BankExternalClient 메서드명 → BankNetworkConfig URL 키 매핑 */
-    private static final Map<String, String> API_TYPE_TO_URL_KEY = Map.of(
-            "fetchRecipient",        "recipient",
-            "fetchTransferExecute",  "execute",
-            "fetchBalance",          "balance",
-            "withdraw",              "withdrawal",
-            "fetchHistory",          "history",
-            "fetchPublicKey",        "public-key"
+    /** BankExternalClient / BankLoanClient 메서드명 → BankNetworkConfig URL 키 매핑 */
+    private static final Map<String, String> API_TYPE_TO_URL_KEY = Map.ofEntries(
+            Map.entry("fetchRecipient",       "recipient"),
+            Map.entry("fetchTransferExecute", "execute"),
+            Map.entry("fetchBalance",         "balance"),
+            Map.entry("withdraw",             "withdrawal"),
+            Map.entry("fetchHistory",         "history"),
+            Map.entry("fetchPublicKey",       "public-key"),
+            Map.entry("getEvaluationTerms",   "evaluation-terms"),
+            Map.entry("submitEvaluation",     "evaluation"),
+            Map.entry("getContractTerms",     "contract-terms"),
+            Map.entry("executeLoan",          "execution")
     );
 
-    /** {@link com.woorifisan.platform.domain.bank.external.client.BankExternalClient}의 모든 public 메서드를 포인트컷으로 지정한다. */
-    @Pointcut("execution(* com.woorifisan.platform.domain.bank.external.client.BankExternalClient.*(..))")
+    /** GET 방식으로 호출되는 메서드 목록 */
+    private static final Set<String> GET_API_TYPES = Set.of(
+            "fetchPublicKey",
+            "getEvaluationTerms",
+            "getContractTerms"
+    );
+
+    @Pointcut("(execution(* com.woorifisan.platform.domain.bank.external.client.BankExternalClient.*(..))"
+            + " || execution(* com.woorifisan.platform.domain.bank.external.client.BankLoanClient.*(..)))"
+            + " && !@annotation(com.woorifisan.platform.global.aop.annotation.ExcludeLogging)")
     public void bankExternalClientPointcut() {}
 
     /**
@@ -77,10 +90,11 @@ public class BankExternalApiAspect {
         String bankUri = bankProperty != null ? bankProperty.getUrl(urlKey) : null;
 
         Map<String, Object> bankContext = new HashMap<>();
-        bankContext.put("bankKeyId", MDC.get("bankKeyId"));
+        bankContext.put("bankKeyId",  MDC.get("bankKeyId"));
+        bankContext.put("targetCode", MDC.get("targetCode"));
         bankContext.put("bankCode", bankCode);
         bankContext.put("apiType", apiType);
-        bankContext.put("httpMethod", "POST"); // BankExternalClient는 모든 요청을 POST로 전송
+        bankContext.put("httpMethod", GET_API_TYPES.contains(apiType) ? "GET" : "POST");
         bankContext.put("httpUri", bankUri);
         bankContext.put("request", requestJson);
 

@@ -47,7 +47,10 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 );
 
 const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
-    const isTransfer = log.httpUri?.toLowerCase().includes('transfer') ?? false;
+    const uri = log.httpUri?.toLowerCase() ?? '';
+    const isTransfer = uri.includes('transfer') && !uri.includes('recipient');
+    const isRequestLog = log.logType === 'CONTROLLER_REQ' || log.logType === 'BANK_REQ';
+    const isBankLog = log.logType === 'BANK_REQ' || log.logType === 'BANK_RES' || log.logType === 'BANK_ERR';
 
     const exportToPdf = () => {
         const doc = new jsPDF();
@@ -176,21 +179,25 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
                         <Field label="은행 코드" value={log.bankCode} />
                         {isTransfer && <Field label="대상 기관 코드" value={log.targetCode} />}
                         <Field label="대행기관 코드" value={log.agencyCode} />
-                        <Field label="은행 키 ID" value={log.bankKeyId} mono />
+                        {log.httpMethod !== 'GET' && <Field label="은행 키 ID" value={log.bankKeyId} mono />}
                     </Section>
 
                     <Section title="HTTP">
                         <Field label="메서드" value={log.httpMethod} />
-                        <Field
-                            label="상태 코드"
-                            value={
-                                <span className={`font-bold ${httpStatusColor(log.httpStatus)}`}>
-                                    {log.httpStatus}
-                                </span>
-                            }
-                        />
-                        <Field label="소요 시간" value={`${log.elapsedMs} ms`} />
-                        <Field label="클라이언트 IP" value={log.clientIp} mono />
+                        {!isRequestLog && (
+                            <Field
+                                label="상태 코드"
+                                value={
+                                    <span className={`font-bold ${httpStatusColor(log.httpStatus)}`}>
+                                        {log.httpStatus}
+                                    </span>
+                                }
+                            />
+                        )}
+                        {!isRequestLog && (
+                            <Field label="소요 시간" value={`${log.elapsedMs} ms`} />
+                        )}
+                        {!isBankLog && <Field label="클라이언트 IP" value={log.clientIp} mono />}
                         <Field label="요청 URI" value={log.httpUri} full mono />
                     </Section>
 
@@ -204,8 +211,16 @@ const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
                     {/* 요청/응답 본문 */}
                     <div>
                         <p className="text-xs font-bold text-gray-500 mb-2 pb-1 border-b border-gray-100">본문 데이터</p>
-                        <pre className="text-[11px] font-mono text-gray-600 bg-gray-50 rounded-lg p-3 break-all whitespace-pre-wrap overflow-x-auto">
-                            {log.bodyData || '-'}
+                        <pre className="text-[11px] font-mono text-gray-600 bg-gray-50 rounded-lg p-3 whitespace-pre-wrap overflow-x-auto">
+                            {log.bodyData
+                                ? (() => {
+                                    try {
+                                        return JSON.stringify(JSON.parse(log.bodyData), null, 2);
+                                    } catch {
+                                        return log.bodyData;
+                                    }
+                                  })()
+                                : '-'}
                         </pre>
                     </div>
                 </div>

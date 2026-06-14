@@ -127,8 +127,7 @@ class TransferControllerTest {
     void executeTransfer_api_success() throws Exception {
         // given
         TransferRequest request = new TransferRequest();
-        request.setWithdrawReqPayload("enc-withdraw-payload");
-        request.setDepositReqPayload("enc-deposit-payload");
+        request.setReqPayload("enc-withdraw-payload");
         request.setWithdrawalBankCode("020");
         request.setDepositBankCode("004");
         request.setAmount(new BigDecimal("10000"));
@@ -140,14 +139,13 @@ class TransferControllerTest {
                 .resPayload("enc-res-payload")
                 .build();
 
-        given(transferService.executeTransfer(any(), eq("test-sig"), eq("w-key"), eq("d-key")))
+        given(transferService.executeTransfer(any(), eq("w-key")))
                 .willReturn(response);
 
         // when & then
         mockMvc.perform(post("/api/v1/bank/transfer")
                         .header("x-jws-signature", "test-sig")
-                        .header("x-withdraw-key-id", "w-key")
-                        .header("x-deposit-key-id", "d-key")
+                        .header("x-bank-key-id", "w-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -162,8 +160,7 @@ class TransferControllerTest {
     void executeTransfer_api_validationFailure_amountNull() throws Exception {
         // given
         TransferRequest request = new TransferRequest();
-        request.setWithdrawReqPayload("enc-withdraw-payload");
-        request.setDepositReqPayload("enc-deposit-payload");
+        request.setReqPayload("enc-withdraw-payload");
         request.setWithdrawalBankCode("020");
         request.setDepositBankCode("004");
         request.setAmount(null); // 이체 금액 누락
@@ -171,8 +168,7 @@ class TransferControllerTest {
         // when & then
         mockMvc.perform(post("/api/v1/bank/transfer")
                         .header("x-jws-signature", "test-sig")
-                        .header("x-withdraw-key-id", "w-key")
-                        .header("x-deposit-key-id", "d-key")
+                        .header("x-bank-key-id", "w-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -185,8 +181,7 @@ class TransferControllerTest {
     void executeTransfer_api_validationFailure_amountNegative() throws Exception {
         // given
         TransferRequest request = new TransferRequest();
-        request.setWithdrawReqPayload("enc-withdraw-payload");
-        request.setDepositReqPayload("enc-deposit-payload");
+        request.setReqPayload("enc-withdraw-payload");
         request.setWithdrawalBankCode("020");
         request.setDepositBankCode("004");
         request.setAmount(BigDecimal.ZERO); // 경계값인 0 이하 검증
@@ -194,8 +189,7 @@ class TransferControllerTest {
         // when & then
         mockMvc.perform(post("/api/v1/bank/transfer")
                         .header("x-jws-signature", "test-sig")
-                        .header("x-withdraw-key-id", "w-key")
-                        .header("x-deposit-key-id", "d-key")
+                        .header("x-bank-key-id", "w-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -208,20 +202,18 @@ class TransferControllerTest {
     void executeTransfer_api_serviceException() throws Exception {
         // given
         TransferRequest request = new TransferRequest();
-        request.setWithdrawReqPayload("enc-withdraw-payload");
-        request.setDepositReqPayload("enc-deposit-payload");
+        request.setReqPayload("enc-withdraw-payload");
         request.setWithdrawalBankCode("020");
         request.setDepositBankCode("004");
         request.setAmount(new BigDecimal("10000"));
 
-        given(transferService.executeTransfer(any(), eq("test-sig"), eq("w-key"), eq("d-key")))
+        given(transferService.executeTransfer(any(), eq("w-key")))
                 .willThrow(new BusinessException(ErrorCode.TRANSFER_WITHDRAW_AMOUNT_FAULT, "잔액이 부족합니다."));
 
         // when & then
         mockMvc.perform(post("/api/v1/bank/transfer")
                         .header("x-jws-signature", "test-sig")
-                        .header("x-withdraw-key-id", "w-key")
-                        .header("x-deposit-key-id", "d-key")
+                        .header("x-bank-key-id", "w-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Upload, CheckCircle2, FileType, X, AlertCircle } from 'lucide-react';
+import { Upload, CheckCircle2, FileType, X } from 'lucide-react';
 import Card from '../../common/Card';
+
 
 export const REQUIRED_DOCS = [
     { label: '신분증 사본', hint: '신분증.pdf / 면허증.pdf', keywords: ['신분증', '면허증'] },
@@ -14,7 +15,6 @@ interface LoanUploadSectionProps {
     onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onFileDelete: (id: number) => void;
     fileInputRef: React.RefObject<HTMLInputElement>;
-    fileUploadError?: string;
 }
 
 const LoanUploadSection: React.FC<LoanUploadSectionProps> = ({
@@ -22,7 +22,6 @@ const LoanUploadSection: React.FC<LoanUploadSectionProps> = ({
     onFileSelect,
     onFileDelete,
     fileInputRef,
-    fileUploadError,
 }) => {
     const fileNames = files.map((f) => f.name.toLowerCase());
 
@@ -82,14 +81,6 @@ const LoanUploadSection: React.FC<LoanUploadSectionProps> = ({
                 <p className="text-base font-black text-slate-700 mb-1">클릭하거나 파일을 드래그하세요</p>
                 <p className="text-xs text-slate-400 font-medium">PDF 파일 전용 (최대 10MB)</p>
             </div>
-
-            {fileUploadError && (
-                <div className="mt-4 flex items-start gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100 animate-in fade-in slide-in-from-top-2">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                    <span className="text-xs font-bold whitespace-pre-line">{fileUploadError}</span>
-                </div>
-            )}
-
             {files.length > 0 && (
                 <div className="mt-8 space-y-3">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">

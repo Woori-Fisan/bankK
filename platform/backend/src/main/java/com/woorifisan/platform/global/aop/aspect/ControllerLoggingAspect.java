@@ -3,6 +3,7 @@ package com.woorifisan.platform.global.aop.aspect;
 import static net.logstash.logback.argument.StructuredArguments.entries;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.woorifisan.platform.global.aop.annotation.ExcludeLogging;
 import com.woorifisan.platform.global.exception.BusinessException;
 import com.woorifisan.platform.global.response.ErrorCode;
 import com.woorifisan.platform.global.util.LogIdGenerator;
@@ -58,7 +59,10 @@ public class ControllerLoggingAspect {
             org.springframework.web.context.request.WebRequest.class
     );
 
-    @Pointcut("@within(org.springframework.web.bind.annotation.RestController)")
+    @Pointcut("@within(org.springframework.web.bind.annotation.RestController) "
+            + "&& !within(org.springdoc..*) "
+            + "&& !@within(com.woorifisan.platform.global.aop.annotation.ExcludeLogging) "
+            + "&& !@annotation(com.woorifisan.platform.global.aop.annotation.ExcludeLogging)")
     public void controllerPointcut() {}
 
     @Around("controllerPointcut()")
@@ -79,7 +83,7 @@ public class ControllerLoggingAspect {
         httpContext.put("clientIp", getClientIp(request));
         httpContext.put("controller", className + "." + methodName);
         httpContext.put("request", argsJson);
-        putBankCodes(args, httpContext);
+        putBankCodes(args, httpContext, request);
 
         httpContext.put("logType", "CONTROLLER_REQ");
         httpContext.put("logId", LogIdGenerator.generate());
@@ -116,6 +120,8 @@ public class ControllerLoggingAspect {
             httpContext.put("logId", LogIdGenerator.generate());
             log.error("[Error] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
             throw e;
+        } finally {
+            MDC.remove("targetCode");
         }
     }
 
@@ -151,7 +157,7 @@ public class ControllerLoggingAspect {
 
     // bankCode(출금/단일) → httpContext["bankCode"], depositBankCode → httpContext["targetCode"]
     // getBankCode() 우선, 없으면 withdrawal*/source* → bankCode, deposit*/target* → targetCode 로 분류
-    private void putBankCodes(Object[] args, Map<String, Object> httpContext) {
+    private void putBankCodes(Object[] args, Map<String, Object> httpContext, HttpServletRequest request) {
         for (Object arg : args) {
             if (arg == null) continue;
             if (NON_SERIALIZABLE_TYPES.stream().anyMatch(t -> t.isInstance(arg))) continue;
@@ -184,14 +190,18 @@ public class ControllerLoggingAspect {
                 // withdrawalBankCode 없이 depositBankCode만 있으면 bankCode로 승격
                 if (bankCode == null && targetCode != null) { bankCode = targetCode; targetCode = null; }
                 if (bankCode   != null) httpContext.put("bankCode",   bankCode);
-                if (targetCode != null) httpContext.put("targetCode", targetCode);
+                if (targetCode != null) {
+                    httpContext.put("targetCode", targetCode);
+                    MDC.put("targetCode", targetCode);
+                }
                 if (bankCode != null || targetCode != null) return;
             } catch (Exception ignored) {}
         }
         
-        // bankCode를 찾지 못한 경우 기본값 "-" 설정
+        // bankCode를 찾지 못한 경우 쿼리 파라미터에서 fallback 시도 후 기본값 "-" 설정
         if (httpContext.get("bankCode") == null) {
-            httpContext.put("bankCode", "-");
+            String paramBankCode = request.getParameter("bankCode");
+            httpContext.put("bankCode", (paramBankCode != null && !paramBankCode.isBlank()) ? paramBankCode : "-");
         }
     }
 

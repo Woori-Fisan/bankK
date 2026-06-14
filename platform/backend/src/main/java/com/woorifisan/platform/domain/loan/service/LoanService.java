@@ -29,11 +29,13 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LoanService {
@@ -171,6 +173,9 @@ public class LoanService {
         if (requestKey == null) {
             return;
         }
+
+        log.info("[BankWebhook] 심사 결과 수신 - requestKey: {}, loanNo: {}, status: {}",
+                requestKey, callback.getLoanNo(), callback.getStatus());
 
         // 2. SSE 연결 유무와 무관하게 Redis에 결과 먼저 저장 (연결 끊김 시 polling으로 복구 가능)
         try {

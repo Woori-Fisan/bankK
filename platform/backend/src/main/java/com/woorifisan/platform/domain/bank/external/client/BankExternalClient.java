@@ -11,6 +11,7 @@ import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferWithdrawRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankWithdrawalRequest;
+import com.woorifisan.platform.global.aop.annotation.ExcludeLogging;
 import com.woorifisan.platform.global.config.BankNetworkConfig;
 import com.woorifisan.platform.global.config.BankNetworkConfig.BankProperty;
 import com.woorifisan.platform.global.exception.BankCoreException;
@@ -42,6 +43,7 @@ public class BankExternalClient {
     /**
      * 특정 은행의 RSA 공개키를 조회합니다.
      */
+    @ExcludeLogging
     public BankRsaKeyResponse fetchPublicKey(String bankCode) {
         BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
         if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
@@ -198,7 +200,7 @@ public class BankExternalClient {
 
     private ErrorCode mapToInternalErrorCode(String bankErrorCode) {
         return switch (bankErrorCode) {
-            case "ACC_001" -> ErrorCode.INQUIRY_ACCOUNT_NOTFOUND;
+            case "ACC_001", "BANK_001", "USER_001" -> ErrorCode.INQUIRY_ACCOUNT_NOTFOUND;
             case "ACC_002" -> ErrorCode.TRANSFER_WITHDRAW_AMOUNT_FAULT;
             case "ACC_003" -> ErrorCode.TRANSFER_WITHDRAW_ACCOUNT_FAULT;
             case "ACC_004" -> ErrorCode.TRANSFER_WITHDRAW_ACCOUNT_STATUS_FAULT;
@@ -206,7 +208,6 @@ public class BankExternalClient {
             case "ACC_006" -> ErrorCode.BANK_PW_ERROR;
             case "ERR_001" -> ErrorCode.INVALID_INPUT;
             case "ERR_002" -> ErrorCode.INTERNAL_SERVER_ERROR;
-            case "USER_001" -> ErrorCode.USER_NOT_FOUND;
             default -> ErrorCode.BANK_API_ERROR;
         };
     }

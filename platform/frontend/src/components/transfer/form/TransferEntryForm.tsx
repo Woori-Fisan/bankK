@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AlertCircle, Info, Landmark } from 'lucide-react';
+import { Info, Landmark } from 'lucide-react';
 import Card from '../../common/Card';
 import PageHeader from '../../common/PageHeader';
 import AmountInputSection from '../sections/AmountInputSection';
@@ -8,6 +8,7 @@ import { useTransferStore } from '../../../store/useTransferStore';
 import { fetchBalance } from '../../../api/inquiry';
 import { getRecipient } from '../../../api/transfer';
 import { fetchBankList, type BankOption } from '../../../api/loanApi';
+import ErrorAlert from '../../common/ErrorAlert';
 
 // Sub-components
 import TransferRecipientSection from '../sections/TransferRecipientSection';
@@ -24,7 +25,9 @@ const TransferEntryForm: React.FC = () => {
     const [banks, setBanks] = useState<BankOption[]>([]);
     const [isSenderInquiring, setIsSenderInquiring] = useState(false);
     const [isRecipientInquiring, setIsRecipientInquiring] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [senderError, setSenderError] = useState<string | null>(null);
+    const [recipientError, setRecipientError] = useState<string | null>(null);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     const isSenderInquired = balance !== '0' && fromAccountNumber !== '' && fromName !== '';
     const isRecipientInquired = toName !== '' && toAccountNumber !== '';
@@ -45,7 +48,7 @@ const TransferEntryForm: React.FC = () => {
         if (!fromName || !fromBank || !fromAccountNumber || customerRrnPrefix.length !== 7) return;
         
         setIsSenderInquiring(true);
-        setError(null);
+        setSenderError(null);
         try {
             const response = await fetchBalance({
                 bankCode: fromBank,
@@ -56,10 +59,10 @@ const TransferEntryForm: React.FC = () => {
             if (response.success) {
                 updateData({ balance: response.data.balance });
             } else {
-                setError(response.error?.message || '계좌 조회에 실패했습니다.');
+                setSenderError(response.error?.message || '계좌 조회에 실패했습니다.');
             }
         } catch (err) {
-            setError('서버 통신 중 오류가 발생했습니다.');
+            setSenderError('서버 통신 중 오류가 발생했습니다.');
         } finally {
             setIsSenderInquiring(false);
         }
@@ -68,7 +71,7 @@ const TransferEntryForm: React.FC = () => {
     const handleRecipientInquiry = async () => {
         if (!toBank || !toAccountNumber) return;
         setIsRecipientInquiring(true);
-        setError(null);
+        setRecipientError(null);
         try {
             const response = await getRecipient(toBank, toAccountNumber);
             if (response.success) {
@@ -78,10 +81,10 @@ const TransferEntryForm: React.FC = () => {
                     toBankAccountNo: response.data.depositBankAccountNo
                 });
             } else {
-                setError(response.error?.message || '수취인 조회에 실패했습니다.');
+                setRecipientError(response.error?.message || '수취인 조회에 실패했습니다.');
             }
         } catch (err) {
-            setError('서버 통신 중 오류가 발생했습니다.');
+            setRecipientError('서버 통신 중 오류가 발생했습니다.');
         } finally {
             setIsRecipientInquiring(false);
         }
@@ -89,10 +92,10 @@ const TransferEntryForm: React.FC = () => {
 
     const handleNextClick = () => {
         if (!isSenderInquired || !isRecipientInquired || !amount || amount <= 0) {
-            setError('이체 정보를 모두 완성해 주세요.');
+            setSubmitError('이체 정보를 모두 완성해 주세요.');
             return;
         }
-        updateData({ step: 6 }); // 정보 확인 단계(FinalConfirmForm)로 이동
+        updateData({ step: 6 });
     };
 
     const isNextDisabled = !isSenderInquired || !isRecipientInquired || !amount || amount <= 0;
@@ -104,53 +107,64 @@ const TransferEntryForm: React.FC = () => {
                 description="수취인 및 출금 계좌 정보를 입력하여 이체를 진행해 주세요."
             />
 
-            {error && (
-                <div className="mb-6 flex items-center gap-2 text-rose-500 bg-rose-50 p-4 rounded-2xl border border-rose-100 max-w-4xl mx-auto animate-in fade-in slide-in-from-top-2">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                    <span className="text-sm font-bold">{error}</span>
-                </div>
-            )}
+            <ErrorAlert message={submitError || senderError || recipientError} />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
-                    <TransferRecipientSection
-                        toBank={toBank}
-                        toAccountNumber={toAccountNumber}
-                        banks={banks}
-                        onBankChange={(name, code) => updateData({ toBank: code, toBankName: name, toName: '' })}
-                        onAccountChange={(val) => updateData({ toAccountNumber: val, toName: '' })}
-                        onBlur={handleRecipientInquiry}
-                        isRecipientInquired={isRecipientInquired}
-                        isRecipientInquiring={isRecipientInquiring}
-                        toName={toName}
-                    />
+                    <div>
+                        <TransferRecipientSection
+                            toBank={toBank}
+                            toAccountNumber={toAccountNumber}
+                            banks={banks}
+                            onBankChange={(name, code) => {
+                                updateData({ toBank: code, toBankName: name, toName: '' });
+                                setRecipientError(null);
+                                setSubmitError(null);
+                            }}
+                            onAccountChange={(val) => {
+                                updateData({ toAccountNumber: val, toName: '' });
+                                setRecipientError(null);
+                                setSubmitError(null);
+                            }}
+                            onBlur={handleRecipientInquiry}
+                            isRecipientInquired={isRecipientInquired}
+                            isRecipientInquiring={isRecipientInquiring}
+                            toName={toName}
+                        />
+                    </div>
 
-                    <TransferSenderSection
-                        fromName={fromName}
-                        fromBank={fromBank}
-                        fromAccountNumber={fromAccountNumber}
-                        customerRrnPrefix={customerRrnPrefix}
-                        balance={balance}
-                        banks={banks}
-                        onNameChange={(val) => updateData({ fromName: val, balance: '0' })}
-                        onRrnFrontChange={(val) => {
-                            const currentBack = customerRrnPrefix.length >= 7 ? customerRrnPrefix.charAt(6) : '';
-                            updateData({ customerRrnPrefix: val.slice(0, 6) + (val.length === 6 ? currentBack : ''), balance: '0' });
-                        }}
-                        onRrnBackChange={(val) => {
-                            const currentFront = customerRrnPrefix.slice(0, 6);
-                            const newRrn = currentFront.length === 6 
-                                ? currentFront + val.slice(0, 1)
-                                : currentFront.padEnd(6, ' ').slice(0, 6) + val.slice(0, 1);
-                            updateData({ customerRrnPrefix: newRrn, balance: '0' });
-                        }}
-                        onBankChange={(name, code) => updateData({ fromBank: code, fromBankName: name, balance: '0' })}
-                        onAccountChange={(val) => updateData({ fromAccountNumber: val, balance: '0' })}
-                        onBlur={handleSenderInquiry}
-                        isSenderInquired={isSenderInquired}
-                        isSenderInquiring={isSenderInquiring}
-                        isRecipientInquired={isRecipientInquired}
-                    />
+                    <div>
+                        <TransferSenderSection
+                            fromName={fromName}
+                            fromBank={fromBank}
+                            fromAccountNumber={fromAccountNumber}
+                            customerRrnPrefix={customerRrnPrefix}
+                            balance={balance}
+                            banks={banks}
+                            onNameChange={(val) => { updateData({ fromName: val, balance: '0' }); setSenderError(null); setSubmitError(null); }}
+                            onRrnFrontChange={(val) => {
+                                const currentBack = customerRrnPrefix.length >= 7 ? customerRrnPrefix.charAt(6) : '';
+                                updateData({ customerRrnPrefix: val.slice(0, 6) + (val.length === 6 ? currentBack : ''), balance: '0' });
+                                setSenderError(null);
+                                setSubmitError(null);
+                            }}
+                            onRrnBackChange={(val) => {
+                                const currentFront = customerRrnPrefix.slice(0, 6);
+                                const newRrn = currentFront.length === 6 
+                                    ? currentFront + val.slice(0, 1)
+                                    : currentFront.padEnd(6, ' ').slice(0, 6) + val.slice(0, 1);
+                                updateData({ customerRrnPrefix: newRrn, balance: '0' });
+                                setSenderError(null);
+                                setSubmitError(null);
+                            }}
+                            onBankChange={(name, code) => { updateData({ fromBank: code, fromBankName: name, balance: '0' }); setSenderError(null); setSubmitError(null); }}
+                            onAccountChange={(val) => { updateData({ fromAccountNumber: val, balance: '0' }); setSenderError(null); setSubmitError(null); }}
+                            onBlur={handleSenderInquiry}
+                            isSenderInquired={isSenderInquired}
+                            isSenderInquiring={isSenderInquiring}
+                            isRecipientInquired={isRecipientInquired}
+                        />
+                    </div>
 
                     <Card padding="lg" className={`border-slate-100 shadow-sm transition-all duration-500 ${!isSenderInquired ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
                         <div className="space-y-10">
