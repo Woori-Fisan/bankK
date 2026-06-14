@@ -15,7 +15,6 @@ import com.woorifisan.bank.domain.account.model.TransactionLedger;
 import com.woorifisan.bank.domain.customer.mapper.CustomerMapper;
 import com.woorifisan.bank.domain.customer.model.Customer;
 import com.woorifisan.bank.global.exception.BusinessException;
-import com.woorifisan.bank.global.response.ApiResponse;
 import com.woorifisan.bank.global.response.ErrorCode;
 import com.woorifisan.bank.global.security.service.SecurityService;
 import com.woorifisan.bank.global.util.CryptoUtil;
@@ -26,7 +25,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.request.async.DeferredResult;
 
 /**
  * 통합 이체 비즈니스 흐름 제어 코디네이터 서비스
@@ -151,13 +149,12 @@ public class TransferService {
     /**
      * 통합 이체 실행 흐름 제어 (코디네이터)
      *
-     * [당행 이체] 동기 처리 후 DeferredResult에 즉시 응답을 세팅합니다.
-     * [타행 이체] 출금 후 보상 처리를 @Async에 위임하고 즉시 반환합니다.
-     *            Tomcat 스레드가 해방되며, 보상 완료 시 DeferredResult가 응답을 세팅합니다.
+     * [당행 이체] 동기 처리 후 SUCCESS 응답을 즉시 반환합니다.
+     * [타행 이체] 출금 후 PENDING 응답을 즉시 반환하고, 보상 처리는 @Async에 위임합니다.
+     *            클라이언트는 /transfer/status/{txId}로 최종 상태를 폴링합니다.
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public void executeTransfer(TransferRequest request,
-            DeferredResult<ApiResponse<TransferResponse>> deferredResult) {
+    public TransferResponse executeTransfer(TransferRequest request) {
 
         log.info("통합 이체 실행 요청 수신 - 출금은행: {}, 입금은행: {}, 금액: {}",
                 request.getWithdrawalBankCode(), request.getDepositBankCode(), request.getAmount());
@@ -177,19 +174,18 @@ public class TransferService {
         if (CURRENT_BANK_CODE.equals(request.getDepositBankCode())) {
             // [당행 이체] 직접 입금 처리
             log.info("통합 이체 Step 2: 당행 이체 진행");
-            handleSameBank(request, decryptedData, txId, withdrawalResponse, deferredResult);
+            return handleSameBank(request, decryptedData, txId, withdrawalResponse);
         } else {
             log.info("통합 이체 Step 2: 타행 이체 진행 (타행코드: {})", request.getDepositBankCode());
-            handleExternalBank(request, decryptedData, txId, withdrawalResponse, deferredResult);
+            return handleExternalBank(request, decryptedData, txId, withdrawalResponse);
         }
     }
 
     /**
-     * 당행 이체 처리 (동기)
+     * 당행 이체 처리 (동기) — 입금까지 완료 후 SUCCESS 응답 반환
      */
-    private void handleSameBank(TransferRequest request, DecryptedWithdrawData decryptedData,
-            String txId, TransferResponse withdrawalResponse,
-            DeferredResult<ApiResponse<TransferResponse>> deferredResult) {
+    private TransferResponse handleSameBank(TransferRequest request, DecryptedWithdrawData decryptedData,
+            String txId, TransferResponse withdrawalResponse) {
         try {
             transferTxService.internalDeposit(InternalDepositRequest.builder()
                     .depositAccountNo(decryptedData.getDepositAccountNo())
@@ -200,23 +196,21 @@ public class TransferService {
                     .build());
 
             transferTxService.updateLedgerStatus(txId, "SUCCESS");
-            deferredResult.setResult(ApiResponse.success(withdrawalResponse));
+            return withdrawalResponse;
 
         } catch (Exception e) {
             log.error("당행 입금 처리 중 오류 발생, 환불 처리를 시작합니다 - 거래ID: {}, 오류: {}", txId, e.getMessage());
             transferTxService.refundTransfer(request, decryptedData, txId);
-            deferredResult.setErrorResult(
-                    new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH,
-                            "당행 입금 처리 중 오류가 발생하여 환불되었습니다."));
+            throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH,
+                    "당행 입금 처리 중 오류가 발생하여 환불되었습니다.");
         }
     }
 
     /**
-     * 타행 이체 처리 — 보상 로직을 @Async에 위임하고 즉시 반환 (Tomcat 스레드 해방)
+     * 타행 이체 처리 — 보상 로직을 @Async에 위임하고 PENDING 상태로 즉시 반환
      */
-    private void handleExternalBank(TransferRequest request, DecryptedWithdrawData decryptedData,
-            String txId, TransferResponse withdrawalResponse,
-            DeferredResult<ApiResponse<TransferResponse>> deferredResult) {
+    private TransferResponse handleExternalBank(TransferRequest request, DecryptedWithdrawData decryptedData,
+            String txId, TransferResponse withdrawalResponse) {
 
         InternalDepositRequest depositRequest = InternalDepositRequest.builder()
                 .depositAccountNo(decryptedData.getDepositAccountNo())
@@ -226,14 +220,13 @@ public class TransferService {
                 .txId(txId)
                 .build();
 
-        // @Async — 즉시 반환, transfer-comp-N 스레드에서 실행
         compensationService.compensate(
                 request.getDepositBankCode(),
                 depositRequest,
                 request,
                 decryptedData,
-                txId,
-                withdrawalResponse,
-                deferredResult);
+                txId);
+
+        return withdrawalResponse;
     }
 }

@@ -3,7 +3,6 @@ package com.woorifisan.bank.domain.account.service;
 import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedWithdrawData;
 import com.woorifisan.bank.domain.account.dto.request.InternalDepositRequest;
 import com.woorifisan.bank.domain.account.dto.request.TransferRequest;
-import com.woorifisan.bank.domain.account.dto.response.TransferResponse;
 import com.woorifisan.bank.domain.account.dto.response.TransferStatusResponse;
 import com.woorifisan.bank.global.config.BankNetworkConfig;
 import com.woorifisan.bank.global.exception.BusinessException;
@@ -17,7 +16,6 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
@@ -45,9 +43,8 @@ public class TransferCompensationService {
     private static final Duration BLOCK_TIMEOUT  = Duration.ofSeconds(70);
 
     /**
-     * 타행 입금 시도 → 실패 시 상태 폴링 → 결과에 따라 원장 업데이트 또는 환불
-     * DeferredResult에 최종 결과를 세팅하여 HTTP 응답을 완료합니다.
-     * DeferredResult: Tomcat은 즉시 응답 대기 상태로 전환되고 스레드를 다른 요청에 재할당.
+     * 타행 입금 시도 → 실패 시 상태 폴링 → 원장 직접 업데이트 또는 환불
+     * 클라이언트는 PENDING 응답을 받은 후 /transfer/status/{txId}로 폴링합니다.
      */
     @Async("transferCompensationExecutor") // 별도 스레드풀에서 실행
     public void compensate(
@@ -55,15 +52,12 @@ public class TransferCompensationService {
             InternalDepositRequest depositRequest,
             TransferRequest originalRequest,
             DecryptedWithdrawData decryptedData,
-            String txId,
-            TransferResponse withdrawalResponse,
-            DeferredResult<ApiResponse<TransferResponse>> deferredResult) {
+            String txId) {
 
         try {
-            // 1. 타행 입금 시도
             callExternalDeposit(depositBankCode, depositRequest, txId);
             transferTxService.updateLedgerStatus(txId, "SUCCESS");
-            deferredResult.setResult(ApiResponse.success(withdrawalResponse));
+            log.info("타행 입금 성공, 원장 SUCCESS 업데이트 - 거래ID: {}", txId);
 
         } catch (Exception depositEx) {
             log.error("타행 입금 실패, 상태 확인 시작 - 거래ID: {}, 오류: {}", txId, depositEx.getMessage());
@@ -75,22 +69,16 @@ public class TransferCompensationService {
                 if (isProcessed) {
                     log.info("타행 거래 상태 확인 결과: 입금 성공 - 거래ID: {}", txId);
                     transferTxService.updateLedgerStatus(txId, "SUCCESS");
-                    deferredResult.setResult(ApiResponse.success(withdrawalResponse));
                 } else {
                     log.error("타행 거래 상태 확인 결과: 미처리, 환불 시작 - 거래ID: {}", txId);
                     transferTxService.refundTransfer(originalRequest, decryptedData, txId);
-                    deferredResult.setErrorResult(
-                            new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH,
-                                    "타행 입금 처리 중 오류가 발생하여 환불되었습니다."));
+                    transferTxService.updateLedgerStatus(txId, "FAILED");
                 }
             } catch (BusinessException statusEx) {
                 // UNKNOWN 상태 — PENDING 유지, 관리자 확인 필요
                 log.error("거래 상태 확정 불가 (UNKNOWN), PENDING 유지 - 거래ID: {}, 사유: {}", txId, statusEx.getMessage());
-                deferredResult.setErrorResult(statusEx);
             } catch (Exception e) {
                 log.error("보상 처리 중 예기치 않은 오류 - 거래ID: {}", txId, e);
-                deferredResult.setErrorResult(
-                        new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR));
             }
         }
     }
