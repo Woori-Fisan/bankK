@@ -87,7 +87,7 @@ public class ControllerLoggingAspect {
 
         httpContext.put("logType", "CONTROLLER_REQ");
         httpContext.put("logId", LogIdGenerator.generate());
-        log.info("[Request] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
+        log.info("[Request] {}", className + "." + methodName, entries(Map.of("http", new HashMap<>(httpContext))));
 
         long start = System.currentTimeMillis();
         try {
@@ -98,7 +98,7 @@ public class ControllerLoggingAspect {
             httpContext.put("response", serialize(result));
             httpContext.put("logType", "CONTROLLER_RES");
             httpContext.put("logId", LogIdGenerator.generate());
-            log.info("[Response] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
+            log.info("[Response] {}", className + "." + methodName, entries(Map.of("http", new HashMap<>(httpContext))));
             return result;
         } catch (BusinessException e) {
             long executionTime = System.currentTimeMillis() - start;
@@ -108,7 +108,7 @@ public class ControllerLoggingAspect {
             httpContext.put("errorMessage", e.getMessage());
             httpContext.put("logType", "CONTROLLER_ERR");
             httpContext.put("logId", LogIdGenerator.generate());
-            log.warn("[Error] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
+            log.warn("[Error] {}", className + "." + methodName, entries(Map.of("http", new HashMap<>(httpContext))));
             throw e;
         } catch (Throwable e) {
             long executionTime = System.currentTimeMillis() - start;
@@ -118,7 +118,7 @@ public class ControllerLoggingAspect {
             httpContext.put("errorMessage", e.getMessage());
             httpContext.put("logType", "CONTROLLER_ERR");
             httpContext.put("logId", LogIdGenerator.generate());
-            log.error("[Error] {}", className + "." + methodName, entries(Map.of("http", httpContext)));
+            log.error("[Error] {}", className + "." + methodName, entries(Map.of("http", new HashMap<>(httpContext))));
             throw e;
         } finally {
             MDC.remove("targetCode");
@@ -198,10 +198,18 @@ public class ControllerLoggingAspect {
             } catch (Exception ignored) {}
         }
         
-        // bankCode를 찾지 못한 경우 쿼리 파라미터에서 fallback 시도 후 기본값 "-" 설정
+        // bankCode를 찾지 못한 경우 쿼리 파라미터 → path variable 순으로 fallback 후 기본값 "-" 설정
         if (httpContext.get("bankCode") == null) {
             String paramBankCode = request.getParameter("bankCode");
-            httpContext.put("bankCode", (paramBankCode != null && !paramBankCode.isBlank()) ? paramBankCode : "-");
+            if (paramBankCode != null && !paramBankCode.isBlank()) {
+                httpContext.put("bankCode", paramBankCode);
+            } else {
+                @SuppressWarnings("unchecked")
+                Map<String, String> pathVars = (Map<String, String>) request.getAttribute(
+                        org.springframework.web.servlet.HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+                String pathBankCode = pathVars != null ? pathVars.get("bankCode") : null;
+                httpContext.put("bankCode", (pathBankCode != null && !pathBankCode.isBlank()) ? pathBankCode : "-");
+            }
         }
     }
 

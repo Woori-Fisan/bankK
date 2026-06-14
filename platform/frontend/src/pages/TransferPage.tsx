@@ -2,7 +2,9 @@ import React, { useEffect } from 'react';
 import { useTransferStore } from '../store/useTransferStore';
 import TransferEntryForm from '../components/transfer/form/TransferEntryForm';
 import FinalConfirmForm from '../components/transfer/form/FinalConfirmForm';
+import TransferPollingView from '../components/transfer/form/TransferPollingView';
 import ResultForm from '../components/transfer/form/ResultForm';
+import TransferFailureView from '../components/transfer/form/TransferFailureView';
 
 const TransferPage: React.FC = () => {
     const { step, reset } = useTransferStore();
@@ -15,10 +17,10 @@ const TransferPage: React.FC = () => {
     }, [reset]);
 
     const renderStep = () => {
-        // 1~5단계: 통합 입력 폼
-        // 7단계: 이체 결과 확인
         switch (step) {
-            case 7: return <ResultForm />;
+            case 7: return <TransferPollingView />;
+            case 8: return <ResultForm />;
+            case 9: return <TransferFailureView />;
             default: return <TransferEntryForm />;
         }
     };

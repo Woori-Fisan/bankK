@@ -59,11 +59,11 @@ public class TransferController {
     }
 
     @Operation(summary = "이체 거래 상태 조회", description = "타행 이체 후 PENDING 상태를 폴링하여 최종 처리 결과를 확인합니다.")
-    @GetMapping("/status/{bankCode}/{txId}")
+    @GetMapping("/status/{bankCode}/{transactionId}")
     public ApiResponse<TransferStatusResponse> getTransferStatus(
             @PathVariable("bankCode") String bankCode,
-            @PathVariable("txId") String txId) {
-        TransferStatusResponse response = transferService.getTransferStatus(bankCode, txId);
+            @PathVariable("transactionId") String transactionId) {
+        TransferStatusResponse response = transferService.getTransferStatus(bankCode, transactionId);
         return ApiResponse.success(response);
     }
 

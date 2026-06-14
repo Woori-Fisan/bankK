@@ -75,9 +75,10 @@ public class TransferService {
                 executeRequest
         );
 
-        // 3. 최종 응답 반환
+        boolean isSameBank = request.getWithdrawalBankCode().equals(request.getDepositBankCode());
         return TransferResponse.builder()
                 .transactionId(response.getTransactionId())
+                .status(isSameBank ? "SUCCESS" : "PENDING")
                 .transactionDate(formatTransactionDate(response.getTransactionDate()))
                 .balanceAfter(response.getBalanceAfter())
                 .resPayload(response.getResPayload())

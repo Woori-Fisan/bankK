@@ -43,6 +43,7 @@ public class BankExternalApiAspect {
     private static final Map<String, String> API_TYPE_TO_URL_KEY = Map.ofEntries(
             Map.entry("fetchRecipient",       "recipient"),
             Map.entry("fetchTransferExecute", "execute"),
+            Map.entry("fetchTransferStatus",  "transfer-status"),
             Map.entry("fetchBalance",         "balance"),
             Map.entry("withdraw",             "withdrawal"),
             Map.entry("fetchHistory",         "history"),
@@ -56,6 +57,7 @@ public class BankExternalApiAspect {
     /** GET 방식으로 호출되는 메서드 목록 */
     private static final Set<String> GET_API_TYPES = Set.of(
             "fetchPublicKey",
+            "fetchTransferStatus",
             "getEvaluationTerms",
             "getContractTerms"
     );
