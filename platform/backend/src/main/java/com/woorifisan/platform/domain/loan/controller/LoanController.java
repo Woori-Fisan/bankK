@@ -11,6 +11,7 @@ import com.woorifisan.platform.domain.loan.dto.response.LoanExecuteResponse;
 import com.woorifisan.platform.domain.loan.dto.response.LoanRequiredDocumentsResponse;
 import org.springframework.http.HttpStatus;
 import com.woorifisan.platform.domain.loan.service.LoanService;
+import com.woorifisan.platform.global.aop.annotation.ExcludeLogging;
 import com.woorifisan.platform.global.config.swagger.CustomExceptionDescription;
 import com.woorifisan.platform.global.config.swagger.SwaggerResponseDescription;
 import com.woorifisan.platform.global.security.annotation.VerifyTerminalSignature;
@@ -60,6 +61,7 @@ public class LoanController {
     @Operation(summary = "심사 결과 SSE 구독",
                description = "프론트엔드가 [신청하기] 클릭 시 requestKey로 SSE 채널을 열고 은행 콜백 결과를 수신합니다.")
     // 이 헤더가 없으면 브라우저가 SSE로 인식하지 않음
+    @ExcludeLogging
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribe(
             // 프론트가 생성한 UUID — 이 키로 emitter를 Map에 등록하고, 나중에 webhook이 오면 꺼내서 push
@@ -107,6 +109,7 @@ public class LoanController {
                description = "은행 @Async 심사 완료 후 결과를 플랫폼에 통보. X-Webhook-Secret 헤더로 인증.")
     // Security 필터에서 이 엔드포인트는 JWT 검증 없이 통과시킴 (호출자가 은행 서버이므로)
     // 대신 X-Webhook-Secret 헤더로 위조 요청을 차단
+    @ExcludeLogging
     @PostMapping("/callback")
     public ResponseEntity<Void> handleCallback(
             @RequestBody LoanCallbackRequest callback,
