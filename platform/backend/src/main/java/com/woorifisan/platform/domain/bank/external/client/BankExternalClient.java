@@ -3,8 +3,9 @@ package com.woorifisan.platform.domain.bank.external.client;
 import com.woorifisan.platform.crypto.dto.response.BankRsaKeyResponse;
 import com.woorifisan.platform.domain.bank.dto.response.BalanceInquiryResponse;
 import com.woorifisan.platform.domain.bank.dto.response.HistoryInquiryResponse;
-import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
+import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
+import com.woorifisan.platform.domain.bank.dto.response.TransferStatusResponse;
 import com.woorifisan.platform.domain.bank.external.dto.BankBalanceInquiryRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankHistoryInquiryRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
@@ -82,6 +83,19 @@ public class BankExternalClient {
     }
 
 
+
+    /**
+     * 특정 은행의 이체 거래 상태를 조회합니다. (클라이언트 폴링용)
+     */
+    public TransferStatusResponse fetchTransferStatus(String bankCode, String txId) {
+        BankProperty bankProperty = bankNetworkConfig.getBankProperty(bankCode);
+        if (bankProperty == null) throw new BusinessException(ErrorCode.BANK_NOT_FOUND);
+
+        String url = bankProperty.getUrl("transfer-status") + "/" + txId;
+        log.info("외부 은행 API 호출 [이체상태조회] - URL: {}, 은행코드: {}", url, bankCode);
+
+        return getRequest(url, new ParameterizedTypeReference<ApiResponse<TransferStatusResponse>>() {}, bankCode);
+    }
 
     /**
      * 특정 은행의 잔액 조회 API를 호출합니다.
