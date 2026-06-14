@@ -47,16 +47,19 @@ public class WebClientConfig {
     @Bean("bankToBankWebClient")
     public WebClient bankToBankWebClient(WebClient.Builder builder) {
         try {
+            // 1. KeyStore 로드 (클라이언트 인증서)
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
             try (InputStream is = keystoreResource.getInputStream()) {
                 keyStore.load(is, keystorePassword.toCharArray());
             }
 
+            // 2. TrustStore 로드 (CA 인증서)
             KeyStore trustStore = KeyStore.getInstance("PKCS12");
             try (InputStream is = truststoreResource.getInputStream()) {
                 trustStore.load(is, truststorePassword.toCharArray());
             }
 
+            // 3. SSLContext 생성 (표준 API 사용)
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             kmf.init(keyStore, keystorePassword.toCharArray());
 
