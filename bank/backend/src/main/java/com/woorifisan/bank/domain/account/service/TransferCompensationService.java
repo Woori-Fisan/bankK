@@ -54,32 +54,66 @@ public class TransferCompensationService {
             DecryptedWithdrawData decryptedData,
             String txId) {
 
+        // 1. 타행 입금 시도
+        boolean depositSucceeded = false;
         try {
             callExternalDeposit(depositBankCode, depositRequest, txId);
-            transferTxService.updateLedgerStatus(txId, "SUCCESS");
-            log.info("타행 입금 성공, 원장 SUCCESS 업데이트 - 거래ID: {}", txId);
-
+            depositSucceeded = true;
         } catch (Exception depositEx) {
-            log.error("타행 입금 실패, 상태 확인 시작 - 거래ID: {}, 오류: {}", txId, depositEx.getMessage());
+            log.error("타행 입금 실패, 상태 폴링으로 전환 - 거래ID: {}, 오류: {}", txId, depositEx.getMessage());
+        }
 
-            // 2. 입금 실패 시 → WebClient + retryWhen으로 상태 폴링
+        // 2. 입금 API 성공 → 원장 SUCCESS 업데이트 후 완료 (환불 금지)
+        if (depositSucceeded) {
             try {
-                boolean isProcessed = pollTransferStatus(depositBankCode, txId);
-
-                if (isProcessed) {
-                    log.info("타행 거래 상태 확인 결과: 입금 성공 - 거래ID: {}", txId);
-                    transferTxService.updateLedgerStatus(txId, "SUCCESS");
-                } else {
-                    log.error("타행 거래 상태 확인 결과: 미처리, 환불 시작 - 거래ID: {}", txId);
-                    transferTxService.refundTransfer(originalRequest, decryptedData, txId);
-                    transferTxService.updateLedgerStatus(txId, "FAILED");
-                }
-            } catch (BusinessException statusEx) {
-                // UNKNOWN 상태 — PENDING 유지, 관리자 확인 필요
-                log.error("거래 상태 확정 불가 (UNKNOWN), PENDING 유지 - 거래ID: {}, 사유: {}", txId, statusEx.getMessage());
-            } catch (Exception e) {
-                log.error("보상 처리 중 예기치 않은 오류 - 거래ID: {}", txId, e);
+                transferTxService.updateLedgerStatus(txId, "SUCCESS");
+                log.info("타행 입금 성공, 원장 SUCCESS 업데이트 완료 - 거래ID: {}", txId);
+            } catch (Exception ledgerEx) {
+                // 입금은 완료됐으므로 환불하면 이중 지급 발생. PENDING 유지하고 관리자 수동 복구 필요
+                log.error("[수동 복구 필요] 타행 입금 완료 후 원장 SUCCESS 업데이트 실패 - 거래ID: {}", txId, ledgerEx);
             }
+            return;
+        }
+
+        // 3. 입금 API 실패 → 상태 폴링으로 실제 처리 여부 확인
+        try {
+            boolean isProcessed = pollTransferStatus(depositBankCode, txId);
+
+            if (isProcessed) {
+                // 폴링 결과 입금 확인 → 원장 SUCCESS (환불 금지)
+                try {
+                    transferTxService.updateLedgerStatus(txId, "SUCCESS");
+                    log.info("타행 거래 상태 폴링 확인: 입금 성공, 원장 SUCCESS 업데이트 완료 - 거래ID: {}", txId);
+                } catch (Exception ledgerEx) {
+                    log.error("[수동 복구 필요] 폴링 SUCCESS 확인 후 원장 업데이트 실패 - 거래ID: {}", txId, ledgerEx);
+                }
+            } else {
+                // 폴링 결과 미처리 확인 → 환불 시도
+                log.error("타행 거래 상태 폴링 확인: 미처리, 환불 시작 - 거래ID: {}", txId);
+                try {
+                    transferTxService.refundTransfer(originalRequest, decryptedData, txId);
+                    log.info("환불 완료 - 거래ID: {}", txId);
+                } catch (Exception refundEx) {
+                    log.error("[수동 복구 필요] 환불 처리 실패 - 출금액 미회수 상태, 관리자 확인 필요 - 거래ID: {}", txId, refundEx);
+                }
+                // 환불 성공 여부와 무관하게 FAILED 기록 — 관리자가 FAILED 원장으로 추적·복구 가능
+                safeMarkLedgerAsFailed(txId);
+            }
+        } catch (BusinessException statusEx) {
+            // 재시도 소진 또는 비일시적 오류 → 상태 확정 불가(UNKNOWN), PENDING 유지
+            log.error("[수동 복구 필요] 거래 상태 확정 불가 (UNKNOWN), PENDING 유지 - 거래ID: {}, 사유: {}", txId, statusEx.getMessage());
+        } catch (Exception e) {
+            log.error("[수동 복구 필요] 보상 처리 중 예기치 않은 오류 - 거래ID: {}", txId, e);
+            safeMarkLedgerAsFailed(txId);
+        }
+    }
+
+    /** 처리가 불확실한 경로에서 원장에 최소한 FAILED를 기록한다. 실패해도 예외를 전파하지 않는다. */
+    private void safeMarkLedgerAsFailed(String txId) {
+        try {
+            transferTxService.updateLedgerStatus(txId, "FAILED");
+        } catch (Exception e) {
+            log.error("원장 FAILED 기록마저 실패, 수동 복구 필요 - 거래ID: {}", txId, e);
         }
     }
 

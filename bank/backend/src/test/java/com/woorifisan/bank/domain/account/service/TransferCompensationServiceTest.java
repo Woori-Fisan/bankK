@@ -3,6 +3,7 @@ package com.woorifisan.bank.domain.account.service;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -204,5 +205,32 @@ class TransferCompensationServiceTest {
 
         verify(transferTxService).updateLedgerStatus(TX_ID, "SUCCESS");
         verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("타행 입금 성공 후 원장 SUCCESS 업데이트 실패 시 환불 없이 로그만 남긴다 (이중 지급 방지)")
+    void compensate_depositSuccess_ledgerUpdateFails_doesNotRefund() {
+        given(bankNetworkConfig.getBankProperty(DEPOSIT_BANK_CODE)).willReturn(bankProperty);
+        givenDepositSuccess();
+        doThrow(new RuntimeException("DB connection lost"))
+                .when(transferTxService).updateLedgerStatus(TX_ID, "SUCCESS");
+
+        compensationService.compensate(DEPOSIT_BANK_CODE, depositRequest, originalRequest, decryptedData, TX_ID);
+
+        verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("타행 입금 실패 후 폴링 FAILED 확인 시 환불 실패해도 원장을 FAILED로 기록한다")
+    void compensate_depositFails_pollReturnsFailed_refundFails_stillMarksFailed() {
+        given(bankNetworkConfig.getBankProperty(DEPOSIT_BANK_CODE)).willReturn(bankProperty);
+        givenDepositFails(new RuntimeException("네트워크 오류"));
+        givenPollReturnsStatus("FAILED");
+        doThrow(new RuntimeException("환불 DB 오류"))
+                .when(transferTxService).refundTransfer(any(), any(), anyString());
+
+        compensationService.compensate(DEPOSIT_BANK_CODE, depositRequest, originalRequest, decryptedData, TX_ID);
+
+        verify(transferTxService).updateLedgerStatus(TX_ID, "FAILED");
     }
 }

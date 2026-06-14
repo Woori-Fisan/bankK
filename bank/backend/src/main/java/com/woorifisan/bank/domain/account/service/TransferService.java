@@ -201,16 +201,31 @@ public class TransferService {
                     .withdrawalAccountNo(decryptedData.getWithdrawalAccountNo())
                     .txId(UUID.randomUUID().toString())
                     .build());
-
-            transferTxService.updateLedgerStatus(txId, "SUCCESS");
-            return withdrawalResponse;
-
         } catch (Exception e) {
+            // 입금 자체가 실패 → 돈이 이동하지 않았으므로 환불 시도
             log.error("당행 입금 처리 중 오류 발생, 환불 처리를 시작합니다 - 거래ID: {}, 오류: {}", txId, e.getMessage());
-            transferTxService.refundTransfer(request, decryptedData, txId);
+            try {
+                transferTxService.refundTransfer(request, decryptedData, txId);
+            } catch (Exception refundEx) {
+                // 출금됐으나 입금·환불 모두 실패 → 관리자 확인 필요
+                log.error("환불 처리 실패 - 출금액 미회수, 관리자 확인 필요 - 거래ID: {}", txId, refundEx);
+                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR,
+                        "입금 실패 후 환불에도 실패했습니다. 관리자 확인이 필요합니다.");
+            }
             throw new BusinessException(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH,
                     "당행 입금 처리 중 오류가 발생하여 환불되었습니다.");
         }
+
+        try {
+            transferTxService.updateLedgerStatus(txId, "SUCCESS");
+        } catch (Exception e) {
+            // 입금은 완료 후 원장 업데이트 실패 → 환불하면 이중 지급 발생. 관리자 확인이 필요한 예외로 처리
+            log.error("원장 상태 업데이트 실패 - 입금은 완료됨, 관리자 확인 필요 - 거래ID: {}", txId, e);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR,
+                    "입금은 완료됐으나 원장 업데이트에 실패했습니다. 관리자 확인이 필요합니다.");
+        }
+
+        return withdrawalResponse;
     }
 
     /**

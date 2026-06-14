@@ -350,6 +350,43 @@ class TransferServiceTest {
     }
 
     @Test
+    @DisplayName("이체 실행: 당행 입금 성공 후 원장 업데이트 실패 시 환불 없이 INTERNAL_SERVER_ERROR를 발생시킨다")
+    void executeTransfer_localTransfer_ledgerUpdateFailure_doesNotRefund() {
+        // given
+        TransferRequest request = TransferRequest.builder()
+                .withdrawalBankCode(OUR_BANK_CODE)
+                .depositBankCode(OUR_BANK_CODE)
+                .amount(new BigDecimal("10000"))
+                .build();
+
+        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
+                .withdrawalAccountNo("111-111")
+                .depositAccountNo("222-222")
+                .build();
+
+        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
+        bankProperty.setBaseUrl("http://our-bank");
+        given(bankNetworkConfig.getBankProperty(OUR_BANK_CODE)).willReturn(bankProperty);
+
+        given(securityService.decryptWithKey(eq(request), eq(DecryptedWithdrawData.class)))
+                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
+
+        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
+        given(transferTxService.withdrawTransfer(eq(request), eq(decryptedData), eq(TEST_CEK))).willReturn(mockWithdrawalResponse);
+
+        // 입금 성공, 원장 업데이트만 실패
+        doThrow(new RuntimeException("DB connection lost during ledger update"))
+                .when(transferTxService).updateLedgerStatus(eq("mock-tx-id"), eq("SUCCESS"));
+
+        // when & then
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                transferService.executeTransfer(request));
+        assertEquals(ErrorCode.INTERNAL_SERVER_ERROR, ex.getErrorCode());
+        // 입금이 이미 완료됐으므로 환불 호출 금지 — 이중 지급 방지
+        verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
+    }
+
+    @Test
     @DisplayName("이체 실행: 타행 이체 시 PENDING 상태로 즉시 반환하고 보상 서비스에 위임한다")
     void executeTransfer_externalTransfer_returnsPendingAndDelegates() {
         // given
