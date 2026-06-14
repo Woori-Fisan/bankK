@@ -170,6 +170,10 @@ public class TransferCompensationService {
                         })
                 .bodyToMono(new ParameterizedTypeReference<ApiResponse<TransferStatusResponse>>() {})
                 .flatMap(apiResponse -> {
+                    if (apiResponse == null || apiResponse.getData() == null || apiResponse.getData().getStatus() == null) {
+                        log.warn("타행 거래 상태 응답이 비어있음, 재시도 - 거래ID: {}", txId);
+                        return Mono.error(new PendingTransferException("NULL_RESPONSE"));
+                    }
                     String status = apiResponse.getData().getStatus();
                     log.info("타행 거래 상태 수신 - 거래ID: {}, 상태: {}", txId, status);
                     return switch (status) {
