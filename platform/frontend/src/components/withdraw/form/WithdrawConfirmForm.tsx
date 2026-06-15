@@ -18,10 +18,9 @@ const WithdrawConfirmForm: React.FC<WithdrawConfirmFormProps> = ({
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <Card padding="lg" className="border-slate-100 shadow-xl shadow-slate-200/50">
-                <WithdrawConfirmSection 
+                <WithdrawConfirmSection
                     sourceAccount={data.sourceAccount}
                     amount={data.amount}
-                    fee={data.fee}
                 />
 
                 <footer className="mt-10 pt-8 border-t border-slate-50 grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -23,21 +23,30 @@ const AccountSideSummary: React.FC<AccountSideSummaryProps> = ({
             <Card padding="lg" className="bg-white border-slate-100 shadow-sm flex flex-col justify-between min-h-[420px]">
                 <div className="space-y-6">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">조회 요약</span>
+                        <span className="text-sm font-bold text-slate-700 uppercase tracking-widest">조회 요약</span>
                     </div>
                     
                     <div className="space-y-6">
                         <div className="space-y-1">
                             <p className="text-[10px] font-bold text-slate-400 uppercase">고객명</p>
-                            <p className="text-sm font-black text-slate-900">{userName || '미입력'}</p>
+                            {userName
+                                ? <p className="text-sm font-black text-slate-900">{userName}</p>
+                                : <p className="text-sm font-bold text-slate-300 italic pl-1">미입력</p>
+                            }
                         </div>
                         <div className="space-y-1">
                             <p className="text-[10px] font-bold text-slate-400 uppercase">대상 은행</p>
-                            <p className="text-sm font-black text-slate-900">{bankName || '은행 미선택'}</p>
+                            {bankName
+                                ? <p className="text-sm font-black text-slate-900">{bankName}</p>
+                                : <p className="text-sm font-bold text-slate-300 italic pl-1">은행 미선택</p>
+                            }
                         </div>
                         <div className="space-y-1">
                             <p className="text-[10px] font-bold text-slate-400 uppercase">계좌 번호</p>
-                            <p className="text-sm font-black text-slate-900 font-mono">{accountNo || '번호 미입력'}</p>
+                            {accountNo
+                                ? <p className="text-sm font-black text-slate-900 font-mono">{accountNo}</p>
+                                : <p className="text-sm font-bold text-slate-300 italic pl-1">번호 미입력</p>
+                            }
                         </div>
                     </div>
                 </div>

@@ -25,7 +25,6 @@ export interface WithdrawData {
     };
     birthDate: string;
     amount: string;
-    fee: number;
 }
 
 /**

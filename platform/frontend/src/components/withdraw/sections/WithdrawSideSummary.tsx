@@ -35,11 +35,17 @@ const WithdrawSideSummary: React.FC<WithdrawSideSummaryProps> = ({
                     <div className="space-y-6">
                         <div className="space-y-1">
                             <p className="text-[10px] font-bold text-slate-400 uppercase">고객명</p>
-                            <p className="text-sm font-black text-slate-900">{userName || '미입력'}</p>
+                            {userName
+                                ? <p className="text-sm font-black text-slate-900">{userName}</p>
+                                : <p className="text-sm font-bold text-slate-300 italic pl-1">미입력</p>
+                            }
                         </div>
                         <div className="space-y-1">
                             <p className="text-[10px] font-bold text-slate-400 uppercase">계좌번호</p>
-                            <p className="text-sm font-black text-slate-900 font-mono">{sourceAccount.bankName} {sourceAccount.accountNumber || '미입력'}</p>
+                            {sourceAccount.accountNumber
+                                ? <p className="text-sm font-black text-slate-900 font-mono">{sourceAccount.bankName} {sourceAccount.accountNumber}</p>
+                                : <p className="text-sm font-bold text-slate-300 italic pl-1">정보 미입력</p>
+                            }
                         </div>
                     </div>
                 </div>
@@ -60,10 +66,9 @@ const WithdrawSideSummary: React.FC<WithdrawSideSummaryProps> = ({
                                     <span className="text-sm font-bold text-slate-500">원</span>
                                 </div>
                             ) : (
-                                <p className="text-sm font-bold text-slate-300 py-2">계좌 확인 시 조회됩니다.</p>
+                                <p className="text-sm font-bold text-slate-300 italic pl-1">계좌 확인 시 조회됩니다.</p>
                             )}
                         </div>
-                        <p className="text-[10px] font-bold text-emerald-600">수수료 전액 면제 (0원)</p>
                     </div>
                 </div>
             </Card>

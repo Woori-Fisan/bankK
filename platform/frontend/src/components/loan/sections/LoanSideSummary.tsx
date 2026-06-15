@@ -6,6 +6,7 @@ import { Button } from '../../common/Button';
 interface SummaryItem {
     label: string;
     value: React.ReactNode;
+    placeholder?: boolean;
 }
 
 interface LoanSideSummaryProps {
@@ -34,7 +35,7 @@ const LoanSideSummary: React.FC<LoanSideSummaryProps> = ({
             <Card padding="lg" className="bg-white border-slate-100 shadow-sm flex flex-col justify-between min-h-[520px]">
                 <div className="space-y-8">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</span>
+                        <span className="text-sm font-bold text-slate-700 uppercase tracking-widest">{title}</span>
                     </div>
                     
                     <div className="space-y-6">
@@ -42,7 +43,7 @@ const LoanSideSummary: React.FC<LoanSideSummaryProps> = ({
                             <React.Fragment key={item.label}>
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase">{item.label}</p>
-                                    <div className="text-sm font-black text-slate-900">{item.value}</div>
+                                    <div className={item.placeholder ? "text-sm font-bold text-slate-300 italic pl-1" : "text-sm font-black text-slate-900"}>{item.value}</div>
                                 </div>
                                 {idx < items.length - 1 && <div className="w-full h-px bg-slate-50"></div>}
                             </React.Fragment>
