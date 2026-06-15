@@ -19,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 public class TransferResponse extends SecureResponse {
 
     private String transactionId;
+    private String status;
     private String transactionDate;
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal balanceAfter;

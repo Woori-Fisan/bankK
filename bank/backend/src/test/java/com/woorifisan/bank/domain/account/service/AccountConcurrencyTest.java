@@ -25,9 +25,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.jdbc.SqlConfig;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -57,6 +59,10 @@ class AccountConcurrencyTest {
 
     @MockitoBean
     private SecurityService securityService;
+
+    @MockitoBean
+    @Qualifier("bankToBankWebClient")
+    private WebClient bankToBankWebClient;
 
     // ── 테스트 픽스처 ──────────────────────────────────────────────
 

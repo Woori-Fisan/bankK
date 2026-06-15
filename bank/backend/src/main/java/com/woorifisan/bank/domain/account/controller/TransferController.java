@@ -12,7 +12,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * BaaS 이체 컨트롤러
@@ -27,12 +32,13 @@ public class TransferController {
 
     /**
      * 통합 이체 실행 (BaaS용)
-     * @param request 이체 요청 정보
-     * @return 이체 결과
+     * 당행 이체: 즉시 SUCCESS 반환.
+     * 타행 이체: PENDING 상태로 즉시 반환 → 클라이언트가 /transfer/status/{txId}로 폴링.
      */
     @Operation(summary = "통합 이체 실행 (BaaS용)", description = "출금부터 입금(당행/타행)까지 한 번에 처리하는 통합 이체 API입니다.")
     @PostMapping("/execute")
-    public ApiResponse<TransferResponse> executeTransfer(@RequestBody @Valid TransferRequest request) {
+    public ApiResponse<TransferResponse> executeTransfer(
+            @RequestBody @Valid TransferRequest request) {
         TransferResponse response = transferService.executeTransfer(request);
         return ApiResponse.success(response);
     }

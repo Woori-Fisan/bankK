@@ -48,7 +48,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 
 const LogDetailModal: React.FC<Props> = ({ log, onClose }) => {
     const uri = log.httpUri?.toLowerCase() ?? '';
-    const isTransfer = uri.includes('transfer') && !uri.includes('recipient');
+    const isTransfer = uri.includes('transfer') && !uri.includes('recipient') && !uri.includes('transfer/status');
     const isRequestLog = log.logType === 'CONTROLLER_REQ' || log.logType === 'BANK_REQ';
     const isBankLog = log.logType === 'BANK_REQ' || log.logType === 'BANK_RES' || log.logType === 'BANK_ERR';
 

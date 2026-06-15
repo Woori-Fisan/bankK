@@ -8,10 +8,10 @@ import { formatAmount } from '../../../utils/formatter';
 import ErrorAlert from '../../common/ErrorAlert';
 
 const FinalConfirmForm: React.FC = () => {
-    const { 
+    const {
         fromName, fromBank, fromBankName, fromAccountNumber, customerRrnPrefix,
         toBank, toBankName, toAccountNumber, toName, amount, balance,
-        prevStep, nextStep, updateData 
+        prevStep, updateData
     } = useTransferStore();
     const [isPinpadOpen, setIsPinpadOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -37,10 +37,15 @@ const FinalConfirmForm: React.FC = () => {
             if (response.success) {
                 updateData({
                     transactionId: response.data.transactionId,
-                    transactionDate: response.data.transactionDate,
-                    balanceAfter: response.data.balanceAfter
+                    transactionDate: response.data.transactionDate ?? '',
+                    balanceAfter: response.data.balanceAfter ?? '',
                 });
-                nextStep();
+
+                if (response.data.status === 'PENDING') {
+                    updateData({ step: 7 }); // 폴링 대기 화면
+                } else {
+                    updateData({ step: 8 }); // 당행 이체 즉시 완료
+                }
             } else {
                 setError(response.error?.message || '이체 실행에 실패했습니다.');
             }
