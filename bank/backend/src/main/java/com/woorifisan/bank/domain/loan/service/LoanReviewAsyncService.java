@@ -119,7 +119,7 @@ public class LoanReviewAsyncService {
             // 7단계: 승인 한도와 적용금리 조건에 맞는 상품 조회
             List<AvailableProductDto> products = loanProductMapper
                     .findMatchingProducts(approvedLimit, appliedRate)
-                    .stream().map(AvailableProductDto::from).toList();
+                    .stream().map(p -> AvailableProductDto.from(p, appliedRate)).toList();
 
             // 8단계: 심사 결과 APPROVED 로 저장
             LoanLedger forUpdate = LoanLedger.builder()
