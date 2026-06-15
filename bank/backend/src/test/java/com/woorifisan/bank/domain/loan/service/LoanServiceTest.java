@@ -375,6 +375,7 @@ class LoanServiceTest {
                     .status("APPROVED")
                     .approvedLimit(approvedLimit)
                     .interestRate(new BigDecimal("6.00"))
+                    .appliedCreditScore(750)
                     .customerId(10L)
                     .linkedAccountId(1L)
                     .build();
@@ -537,6 +538,8 @@ class LoanServiceTest {
             given(accountMapper.updateBalance(eq(1L), any(BigDecimal.class))).willReturn(1);
             given(customerMapper.findById(10L)).willReturn(
                     Optional.of(Customer.builder().id(10L).customerName(CUSTOMER_NAME).build()));
+            given(loanReviewAsyncService.calculateProductRate(any(), anyInt()))
+                    .willReturn(new BigDecimal("6.00"));
             given(loanReviewAsyncService.calculateMonthlyPayment(
                     any(BigDecimal.class), any(BigDecimal.class), anyInt()))
                     .willReturn(new BigDecimal("897000"));

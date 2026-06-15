@@ -8,6 +8,7 @@ import com.woorifisan.bank.domain.loan.dto.response.SensitiveLoanEvaluateRespons
 import com.woorifisan.bank.domain.loan.mapper.LoanLedgerMapper;
 import com.woorifisan.bank.domain.loan.mapper.LoanProductMapper;
 import com.woorifisan.bank.domain.loan.model.LoanLedger;
+import com.woorifisan.bank.domain.loan.model.LoanProduct;
 import com.woorifisan.bank.global.security.service.SecurityService;
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -119,7 +120,7 @@ public class LoanReviewAsyncService {
             // 7단계: 승인 한도와 적용금리 조건에 맞는 상품 조회
             List<AvailableProductDto> products = loanProductMapper
                     .findMatchingProducts(approvedLimit, appliedRate)
-                    .stream().map(p -> AvailableProductDto.from(p, appliedRate)).toList();
+                    .stream().map(p -> AvailableProductDto.from(p, calculateProductRate(p, creditScore))).toList();
 
             // 8단계: 심사 결과 APPROVED 로 저장
             LoanLedger forUpdate = LoanLedger.builder()
@@ -266,6 +267,19 @@ public class LoanReviewAsyncService {
         return availableMonthly.multiply(pow.subtract(BigDecimal.ONE))
                 .divide(r.multiply(pow), 0, RoundingMode.DOWN)
                 .min(MAX_LOAN_AMOUNT); // 최대 1억 캡
+    }
+
+    // 신용점수 → 상품 금리 범위 내 보간 공식: productRate = minRate + (maxRate - minRate) × factor
+    // factor: 900+→0.00, 800~899→0.25, 700~799→0.50, 600~699→0.75
+    BigDecimal calculateProductRate(LoanProduct product, int creditScore) {
+        BigDecimal factor;
+        if (creditScore >= 900)      factor = BigDecimal.ZERO;
+        else if (creditScore >= 800) factor = new BigDecimal("0.25");
+        else if (creditScore >= 700) factor = new BigDecimal("0.50");
+        else                         factor = new BigDecimal("0.75");
+
+        BigDecimal range = product.getMaxRate().subtract(product.getMinRate());
+        return product.getMinRate().add(range.multiply(factor)).setScale(2, RoundingMode.HALF_UP);
     }
 
     // 원리금균등상환 월납입금 공식: M = P × r(1+r)^n / ((1+r)^n - 1)
