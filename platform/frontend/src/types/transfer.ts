@@ -1,3 +1,5 @@
+export type TransferResultType = 'FAILED' | 'TIMEOUT';
+
 export interface TransferState {
     // State
     step: number;
@@ -19,6 +21,7 @@ export interface TransferState {
     transactionId: string;
     transactionDate: string;
     balanceAfter: string;
+    resultType: TransferResultType | null;
 
     // Actions
     setStep: (step: number) => void;

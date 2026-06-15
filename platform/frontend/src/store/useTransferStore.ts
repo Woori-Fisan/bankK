@@ -19,6 +19,7 @@ const initialState = {
     transactionId: '',
     transactionDate: '',
     balanceAfter: '',
+    resultType: null as TransferState['resultType'],
 };
 
 export const useTransferStore = create<TransferState>((set) => ({

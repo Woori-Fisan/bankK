@@ -9,7 +9,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.woorifisan.bank.domain.account.dto.decrypted.DecryptedRecipientData;
@@ -33,8 +32,6 @@ import com.woorifisan.bank.global.security.service.SecurityService;
 import com.woorifisan.bank.global.util.CryptoUtil;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,11 +41,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestTemplate;
 
 /**
  * 통합 이체 서비스(TransferService) 단위 테스트
@@ -73,16 +66,16 @@ class TransferServiceTest {
     private SecurityService securityService;
 
     @Mock
-    private RestTemplate restTemplate;
-
-    @Mock
-    private BankNetworkConfig bankNetworkConfig;
-
-    @Mock
     private TransferTxService transferTxService;
 
     @Mock
+    private TransferCompensationService compensationService;
+
+    @Mock
     private CryptoUtil cryptoUtil;
+
+    @Mock
+    private BankNetworkConfig bankNetworkConfig;
 
     private Account sender;
     private Customer senderCustomer;
@@ -153,7 +146,7 @@ class TransferServiceTest {
         // when & then
         BusinessException ex = assertThrows(BusinessException.class, () ->
                 transferService.verifyRecipient(request));
-        assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+        assertEquals(ErrorCode.USER_NOT_FOUND, ex.getErrorCode());
     }
 
     @Test
@@ -301,6 +294,10 @@ class TransferServiceTest {
                 .depositAccountNo("222-222")
                 .build();
 
+        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
+        bankProperty.setBaseUrl("http://our-bank");
+        given(bankNetworkConfig.getBankProperty(OUR_BANK_CODE)).willReturn(bankProperty);
+
         given(securityService.decryptWithKey(eq(request), eq(DecryptedWithdrawData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
 
@@ -332,6 +329,10 @@ class TransferServiceTest {
                 .depositAccountNo("222-222")
                 .build();
 
+        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
+        bankProperty.setBaseUrl("http://our-bank");
+        given(bankNetworkConfig.getBankProperty(OUR_BANK_CODE)).willReturn(bankProperty);
+
         given(securityService.decryptWithKey(eq(request), eq(DecryptedWithdrawData.class)))
                 .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
 
@@ -349,320 +350,101 @@ class TransferServiceTest {
     }
 
     @Test
-    @DisplayName("이체 실행: 타행 이체 시 직접 호출이 성공하면 원장 상태를 SUCCESS로 변경한다")
-    void executeTransfer_externalTransfer_success() {
+    @DisplayName("이체 실행: 당행 입금 성공 후 원장 업데이트 실패 시 환불 없이 INTERNAL_SERVER_ERROR를 발생시킨다")
+    void executeTransfer_localTransfer_ledgerUpdateFailure_doesNotRefund() {
         // given
         TransferRequest request = TransferRequest.builder()
                 .withdrawalBankCode(OUR_BANK_CODE)
-                .depositBankCode(OTHER_BANK_CODE)
+                .depositBankCode(OUR_BANK_CODE)
                 .amount(new BigDecimal("10000"))
                 .build();
 
         DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
                 .withdrawalAccountNo("111-111")
-                .depositAccountNo("999-999")
+                .depositAccountNo("222-222")
                 .build();
-
-        given(securityService.decryptWithKey(eq(request), eq(DecryptedWithdrawData.class)))
-                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
-
-        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
-        given(transferTxService.withdrawTransfer(eq(request), eq(decryptedData), eq(TEST_CEK))).willReturn(mockWithdrawalResponse);
-
-        BankNetworkConfig.BankProperty property = new BankNetworkConfig.BankProperty();
-        property.setBaseUrl("http://external-bank");
-        given(bankNetworkConfig.getBankProperty(OTHER_BANK_CODE)).willReturn(property);
-
-        // when
-        TransferResponse response = transferService.executeTransfer(request);
-
-        // then
-        assertNotNull(response);
-        verify(restTemplate).postForEntity(eq("http://external-bank/api/v1/baas/transfer/internal/deposit"), any(InternalDepositRequest.class), eq(Object.class));
-        verify(transferTxService).updateLedgerStatus("mock-tx-id", "SUCCESS");
-    }
-
-    @Test
-    @DisplayName("이체 실행: 타행 이체 시 입금 API 실패하고 상태 조회에서 FAILED 확인 시 환불 처리를 진행하고 예외를 발생시킨다")
-    void executeTransfer_externalTransfer_depositFailure_refund() {
-        // given
-        TransferRequest request = TransferRequest.builder()
-                .withdrawalBankCode(OUR_BANK_CODE)
-                .depositBankCode(OTHER_BANK_CODE)
-                .amount(new BigDecimal("10000"))
-                .build();
-
-        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
-                .withdrawalAccountNo("111-111")
-                .depositAccountNo("999-999")
-                .build();
-
-        given(securityService.decryptWithKey(eq(request), eq(DecryptedWithdrawData.class)))
-                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
-
-        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
-        given(transferTxService.withdrawTransfer(eq(request), eq(decryptedData), eq(TEST_CEK))).willReturn(mockWithdrawalResponse);
-
-        BankNetworkConfig.BankProperty property = new BankNetworkConfig.BankProperty();
-        property.setBaseUrl("http://external-bank");
-        given(bankNetworkConfig.getBankProperty(OTHER_BANK_CODE)).willReturn(property);
-
-        doThrow(new RuntimeException("Call timed out"))
-                .when(restTemplate).postForEntity(anyString(), any(), eq(Object.class));
-
-        Map<String, Object> responseBody = new HashMap<>();
-        Map<String, Object> data = new HashMap<>();
-        data.put("status", "FAILED");
-        responseBody.put("data", data);
-        given(restTemplate.getForObject(anyString(), eq(Map.class))).willReturn(responseBody);
-
-        // when & then
-        BusinessException ex = assertThrows(BusinessException.class, () ->
-                transferService.executeTransfer(request));
-        assertEquals(ErrorCode.LOAN_DEPOSIT_BANK_MISMATCH, ex.getErrorCode());
-        verify(transferTxService).refundTransfer(eq(request), eq(decryptedData), eq("mock-tx-id"));
-    }
-
-    @Test
-    @DisplayName("이체 실행: 타행 입금 API 호출 도중 Property 설정 정보를 찾을 수 없을 때 예외가 발생한다")
-    void executeTransfer_externalTransfer_propertyNotFound() {
-        // given
-        TransferRequest request = TransferRequest.builder()
-                .withdrawalBankCode(OUR_BANK_CODE)
-                .depositBankCode(OTHER_BANK_CODE)
-                .amount(new BigDecimal("10000"))
-                .build();
-
-        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
-                .withdrawalAccountNo("111-111")
-                .depositAccountNo("999-999")
-                .build();
-
-        given(securityService.decryptWithKey(eq(request), eq(DecryptedWithdrawData.class)))
-                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
-
-        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
-        given(transferTxService.withdrawTransfer(eq(request), eq(decryptedData), eq(TEST_CEK))).willReturn(mockWithdrawalResponse);
-
-        given(bankNetworkConfig.getBankProperty(OTHER_BANK_CODE)).willReturn(null);
-
-        // when & then
-        BusinessException ex = assertThrows(BusinessException.class, () ->
-                transferService.executeTransfer(request));
-        assertEquals(ErrorCode.BANK_NOT_FOUND, ex.getErrorCode());
-    }
-
-    @Test
-    @DisplayName("이체 실행: 타행 입금 API 호출 실패 후 거래 상태 확인 시 Property 설정 정보를 찾을 수 없을 때 예외가 발생한다")
-    void executeTransfer_externalTransfer_depositCall_propertyNotFound() {
-        // given
-        TransferRequest request = TransferRequest.builder()
-                .withdrawalBankCode(OUR_BANK_CODE)
-                .depositBankCode(OTHER_BANK_CODE)
-                .amount(new BigDecimal("10000"))
-                .build();
-
-        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
-                .withdrawalAccountNo("111-111")
-                .depositAccountNo("999-999")
-                .build();
-
-        given(securityService.decryptWithKey(eq(request), eq(DecryptedWithdrawData.class)))
-                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
-
-        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
-        given(transferTxService.withdrawTransfer(eq(request), eq(decryptedData), eq(TEST_CEK))).willReturn(mockWithdrawalResponse);
-
-        BankNetworkConfig.BankProperty property = new BankNetworkConfig.BankProperty();
-        property.setBaseUrl("http://external-bank");
-
-        given(bankNetworkConfig.getBankProperty(OTHER_BANK_CODE))
-                .willReturn(property)
-                .willReturn(null);
-
-        doThrow(new RuntimeException("Call timed out"))
-                .when(restTemplate).postForEntity(anyString(), any(), eq(Object.class));
-
-        // when & then
-        BusinessException ex = assertThrows(BusinessException.class, () ->
-                transferService.executeTransfer(request));
-        assertEquals(ErrorCode.BANK_NOT_FOUND, ex.getErrorCode());
-    }
-
-    @Test
-    @DisplayName("이중지급방지: 타행 이체 중 API 에러가 났으나 상대 은행 상태 조회 시 성공으로 확인되면 성공 처리하고 환불을 방지한다")
-    void executeTransfer_doublePaymentPrevention_success() {
-        // given
-        TransferRequest request = TransferRequest.builder()
-                .withdrawalBankCode(OUR_BANK_CODE)
-                .depositBankCode(OTHER_BANK_CODE)
-                .amount(new BigDecimal("10000"))
-                .build();
-
-        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
-                .withdrawalAccountNo("111-111")
-                .withdrawalPassword("1234")
-                .customerRrnPrefix("9001011")
-                .depositAccountNo("999-999")
-                .build();
-
-        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
-                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
-        
-        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
-        given(transferTxService.withdrawTransfer(eq(request), any(), any())).willReturn(mockWithdrawalResponse);
 
         BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
-        bankProperty.setBaseUrl("http://mock-bank");
+        bankProperty.setBaseUrl("http://our-bank");
+        given(bankNetworkConfig.getBankProperty(OUR_BANK_CODE)).willReturn(bankProperty);
+
+        given(securityService.decryptWithKey(eq(request), eq(DecryptedWithdrawData.class)))
+                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
+
+        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
+        given(transferTxService.withdrawTransfer(eq(request), eq(decryptedData), eq(TEST_CEK))).willReturn(mockWithdrawalResponse);
+
+        // 입금 성공, 원장 업데이트만 실패
+        doThrow(new RuntimeException("DB connection lost during ledger update"))
+                .when(transferTxService).updateLedgerStatus(eq("mock-tx-id"), eq("SUCCESS"));
+
+        // when & then
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                transferService.executeTransfer(request));
+        assertEquals(ErrorCode.INTERNAL_SERVER_ERROR, ex.getErrorCode());
+        // 입금이 이미 완료됐으므로 환불 호출 금지 — 이중 지급 방지
+        verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("이체 실행: 타행 이체 시 PENDING 상태로 즉시 반환하고 보상 서비스에 위임한다")
+    void executeTransfer_externalTransfer_returnsPendingAndDelegates() {
+        // given
+        TransferRequest request = TransferRequest.builder()
+                .withdrawalBankCode(OUR_BANK_CODE)
+                .depositBankCode(OTHER_BANK_CODE)
+                .amount(new BigDecimal("10000"))
+                .build();
+
+        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
+                .withdrawalAccountNo("111-111")
+                .depositAccountNo("999-999")
+                .build();
+
+        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
+        bankProperty.setBaseUrl("http://other-bank");
         given(bankNetworkConfig.getBankProperty(OTHER_BANK_CODE)).willReturn(bankProperty);
 
-        given(restTemplate.postForEntity(anyString(), any(), eq(Object.class)))
-                .willThrow(new ResourceAccessException("Read timed out"));
+        given(securityService.decryptWithKey(eq(request), eq(DecryptedWithdrawData.class)))
+                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
 
-        Map<String, Object> mockSuccessResponse = new HashMap<>();
-        Map<String, Object> mockData = new HashMap<>();
-        mockData.put("status", "SUCCESS");
-        mockSuccessResponse.put("data", mockData);
-
-        given(restTemplate.getForObject(anyString(), eq(Map.class)))
-                .willThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND))
-                .willReturn(mockSuccessResponse);
+        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
+        given(transferTxService.withdrawTransfer(eq(request), eq(decryptedData), eq(TEST_CEK))).willReturn(mockWithdrawalResponse);
 
         // when
         TransferResponse response = transferService.executeTransfer(request);
 
-        // then
+        // then — 즉시 PENDING 응답 반환 및 보상 서비스 위임 확인
         assertNotNull(response);
         assertEquals("mock-tx-id", response.getTransactionId());
-        verify(transferTxService).updateLedgerStatus("mock-tx-id", "SUCCESS");
-        verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
-    }
-
-    @Test
-    @DisplayName("이중지급방지: 타행 이체 중 API 에러가 나고 상태 조회 API마저 최종 실패(UNKNOWN)하면 예외를 던져 환불을 차단하고 PENDING 상태를 유지한다")
-    void executeTransfer_doublePaymentPrevention_unknown() {
-        // given
-        TransferRequest request = TransferRequest.builder()
-                .withdrawalBankCode(OUR_BANK_CODE)
-                .depositBankCode(OTHER_BANK_CODE)
-                .amount(new BigDecimal("10000"))
-                .build();
-
-        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
-                .withdrawalAccountNo("111-111")
-                .withdrawalPassword("1234")
-                .customerRrnPrefix("9001011")
-                .depositAccountNo("999-999")
-                .build();
-
-        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
-                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
-        
-        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
-        given(transferTxService.withdrawTransfer(eq(request), any(), any())).willReturn(mockWithdrawalResponse);
-
-        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
-        bankProperty.setBaseUrl("http://mock-bank");
-        given(bankNetworkConfig.getBankProperty(OTHER_BANK_CODE)).willReturn(bankProperty);
-
-        given(restTemplate.postForEntity(anyString(), any(), eq(Object.class)))
-                .willThrow(new ResourceAccessException("Read timed out"));
-
-        given(restTemplate.getForObject(anyString(), eq(Map.class)))
-                .willThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
-
-        // when & then
-        assertThrows(BusinessException.class, () ->
-            transferService.executeTransfer(request)
-        );
-
+        verify(compensationService).compensate(
+                eq(OTHER_BANK_CODE),
+                any(InternalDepositRequest.class),
+                eq(request),
+                eq(decryptedData),
+                eq("mock-tx-id"));
         verify(transferTxService, never()).updateLedgerStatus(anyString(), anyString());
         verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
     }
 
     @Test
-    @DisplayName("이중지급방지: 타행 이체 중 API 에러가 나고 상태 조회 시 해결 불가능한 400 에러 등이 발생하면 즉시 예외를 던져 재시도를 중단(Fail-Fast)한다")
-    void executeTransfer_doublePaymentPrevention_failFast() {
+    @DisplayName("이체 실행: 지원하지 않는 입금 은행 코드이면 출금 없이 BANK_NOT_FOUND 예외가 발생한다")
+    void executeTransfer_unknownDepositBankCode_throwsBeforeWithdrawal() {
         // given
         TransferRequest request = TransferRequest.builder()
                 .withdrawalBankCode(OUR_BANK_CODE)
-                .depositBankCode(OTHER_BANK_CODE)
+                .depositBankCode("999")
                 .amount(new BigDecimal("10000"))
                 .build();
 
-        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
-                .withdrawalAccountNo("111-111")
-                .withdrawalPassword("1234")
-                .customerRrnPrefix("9001011")
-                .depositAccountNo("999-999")
-                .build();
-
-        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
-                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
-        
-        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
-        given(transferTxService.withdrawTransfer(eq(request), any(), any())).willReturn(mockWithdrawalResponse);
-
-        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
-        bankProperty.setBaseUrl("http://mock-bank");
-        given(bankNetworkConfig.getBankProperty(OTHER_BANK_CODE)).willReturn(bankProperty);
-
-        given(restTemplate.postForEntity(anyString(), any(), eq(Object.class)))
-                .willThrow(new ResourceAccessException("Read timed out"));
-
-        given(restTemplate.getForObject(anyString(), eq(Map.class)))
-                .willThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+        given(bankNetworkConfig.getBankProperty("999")).willReturn(null);
 
         // when & then
-        assertThrows(BusinessException.class, () ->
-            transferService.executeTransfer(request)
-        );
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> transferService.executeTransfer(request));
 
-        verify(restTemplate, times(1)).getForObject(anyString(), eq(Map.class));
-        verify(transferTxService, never()).updateLedgerStatus(anyString(), anyString());
-        verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
-    }
-
-    @Test
-    @DisplayName("이중지급방지: 타행 이체 중 API 에러가 나고 상태 조회 시 예기치 않은 일반 예외가 발생하면 즉시 예외를 던져 재시도를 중단(Fail-Fast)한다")
-    void executeTransfer_doublePaymentPrevention_generalExceptionFailFast() {
-        // given
-        TransferRequest request = TransferRequest.builder()
-                .withdrawalBankCode(OUR_BANK_CODE)
-                .depositBankCode(OTHER_BANK_CODE)
-                .amount(new BigDecimal("10000"))
-                .build();
-
-        DecryptedWithdrawData decryptedData = DecryptedWithdrawData.builder()
-                .withdrawalAccountNo("111-111")
-                .withdrawalPassword("1234")
-                .customerRrnPrefix("9001011")
-                .depositAccountNo("999-999")
-                .build();
-
-        given(securityService.decryptWithKey(any(), eq(DecryptedWithdrawData.class)))
-                .willReturn(new SecurityService.DecryptionResult<>(decryptedData, TEST_CEK));
-        
-        TransferResponse mockWithdrawalResponse = TransferResponse.of("mock-tx-id", "2026-06-05 17:00:00", new BigDecimal("90000"));
-        given(transferTxService.withdrawTransfer(eq(request), any(), any())).willReturn(mockWithdrawalResponse);
-
-        BankNetworkConfig.BankProperty bankProperty = new BankNetworkConfig.BankProperty();
-        bankProperty.setBaseUrl("http://mock-bank");
-        given(bankNetworkConfig.getBankProperty(OTHER_BANK_CODE)).willReturn(bankProperty);
-
-        given(restTemplate.postForEntity(anyString(), any(), eq(Object.class)))
-                .willThrow(new ResourceAccessException("Read timed out"));
-
-        given(restTemplate.getForObject(anyString(), eq(Map.class)))
-                .willThrow(new RuntimeException("Unexpected DB Connection Failure"));
-
-        // when & then
-        assertThrows(BusinessException.class, () ->
-            transferService.executeTransfer(request)
-        );
-
-        verify(restTemplate, times(1)).getForObject(anyString(), eq(Map.class));
-        verify(transferTxService, never()).updateLedgerStatus(anyString(), anyString());
+        assertEquals(ErrorCode.BANK_NOT_FOUND, ex.getErrorCode());
+        verify(transferTxService, never()).withdrawTransfer(any(), any(), any());
         verify(transferTxService, never()).refundTransfer(any(), any(), anyString());
     }
 

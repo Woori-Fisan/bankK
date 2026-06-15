@@ -4,6 +4,7 @@ import com.woorifisan.platform.domain.bank.dto.request.TransferRecipientRequest;
 import com.woorifisan.platform.domain.bank.dto.request.TransferRequest;
 import com.woorifisan.platform.domain.bank.dto.response.TransferRecipientResponse;
 import com.woorifisan.platform.domain.bank.dto.response.TransferResponse;
+import com.woorifisan.platform.domain.bank.dto.response.TransferStatusResponse;
 import com.woorifisan.platform.domain.bank.external.client.BankExternalClient;
 import com.woorifisan.platform.domain.bank.external.dto.BankRecipientRequest;
 import com.woorifisan.platform.domain.bank.external.dto.BankTransferResponse;
@@ -74,13 +75,21 @@ public class TransferService {
                 executeRequest
         );
 
-        // 3. 최종 응답 반환
+        boolean isSameBank = request.getWithdrawalBankCode().equals(request.getDepositBankCode());
         return TransferResponse.builder()
                 .transactionId(response.getTransactionId())
+                .status(isSameBank ? "SUCCESS" : "PENDING")
                 .transactionDate(formatTransactionDate(response.getTransactionDate()))
                 .balanceAfter(response.getBalanceAfter())
                 .resPayload(response.getResPayload())
                 .build();
+    }
+
+    /**
+     * 이체 거래 상태 조회 (출금 은행에 위임)
+     */
+    public TransferStatusResponse getTransferStatus(String bankCode, String txId) {
+        return bankExternalClient.fetchTransferStatus(bankCode, txId);
     }
 
     /**

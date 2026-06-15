@@ -39,8 +39,13 @@ export interface TransferRequest {
 
 export interface TransferResponse {
     transactionId: string;
-    transactionDate: string;
-    balanceAfter: string;
+    status: 'PENDING' | 'SUCCESS' | 'FAILED';
+    transactionDate?: string;
+    balanceAfter?: string;
+}
+
+export interface TransferStatusResponse {
+    status: 'PENDING' | 'SUCCESS' | 'FAILED';
 }
 
 /**
@@ -156,4 +161,14 @@ export const executeTransfer = async (request: TransferRequest): Promise<ApiResp
             error: { code: 'CLIENT_ERROR', message: extractApiErrorMessage(error, '이체 요청 중 오류가 발생했습니다.') }
         };
     }
+};
+
+export const getTransferStatus = async (
+    withdrawalBankCode: string,
+    transactionId: string
+): Promise<ApiResponse<TransferStatusResponse>> => {
+    const response = await axiosInstance.get<ApiResponse<TransferStatusResponse>>(
+        `/bank/transfer/status/${withdrawalBankCode}/${transactionId}`
+    );
+    return response.data;
 };

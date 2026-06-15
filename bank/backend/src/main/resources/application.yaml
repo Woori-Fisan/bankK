@@ -102,10 +102,10 @@ springdoc:
 bank-network:
   banks:
     "020":
-      base-url: ${WOORI_BANK_URL:http://localhost:8081}
+      base-url: ${WOORI_BANK_URL:https://localhost:8081}
     "088": # 신한은행
-      base-url: ${SHINHAN_BANK_URL:http://localhost:9090}
+      base-url: ${SHINHAN_BANK_URL:https://localhost:8090}
     "004": # 국민은행
-      base-url: ${KB_BANK_URL:http://localhost:9091}
+      base-url: ${KB_BANK_URL:https://localhost:8091}
 
 
