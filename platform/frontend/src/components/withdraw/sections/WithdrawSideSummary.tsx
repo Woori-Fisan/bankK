@@ -63,7 +63,6 @@ const WithdrawSideSummary: React.FC<WithdrawSideSummaryProps> = ({
                                 <p className="text-sm font-bold text-slate-300 py-2">계좌 확인 시 조회됩니다.</p>
                             )}
                         </div>
-                        <p className="text-[10px] font-bold text-emerald-600">수수료 전액 면제 (0원)</p>
                     </div>
                 </div>
             </Card>

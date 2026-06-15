@@ -80,7 +80,6 @@ const TransferSideSummary: React.FC<TransferSideSummaryProps> = ({
                                 <span className="text-3xl font-black text-slate-900">{formatAmount(amount)}</span>
                                 <span className="text-sm font-bold text-slate-500">원</span>
                             </div>
-                            <p className="text-[10px] font-bold text-emerald-600">수수료 전액 면제 (0원)</p>
                         </div>
                     </div>
                 </div>

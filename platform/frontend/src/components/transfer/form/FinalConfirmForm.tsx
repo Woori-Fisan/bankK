@@ -108,7 +108,6 @@ const FinalConfirmForm: React.FC = () => {
                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">이체 금액</span>
                         <div className="text-right">
                             <p className="text-3xl font-black text-slate-900">₩ {formatAmount(amount)}</p>
-                            <p className="text-xs text-slate-400 font-bold mt-1">수수료 면제 (0원)</p>
                         </div>
                     </div>
 
