@@ -25,9 +25,9 @@
 
 ### 로그인
 
-![로그인 화면](./docs/screenshots/login.png)
 
-> 📸 _스크린샷 자리: 로그인 폼_
+<img width="1917" height="986" alt="로그인" src="https://github.com/user-attachments/assets/57590735-3edd-4b82-ab67-10c3bb913a06" />
+
 
 - 비밀번호는 플랫폼 RSA 공개키로 암호화하여 전송 (`useRsaEncrypt`)
 - 로그인 시 은행 RSA 공개키를 1회 수신 → Zustand `bankKeyStore`에 캐싱 (거래마다 재요청 금지)
@@ -36,11 +36,9 @@
 
 ### 메인 (업무 선택)
 
-![메인 화면](./docs/screenshots/main.png)
+<img width="1917" height="982" alt="Main" src="https://github.com/user-attachments/assets/51aa6908-7c3b-4fcc-af01-53e7368bed2c" />
 
-> 📸 _스크린샷 자리: 업무 선택 메뉴_
 
----
 
 ### 계좌 조회
 
@@ -111,11 +109,24 @@ https://github.com/user-attachments/assets/744db4ff-f3cb-4ba1-9faf-f5a5b0c3ed8c
 
 ---
 
-### 챗봇
+### 금융 업무 보조 챗봇
 
 
 
 https://github.com/user-attachments/assets/bb126781-ce40-4d11-8caf-13f4b7bb8beb
+
+---
+
+### 핀패드 모달
+
+<img width="1917" height="986" alt="핀패드" src="https://github.com/user-attachments/assets/a289ea18-b0f3-44db-9e8b-3da210e905c2" />
+
+
+| 기능 | 설명 |
+|------|------|
+| **랜덤 셔플** | 렌더링마다 숫자 배열 무작위 재배치 |
+| **멀티 버튼 하이라이트** | 실제 입력 버튼 1개 + 무작위 2~3개 버튼이 동시에 active — 어깨너머·화면 녹화로 번호 유추 방지 |
+| **입력값 격리** | 입력값은 컴포넌트 내부 state에만 존재, 완료 시 즉시 암호화 후 암호문만 콜백 전달 |
 
 
 ---
@@ -137,19 +148,6 @@ https://github.com/user-attachments/assets/bb126781-ce40-4d11-8caf-13f4b7bb8beb
 
 - 은행 RSA 공개키 교체 시 `Key ID`를 명시하여 키 교체 시점 이전 요청도 처리 보장
 
----
-
-### 핀패드 모달
-
-| 기능 | 설명 |
-|------|------|
-| **랜덤 셔플** | 렌더링마다 숫자 배열 무작위 재배치 |
-| **멀티 버튼 하이라이트** | 실제 입력 버튼 1개 + 무작위 2~3개 버튼이 동시에 active — 어깨너머·화면 녹화로 번호 유추 방지 |
-| **입력값 격리** | 입력값은 컴포넌트 내부 state에만 존재, 완료 시 즉시 암호화 후 암호문만 콜백 전달 |
-
-![핀패드](./docs/screenshots/pinpad.png)
-
-> 📸 _스크린샷 자리: 핀패드 모달_
 
 ---
 
