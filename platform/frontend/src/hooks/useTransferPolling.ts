@@ -59,12 +59,17 @@ export function useTransferPolling({
                 networkErrorCountRef.current = 0;
                 pollCountRef.current++;
 
-                if (response.data.status === 'SUCCESS') {
+                const status = response.success && response.data?.status;
+                if (status === 'SUCCESS') {
                     isActiveRef.current = false;
                     callbacksRef.current.onSuccess();
-                } else if (response.data.status === 'FAILED') {
+                } else if (status === 'FAILED') {
                     isActiveRef.current = false;
                     callbacksRef.current.onFailed();
+                } else if (!status) {
+                    // 비즈니스 에러(success: false) 또는 data 누락 → 타임아웃 처리
+                    isActiveRef.current = false;
+                    callbacksRef.current.onTimeout();
                 } else {
                     // PENDING: 다음 폴링 예약
                     timeoutRef.current = setTimeout(poll, POLL_INTERVAL_MS);
