@@ -31,7 +31,6 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
 
     const [birthDate, setBirthDate] = useState(initialData?.birthDate || '');
     const [amount, setAmount] = useState(initialData?.amount || '0');
-    const [fee] = useState(0);
     const [isCheckingBalance, setIsCheckingBalance] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
 
@@ -65,7 +64,7 @@ const WithdrawEntryForm: React.FC<WithdrawEntryFormProps> = ({ initialData, onNe
 
     const handleSubmit = () => {
         if (!userName) return;
-        onNext({ userName, sourceAccount: { ...sourceAccount }, birthDate, amount, fee });
+        onNext({ userName, sourceAccount: { ...sourceAccount }, birthDate, amount });
     };
 
     const isNextDisabled = !userName || sourceAccount.balance === undefined || isCheckingBalance || !amount || parseInt(amount, 10) === 0;

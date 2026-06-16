@@ -87,10 +87,6 @@ const ResultForm: React.FC = () => {
 
                             <div className="pt-8 border-t border-slate-50 space-y-4">
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-slate-400 font-medium">수수료</span>
-                                    <span className="text-slate-900 font-bold">0원 (면제)</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-400 font-medium">상태</span>
                                     <span className="text-emerald-600 font-black">이체 완료</span>
                                 </div>

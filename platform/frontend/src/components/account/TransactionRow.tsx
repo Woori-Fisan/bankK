@@ -33,8 +33,7 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ tx }) => {
             'DEPOSIT': '입금',
             'WITHDRAW': '출금',
             'TRANSFER': '이체',
-            'LOAN': '대출',
-            'FEE': '수수료'
+            'LOAN': '대출'
         };
         return types[type] || type;
     };

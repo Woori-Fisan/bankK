@@ -88,10 +88,6 @@ const WithdrawResultView: React.FC<WithdrawResultViewProps> = ({
 
                             <div className="pt-8 border-t border-slate-50 space-y-4">
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-slate-400 font-medium">수수료</span>
-                                    <span className="text-slate-900 font-bold">{formatAmount(data.fee)}원</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-400 font-medium">상태</span>
                                     <span className="text-emerald-600 font-black">출금 완료</span>
                                 </div>

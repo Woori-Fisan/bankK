@@ -180,11 +180,6 @@ const WithdrawPage: React.FC = () => {
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">출금 신청 금액</span>
                                     <span className="text-xl font-black text-slate-900">₩ {formatAmount(withdrawData.amount)}</span>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">수수료</span>
-                                    <span className="text-sm font-bold text-emerald-600">0원 (면제)</span>
-                                </div>
-
                                 <div className="flex justify-between items-center pt-5 border-t-2 border-slate-200 border-dashed">
                                     <span className="text-xs font-black text-slate-500 uppercase tracking-wider">출금 후 예상 잔액</span>
                                     <div className="text-right">

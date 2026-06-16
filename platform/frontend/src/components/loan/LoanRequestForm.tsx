@@ -405,15 +405,16 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
                     <LoanSideSummary
                         title="신청 현황 요약"
                         items={[
-                            { label: '성명', value: formData.userName || '정보 미입력' },
-                            { 
-                                label: '입금 계좌', 
+                            { label: '성명', value: formData.userName || '정보 미입력', placeholder: !formData.userName },
+                            {
+                                label: '입금 계좌',
                                 value: formData.bankCode && formData.accountNo ? (
                                     <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
                                         <p className="font-black text-slate-900">{formData.bank}</p>
                                         <p className="text-[11px] text-emerald-600 font-bold font-mono mt-0.5">{formData.accountNo}</p>
                                     </div>
-                                ) : '계좌 정보를 입력해 주세요'
+                                ) : '계좌 정보를 입력해 주세요',
+                                placeholder: !(formData.bankCode && formData.accountNo),
                             },
                             {
                                 label: '서류 준비도',
