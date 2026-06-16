@@ -36,7 +36,7 @@ jib {
 	}
 
 	to {
-		image = 'jeeneep/bank-backend'
+		image = '273960310893.dkr.ecr.ap-northeast-2.amazonaws.com/bank-backend'
 
 		tags = [buildNumber, 'latest'].findAll { it != null }.unique()
 	}
