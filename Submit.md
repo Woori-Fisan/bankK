@@ -13,7 +13,7 @@
         
 ## 2\. 아키텍쳐
 
-### 2-1. 시스템 아키텍쳐
+### 2-1. 시스템 아키텍처
 <img width="8683" height="6242" alt="아키텍처(PROD)" src="https://github.com/user-attachments/assets/be9718ce-e3df-4e60-8e8c-f265d20de85a" />
 
 ### 설명
