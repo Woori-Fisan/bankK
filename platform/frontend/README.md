@@ -25,9 +25,9 @@
 
 ### 로그인
 
-![로그인 화면](./docs/screenshots/login.png)
 
-> 📸 _스크린샷 자리: 로그인 폼_
+<img width="1917" height="986" alt="로그인" src="https://github.com/user-attachments/assets/57590735-3edd-4b82-ab67-10c3bb913a06" />
+
 
 - 비밀번호는 플랫폼 RSA 공개키로 암호화하여 전송 (`useRsaEncrypt`)
 - 로그인 시 은행 RSA 공개키를 1회 수신 → Zustand `bankKeyStore`에 캐싱 (거래마다 재요청 금지)
@@ -36,25 +36,28 @@
 
 ### 메인 (업무 선택)
 
-![메인 화면](./docs/screenshots/main.png)
+<img width="1917" height="982" alt="Main" src="https://github.com/user-attachments/assets/51aa6908-7c3b-4fcc-af01-53e7368bed2c" />
 
-> 📸 _스크린샷 자리: 업무 선택 메뉴_
 
----
 
 ### 계좌 조회
 
-![계좌 조회](./docs/screenshots/account-inquiry.png)
+https://github.com/user-attachments/assets/8edb3ac9-8ba0-4961-ac56-a27180b782ca
 
-> 📸 _스크린샷 자리: 계좌 입력 → 잔액·거래내역 결과_
 
+계좌번호를 입력하면 잔액과 거래 내역을 조회합니다.
+
+- 조회 기관: 드롭다운으로 연결된 은행 기관을 선택
+- 기본 조회 기간: 최근 1달 (오늘 기준 -1개월), 날짜 직접 변경 가능
+- 입출금 구분: 출금(KRW) · 입금(KRW) 컬럼 분리 — 음수(−) 금액은 출금 컬럼에 빨간색, 양수(+) 금액은 입금 컬럼에 초록색으로 표시
+- 거래 건별 "입금" / "출금" 배지 자동 표시
+- 페이지네이션 지원 (20건/페이지)
 ---
 
 ### 이체
 
-![이체](./docs/screenshots/transfer.png)
+https://github.com/user-attachments/assets/67e48fdb-0f1e-4501-aa3d-783009f5824c
 
-> 📸 _스크린샷 자리: 이체 Step UI (계좌 입력 → 수취인 확인 → 금액/비밀번호 → 결과)_
 
 Step 흐름:
 ```
@@ -65,9 +68,11 @@ Step 흐름:
 
 ### 출금
 
-![출금](./docs/screenshots/withdraw.png)
 
-> 📸 _스크린샷 자리: 출금 Step UI (계좌 입력 → 잔액 확인 → 금액/비밀번호 → 결과)_
+
+https://github.com/user-attachments/assets/643b26dc-b75c-4175-9f42-10e4d2dd9de5
+
+
 
 Step 흐름:
 ```
@@ -78,9 +83,11 @@ Step 흐름:
 
 ### 대출 신청
 
-![대출 신청](./docs/screenshots/loan.png)
 
-> 📸 _스크린샷 자리: 대출 Step UI (서류 제출 → 심사 대기 → 상품 선택 → 계약 서류 → 결과)_
+
+https://github.com/user-attachments/assets/eeb1aace-28dd-4856-be3a-fd172db2237f
+
+
 
 Step 흐름:
 ```
@@ -94,11 +101,36 @@ Step 흐름:
 
 ### 직원 관리 (AGENCY_ADMIN 전용)
 
-![직원 관리](./docs/screenshots/employee-management.png)
 
-> 📸 _스크린샷 자리: 직원 목록 + 등록/삭제_
+
+https://github.com/user-attachments/assets/744db4ff-f3cb-4ba1-9faf-f5a5b0c3ed8c
+
+
 
 ---
+
+### 금융 업무 보조 챗봇
+
+
+
+https://github.com/user-attachments/assets/bb126781-ce40-4d11-8caf-13f4b7bb8beb
+
+---
+
+### 핀패드 모달
+
+<img width="1917" height="986" alt="핀패드" src="https://github.com/user-attachments/assets/a289ea18-b0f3-44db-9e8b-3da210e905c2" />
+
+
+| 기능 | 설명 |
+|------|------|
+| **랜덤 셔플** | 렌더링마다 숫자 배열 무작위 재배치 |
+| **멀티 버튼 하이라이트** | 실제 입력 버튼 1개 + 무작위 2~3개 버튼이 동시에 active — 어깨너머·화면 녹화로 번호 유추 방지 |
+| **입력값 격리** | 입력값은 컴포넌트 내부 state에만 존재, 완료 시 즉시 암호화 후 암호문만 콜백 전달 |
+
+
+---
+
 
 ## 주요 구현
 
@@ -116,19 +148,6 @@ Step 흐름:
 
 - 은행 RSA 공개키 교체 시 `Key ID`를 명시하여 키 교체 시점 이전 요청도 처리 보장
 
----
-
-### 핀패드 모달
-
-| 기능 | 설명 |
-|------|------|
-| **랜덤 셔플** | 렌더링마다 숫자 배열 무작위 재배치 |
-| **멀티 버튼 하이라이트** | 실제 입력 버튼 1개 + 무작위 2~3개 버튼이 동시에 active — 어깨너머·화면 녹화로 번호 유추 방지 |
-| **입력값 격리** | 입력값은 컴포넌트 내부 state에만 존재, 완료 시 즉시 암호화 후 암호문만 콜백 전달 |
-
-![핀패드](./docs/screenshots/pinpad.png)
-
-> 📸 _스크린샷 자리: 핀패드 모달_
 
 ---
 
