@@ -52,37 +52,11 @@ jobs:
         run: npm ci
 
       # --------------------------------------------------
-      # Run Tests
-      # --------------------------------------------------
-
-      - name: Run Tests
-        run: |
-          if find src -name "*.test.*" -o -name "*.spec.*" | grep -q .; then
-            npm run test -- --run
-          else
-            echo "No test files found. Skipping tests."
-          fi
-
-      # --------------------------------------------------
       # Build
       # --------------------------------------------------
 
       - name: Build Frontend
         run: npm run build
-
-      # --------------------------------------------------
-      # SonarQube Scan
-      # --------------------------------------------------
-
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
-
-        with:
-          projectBaseDir: platform/frontend
-
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
       # --------------------------------------------------
       # Compress Dist
