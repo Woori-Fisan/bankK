@@ -239,7 +239,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
                                 loanProductName: p.productName,
                                 minAmount: p.minLimit,
                                 maxAmount: p.maxLimit,
-                                interestRate: p.minRate,
+                                interestRate: p.appliedRate ?? p.minRate,
                                 loanPeriodMonths: 36,
                             }));
                         }
@@ -277,7 +277,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onNext, onBack, onSse
                                 loanProductName: p.productName,
                                 minAmount: p.minLimit,
                                 maxAmount: p.maxLimit,
-                                interestRate: p.minRate,
+                                interestRate: p.appliedRate ?? p.minRate,
                                 loanPeriodMonths: 36,
                             }));
                         }

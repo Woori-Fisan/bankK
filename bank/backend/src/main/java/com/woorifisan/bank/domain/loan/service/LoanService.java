@@ -360,7 +360,12 @@ public class LoanService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOAN_CUSTOMER_NOT_FOUND));
 
         // 5. 월 납입금 계산 (원리금균등상환 공식)
-        BigDecimal interestRate = loanLedger.getInterestRate();
+        // 심사 시 저장된 신용점수 + 선택한 상품 범위로 확정 금리 계산
+        Integer appliedCreditScore = loanLedger.getAppliedCreditScore();
+        if (appliedCreditScore == null) {
+            throw new BusinessException(ErrorCode.LOAN_REVIEW_DATA_CORRUPTED);
+        }
+        BigDecimal interestRate = loanReviewAsyncService.calculateProductRate(product, appliedCreditScore);
         LocalDate startDate = LocalDate.now();
         LocalDate endDate = startDate.plusMonths(request.getRepaymentPeriod());
         BigDecimal monthlyPayment = loanReviewAsyncService.calculateMonthlyPayment(

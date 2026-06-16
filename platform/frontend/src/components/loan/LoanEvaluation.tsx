@@ -115,7 +115,7 @@ const LoanEvaluation: React.FC<LoanEvaluationProps> = ({
             id: i + 1,
             loanProductCode: p.loanProductCode,
             name: p.loanProductName,
-            rate: p.interestRate,
+            rate: p.appliedRate ?? p.minRate ?? p.interestRate,
             limit: p.maxAmount,
             tags: p.interestRate === Math.min(...(sseData!.availableProducts ?? []).map((x) => x.interestRate))
                 ? ['최저금리']

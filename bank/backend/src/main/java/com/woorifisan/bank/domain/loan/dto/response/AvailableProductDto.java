@@ -16,8 +16,9 @@ public class AvailableProductDto {
     private BigDecimal minLimit;
     private BigDecimal maxLimit;
     private String conditions;
+    private BigDecimal appliedRate;  // 심사에서 확정된 고객 금리
 
-    public static AvailableProductDto from(LoanProduct product) {
+    public static AvailableProductDto from(LoanProduct product, BigDecimal appliedRate) {
         return AvailableProductDto.builder()
                 .productId(product.getProductId())
                 .productName(product.getProductName())
@@ -26,6 +27,7 @@ public class AvailableProductDto {
                 .minLimit(product.getMinLimit())
                 .maxLimit(product.getMaxLimit())
                 .conditions(product.getConditions())
+                .appliedRate(appliedRate)
                 .build();
     }
 }
