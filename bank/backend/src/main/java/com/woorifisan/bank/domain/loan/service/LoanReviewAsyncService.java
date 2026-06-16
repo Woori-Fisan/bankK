@@ -271,15 +271,22 @@ public class LoanReviewAsyncService {
 
     // 신용점수 → 상품 금리 범위 내 보간 공식: productRate = minRate + (maxRate - minRate) × factor
     // factor: 900+→0.00, 800~899→0.25, 700~799→0.50, 600~699→0.75
-    BigDecimal calculateProductRate(LoanProduct product, int creditScore) {
-        BigDecimal factor;
-        if (creditScore >= 900)      factor = BigDecimal.ZERO;
-        else if (creditScore >= 800) factor = new BigDecimal("0.25");
-        else if (creditScore >= 700) factor = new BigDecimal("0.50");
-        else                         factor = new BigDecimal("0.75");
+    // creditScore null 이면 가장 높은 factor(0.75) 적용, 상품 금리 필드 null 이면 BASE_RATE 반환
+    BigDecimal calculateProductRate(LoanProduct product, Integer creditScore) {
+        BigDecimal minRate = (product != null && product.getMinRate() != null)
+                ? product.getMinRate() : BASE_RATE;
+        BigDecimal maxRate = (product != null && product.getMaxRate() != null)
+                ? product.getMaxRate() : BASE_RATE;
 
-        BigDecimal range = product.getMaxRate().subtract(product.getMinRate());
-        return product.getMinRate().add(range.multiply(factor)).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal factor;
+        if (creditScore == null)          factor = new BigDecimal("0.75");
+        else if (creditScore >= 900)      factor = BigDecimal.ZERO;
+        else if (creditScore >= 800)      factor = new BigDecimal("0.25");
+        else if (creditScore >= 700)      factor = new BigDecimal("0.50");
+        else                              factor = new BigDecimal("0.75");
+
+        BigDecimal range = maxRate.subtract(minRate);
+        return minRate.add(range.multiply(factor)).setScale(2, RoundingMode.HALF_UP);
     }
 
     // 원리금균등상환 월납입금 공식: M = P × r(1+r)^n / ((1+r)^n - 1)

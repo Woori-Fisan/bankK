@@ -46,6 +46,8 @@ export interface AvailableProduct {
   minAmount: number;
   maxAmount: number;
   interestRate: number;
+  appliedRate?: number | null;
+  minRate?: number | null;
   loanPeriodMonths: number;
 }
 
