@@ -46,7 +46,7 @@ jib {
 	}
 
 	to {
-		image = 'jeeneep/monitoring-backend'
+		image = '273960310893.dkr.ecr.ap-northeast-2.amazonaws.com/monitoring-backend'
 
 		tags = [buildNumber, 'latest'].unique()
 	}

@@ -58,7 +58,7 @@ jib {
 	}
 
 	to {
-		image = 'jeeneep/platform-backend'
+		image = '273960310893.dkr.ecr.ap-northeast-2.amazonaws.com/platform-backend'
 
 		tags = [buildNumber, 'latest'].unique()
 	}
