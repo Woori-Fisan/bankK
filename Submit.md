@@ -16,13 +16,29 @@
         
 ## 2\. 아키텍쳐
 
-### 2-1. 시스템 아키텍처
+### 2-1. 시스템 아키텍처 (운영/테스트 분리)
 <img width="8683" height="6242" alt="아키텍처(PROD)" src="https://github.com/user-attachments/assets/be9718ce-e3df-4e60-8e8c-f265d20de85a" />
 
-### 설명
-- 대행기관의 창구 직원용 Web(platform/frontend)과 관제용 대시보드(monitoring/frontend)는 각각 독립적으로 배포되며, 외부 요청은 플랫폼 서버를 통해서만 은행 코어로 전달됩니다.
-- platform/backend는 인증·보안·중계를 전담하고, bank/backend는 온프레미스 환경에서 실제 원장 데이터를 처리하며, monitoring/backend는 전 구간 거래 로그를 수집·관제합니다.
-- 각 서버는 독립적으로 배포·확장 가능하며, 인프라는 컨테이너 기반으로 구성되어 신규 대행기관 추가 시 설정 변경만으로 연결을 확장합니다.
+### 설명 - 운영 환경
+- 플랫폼 서비스는 AWS 기반으로 구성하여 Application Load Balancer와 Auto Scaling Group을 통해 트래픽 분산, 장애 복구 및 확장성을 확보하였습니다.
+- 은행 업무 시스템은 기존 OpenStack 기반 On-Premise 환경을 유지하여 기존 인프라를 활용하고 데이터 관리 영역을 분리하였습니다.
+- 플랫폼 WAS, 데이터 저장소, 모니터링 서버는 Private Subnet에 배치하여 외부에서 직접 접근할 수 없도록 구성하였습니다.
+- Private Subnet 인스턴스는 NAT Gateway를 통해서만 외부 API(Gemini)와 통신하도록 구성하여 직접적인 인터넷 노출을 방지하였습니다.
+- 플랫폼과 은행 시스템은 WireGuard VPN 기반 전용 터널로 연결하여 공인 IP 노출 없이 내부망 통신만 허용하였습니다.
+- 대행기관 직원용 Web(platform/frontend)과 관리자용 대시보드(monitoring/frontend)는 각각 독립적으로 배포되며, 외부 요청은 플랫폼 서버를 통해서만 은행 코어 시스템으로 전달됩니다.
+- platform/backend는 인증·보안·중계 역할을 담당하고, bank/backend는 실제 은행 업무 데이터 처리를 수행하며, monitoring/backend는 전 구간 로그 및 운영 데이터를 수집·관리합니다.
+- WAS, 데이터 저장소, 모니터링 서버를 역할별로 분리하여 장애 영향을 최소화하고 독립적인 운영이 가능하도록 설계하였습니다.
+- Fluent Bit, Prometheus, Loki, Grafana를 활용한 통합 모니터링 환경을 구축하여 로그 및 메트릭을 실시간으로 수집·관제합니다.
+- Qdrant와 Redis 기반 RAG 환경을 구성하고 Gemini API와 연계하여 업무 지원 챗봇 기능을 제공합니다.
+- 모든 서비스는 컨테이너 기반으로 운영되어 신규 대행기관 추가 시 설정 변경만으로 확장이 가능하도록 설계하였습니다.
+
+<img width="5298" height="5638" alt="아키텍처(TEST)" src="https://github.com/user-attachments/assets/878a0c69-40c4-482c-b8f2-754027ad5188" />
+
+### 설명 - 테스트 환경
+- 운영 환경과 최대한 유사한 구조를 OpenStack 환경에 구축하여 기능 검증을 수행하였습니다.
+- 클라우드 자원 사용 비용을 최소화하면서 개발 및 통합 테스트를 진행할 수 있도록 구성하였습니다.
+- 신규 기능 개발 및 배포 전 테스트 환경에서 정상 동작 여부를 검증한 후 운영 환경에 반영하였습니다.
+- 은행 서버, 플랫폼 서버, 모니터링 서버 간 연동 테스트를 통해 운영 환경 배포 시 발생 가능한 문제를 사전에 확인하였습니다.
 
 ---
 
