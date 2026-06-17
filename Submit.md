@@ -38,7 +38,7 @@
 - **Platform ERD**
 <img width="1260" height="884" alt="image" src="https://github.com/user-attachments/assets/4a8149e6-f786-4c71-89cd-9be5b0271297" />
 
-    대행기관(agency)·직원(staff)·은행(bank) 정보를 관리하며, 은행별 RSA 공개키를 캐싱하여 프론트엔드의 E2EE 암호화에 활용합니다.
+    대행기관(agency)·직원(staff)·은행(bank) 정보를 관리하며, 은행별 RSA 공개키를 프론트엔드의 E2EE 암호화에 활용합니다.
     직원 로그인 시 JWT Refresh Token은 Redis에 저장되며, 멱등성 키도 Redis를 통해 관리하여 중복 거래를 원천 차단합니다.
 
 
@@ -53,7 +53,7 @@
 ## 3\. 주요 기능 소개
 
 ### 3-1. 핵심 기술 구성
-<img width="1280" height="720" alt="슬라이드4" src="https://github.com/user-attachments/assets/6f65ae06-91dc-441f-8439-6857ef98e04a" />
+<img width="1130" height="926" alt="image" src="https://github.com/user-attachments/assets/a616fd7e-1be5-4d60-8494-674d4936aa96" />
 
 ---
 
@@ -68,9 +68,9 @@
  
 #### [기능 1] 3중 보안 구조 — mTLS + JWS 서명 + E2EE (디지털 봉투)
 
-* **기능 설명**: 금융 사고 발생 시 소속 은행이 "주의 의무를 다했음"을 기술적으로 증명하기 위해 통신 구간·페이로드·종단 간 3중 보안을 적용했습니다.
+* **기능 설명**: 금융 사고 발생 시 소속 은행이 **"주의 의무를 다했음"**을 기술적으로 증명하기 위해 **통신 구간·페이로드·종단 간 3중 보안을 적용**했습니다.
 
-  * **mTLS**: 플랫폼과 은행 서버 간 양방향 인증서를 검증하여 인가된 서버만 접근할 수 있도록 합니다.
+  * **mTLS**: **플랫폼과 은행 서버 간 양방향 인증서**를 검증하여 인가된 서버만 접근할 수 있도록 합니다.
   * **JWS 서명**: 단말기(창구 PC)가 IndexedDB에 저장된 RSA 개인키로 요청 페이로드에 전자서명하고, 플랫폼 서버가 이를 검증합니다. Timestamp ±5분 초과 요청은 Replay Attack으로 간주하여 거부합니다.
   * **E2EE (디지털 봉투)**: 계좌번호·주민번호·비밀번호 등 민감 정보는 브라우저에서 직접 암호화됩니다. Web Crypto API로 1회용 AES-256-GCM 세션 키를 생성해 민감 페이로드를 암호화하고, 세션 키 자체는 은행 RSA 공개키(RSA-OAEP-256)로 래핑합니다. 플랫폼 서버는 암호문을 **복호화하지 않고 원본 그대로 은행에 전달(Zero-Knowledge)**하며, 오직 해당 은행의 RSA 개인키를 보유한 서버만 복호화할 수 있습니다.
 
@@ -169,9 +169,12 @@ public LoanEvaluationResultResponse getResult(String requestKey) {
 
 ---
  
-#### [기능 3] 비관적 락 + 보상 트랜잭션 — 동시성 제어 및 타행 이체 안전성 Saga 패턴 적용
+#### [기능 3] 동시성 제어 및 타행 이체 안전성 Saga 패턴 적용 - 비관적 락 + 보상 트랜잭션
  
 * **기능 설명**: 출금·이체·대출 실행 시 `SELECT ... FOR UPDATE`로 계좌 락을 획득하고, 락 획득 후 잔액을 재검증(Double-Check)하여 동시 요청에 의한 마이너스 잔액을 원천 차단합니다. 타행 이체는 분산 트랜잭션 문제를 보상 트랜잭션 패턴으로 해결합니다. 출금 후 즉시 `PENDING` 응답을 반환하고, 별도 스레드에서 타행 서버에 입금을 요청합니다. 실패 시 최대 9회 재시도(1초 간격)를 수행하며, 최종 실패 시 출금을 환불하고 `FAILED`로 기록합니다. 클라이언트는 폴링 API로 결과를 확인합니다.
+ * 이 구조는 Saga 패턴을 따릅니다. 출금·입금 각 단계를 독립 트랜잭션으로 분리하여 즉시 커밋함으로써 DB 락 점유 시간을 최소화하고, 실패 지점에서만 보상 트랜잭션(환불)을 실행하여 글로벌 트랜잭션 없이 최종 일관성을 보장합니다.
+
+
 * **핵심 코드**:
 ```java
 // bank/backend — 비관적 락 + Double-Check (TransferTxService)
@@ -229,6 +232,7 @@ redisTemplate.opsForValue().set(idempotencyKey, responseBody, 60, TimeUnit.SECON
 #### [기능 5] 부인방지 로그 파이프라인 — 전 구간 거래 추적
  
 * **기능 설명**: 금융 분쟁 발생 시 귀책사유를 소명하기 위해 모든 거래 요청에 `traceId`(traceId + epoch + nano + rand4hex)를 부여하고, 대행기관→플랫폼→은행 전 구간에 단일 ID를 전파합니다. 플랫폼 서버는 AOP(`ControllerLoggingAspect`)로 컨트롤러 진입·종료 시점에 MDC에 staffId·agencyCode·bankCode·elapsedMs를 함께 기록하며, 위변조 증명을 위한 암호문 원본(`TX_PAYLOAD_LOG`)을 별도 테이블에 적재합니다. Logback JSON → AsyncAppender → Fluent Bit → monitoring/backend 파이프라인으로 수집되며, MySQL 테이블 파티셔닝(일자별)으로 대용량 로그를 관리합니다.
+* 
 * **핵심 코드**:
 ```java
 // platform/backend — ControllerLoggingAspect (global/aop/aspect)
