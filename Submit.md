@@ -5,7 +5,7 @@
   * **프로젝트 기획 배경**: 
      - 은행 지점의 지속적인 감소로 고령층·지방 거주자 등 금융 취약계층의 오프라인 은행 접근성이 저하되고 있습니다. 정부는 이에 대한 포용 금융 대응책으로 은행대리업을 제시했으며, 2025년 12월 금융규제 샌드박스를 통해 혁신금융서비스로 지정되었습니다.
      - 은행과 대행기관이 1:1 전용망을 구축하는 방식은 과도한 개발 비용과 시간이 발생합니다.
-     - BankK는 BaaS를 중계 레이어로 활용하여 우체국·상호금융 등 대행기관이 단일 플랫폼을 통해 여신 상품 판매·계좌 조회·출금 업무를 처리할 수 있도록 하며, 신규 대행기관 추가 시 별도 개발 없이 설정만으로 연결을 확장합니다.
+     - BankK는 BaaS를 중계 레이어로 활용하여 우체국·상호금융 등 대행기관이 단일 플랫폼을 통해 대출 상품 판매·계좌 조회·출금 업무를 처리할 수 있도록 하며, 신규 대행기관 추가 시 별도 개발 없이 설정만으로 연결을 확장합니다.
   * **기술 스택**
       * 백엔드: Java 17, Spring Boot 3.2, MySQL 8.0, Redis, MyBatis, Spring Security, Spring AI, Spring Batch, Spring WebClient, Logback, Micrometer
       * 프론트엔드: React, TypeScript, Vite, TanStack Query, Zustand, Axios, Tailwind CSS, shadcn/ui, Web Crypto API, jose
@@ -232,7 +232,7 @@ redisTemplate.opsForValue().set(idempotencyKey, responseBody, 60, TimeUnit.SECON
 #### [기능 5] 부인방지 로그 파이프라인 — 전 구간 거래 추적
  
 * **기능 설명**: 금융 분쟁 발생 시 귀책사유를 소명하기 위해 모든 거래 요청에 `traceId`(traceId + epoch + nano + rand4hex)를 부여하고, 대행기관→플랫폼→은행 전 구간에 단일 ID를 전파합니다. 플랫폼 서버는 AOP(`ControllerLoggingAspect`)로 컨트롤러 진입·종료 시점에 MDC에 staffId·agencyCode·bankCode·elapsedMs를 함께 기록하며, 위변조 증명을 위한 암호문 원본(`TX_PAYLOAD_LOG`)을 별도 테이블에 적재합니다. Logback JSON → AsyncAppender → Fluent Bit → monitoring/backend 파이프라인으로 수집되며, MySQL 테이블 파티셔닝(일자별)으로 대용량 로그를 관리합니다.
-* 
+
 * **핵심 코드**:
 ```java
 // platform/backend — ControllerLoggingAspect (global/aop/aspect)
