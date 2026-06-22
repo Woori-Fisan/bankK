@@ -1,6 +1,27 @@
 # 아키텍처
 
-![BankK AWS Architecture](./docs/architecture.png)
+
+### 운영 환경
+<img width="100%" height="auto" alt="아키텍처(운영)" src="https://github.com/user-attachments/assets/8ae1d879-483a-4f79-9504-0b5e3458538b" />
+<p align="center">
+    <ui>
+        <li>플랫폼 서비스는 AWS 기반 운영</li>
+        <li>은행 시스템은 기존 On-Premise 유지</li>
+        <li>WireGuard VPN 기반 내부 통신 구성</li>
+    </ui>
+</p>
+
+---
+
+### 테스트 환경
+<img width="100%" height="auto" alt="아키텍처(테스트)" src="https://github.com/user-attachments/assets/d907d6f4-de66-4932-9a9a-0cb7bbcb730d" />
+<p align="center">
+    <ui>
+        <li>운영 환경과 유사한 테스트 환경 구축</li>
+        <li>기능 정상 동작 여부 검증</li>
+        <li>운영 배포 전 장애 위험 최소화</li>
+    </ui>
+</p>
 
 ---
 
