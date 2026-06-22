@@ -2,6 +2,8 @@
 
 > 점포 폐쇄로 인한 금융 소외 문제를 해결하기 위해 BaaS 통합 은행대리업 솔루션 개발
 
+<img width="1440" height="809" alt="image" src="https://github.com/user-attachments/assets/990f6a94-80b1-40e5-b864-4fb26c3a1495" />
+
 ---
 
 ## 프로젝트 배경
