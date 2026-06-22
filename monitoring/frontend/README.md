@@ -25,9 +25,8 @@ BaaS 서비스 전반의 메트릭·로그를 관제하는 관리자용 대시�
 
 ### 로그인 / 회원가입
 
-![로그인](./docs/screenshots/login.png)
-
-> 📸 _스크린샷 자리: 로그인 폼_
+<img width="1917" height="982" alt="로그인 (1)" src="https://github.com/user-attachments/assets/0faecd37-3d78-41ca-8b17-c81d206e350d" />
+<img width="1917" height="986" alt="회원가입" src="https://github.com/user-attachments/assets/2f2bda99-a9bd-401a-9dca-48edd18a2363" />
 
 - JWT 기반 인증 — 유효 토큰 없는 사용자는 `ProtectedRoute`에서 로그인 페이지로 리다이렉트
 - 401 응답 수신 시 Axios 인터셉터가 토큰 무효화 후 로그인 화면으로 자동 이동
